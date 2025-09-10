@@ -180,3 +180,4 @@ CREATE INDEX idx_performance_match ON fact_match_performance(match_id);
 CREATE INDEX idx_performance_player ON fact_match_performance(player_id);
 CREATE INDEX idx_overall_stats_match ON fact_match_overall_stats(match_id);
 CREATE INDEX idx_economy_match ON fact_match_economy(match_id);
+
