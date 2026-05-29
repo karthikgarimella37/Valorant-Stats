@@ -7,7 +7,30 @@ Specific Team API: https://vlr.orlandomm.net/api/v1/teams/{team_id}
 All Events API: https://vlr.orlandomm.net/api/v1/events
 
 Rib.gg APIs
+# Discovered Endpoints (as of Feb 2, 2026)
+# Base URL: https://be-prod.rib.gg
+
+# Teams
 All Teams API: https://be-prod.rib.gg/v1/teams/all?take=100000
+Teams (Paginated): https://be-prod.rib.gg/v1/teams
+  - Returns: {meta: {start, results, total}, data: [...]}
+  - Fields: id, name, shortName, description, websiteUrl, logoUrl, countryId
+Specific Team: https://be-prod.rib.gg/v1/teams/{team_id}
+
+# Events/Tournaments
+Events API: https://be-prod.rib.gg/v1/events
+  - Returns: {meta: {start, results, total}, data: [...]}
+  - Fields: id, name, shortName, description, formatMd, eventType, startDate, endDate
+
+# Series (Matches)
+Series API: https://be-prod.rib.gg/v1/series
+  - Returns: {meta: {start, results, total}, data: [...]}
+  - Fields: id, eventId, team1Id, team2Id, team1Score, team2Score, startDate
+
+# Query Parameters
+- ?take=N - Limit results (for /all endpoints)
+- ?start=N - Pagination offset (for base endpoints)
+- ?results=N - Results per page (for base endpoints)
 
 **Tables**:
 	Dim:

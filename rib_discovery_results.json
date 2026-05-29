@@ -1,0 +1,132 @@
+{
+  "all_results": {
+    "all_pattern": [
+      {
+        "status": "[WORKS 200 OK]",
+        "url": "https://be-prod.rib.gg/v1/teams/all?take=5",
+        "content_type": "application/json; charset=utf-8",
+        "sample": "[{'id': 19430, 'name': '^-^', 'shortName': '^-^', 'countryId': 226}, {'id': 16992, 'name': '>.<', 'shortName': '>.<', 'countryId': 226}, {'id': 16903, 'name': '?', 'shortName': 'DRM', 'countryId': 171"
+      },
+      {
+        "status": "[FAILED 404]",
+        "url": "https://be-prod.rib.gg/v1/matches/all?take=5"
+      },
+      {
+        "status": "[FAILED 404]",
+        "url": "https://be-prod.rib.gg/v1/events/all?take=5"
+      },
+      {
+        "status": "[FAILED 404]",
+        "url": "https://be-prod.rib.gg/v1/players/all?take=5"
+      }
+    ],
+    "base_pattern": [
+      {
+        "status": "[WORKS 200 OK]",
+        "url": "https://be-prod.rib.gg/v1/teams",
+        "content_type": "application/json; charset=utf-8",
+        "sample": "{'meta': {'start': 0, 'results': 100, 'total': 19688}, 'data': [{'id': 1625, 'name': 'FNATIC', 'shortName': 'FNC', 'description': '', 'websiteUrl': 'https://fnatic.com/', 'logoUrl': 'https://i.imgur.c"
+      },
+      {
+        "status": "[FAILED 404]",
+        "url": "https://be-prod.rib.gg/v1/matches"
+      },
+      {
+        "status": "[WORKS 200 OK]",
+        "url": "https://be-prod.rib.gg/v1/events",
+        "content_type": "application/json; charset=utf-8",
+        "sample": "{'meta': {'start': 0, 'results': 15, 'total': 6081}, 'data': [{'id': 6262, 'name': 'Valorant Masters Santiago 2026 - Main Event', 'shortName': 'Main Event', 'description': None, 'formatMd': None, 'eve"
+      },
+      {
+        "status": "[FAILED 404]",
+        "url": "https://be-prod.rib.gg/v1/players"
+      },
+      {
+        "status": "[WORKS 200 OK]",
+        "url": "https://be-prod.rib.gg/v1/series",
+        "content_type": "application/json; charset=utf-8",
+        "sample": "{'meta': {'start': 0, 'results': 15, 'total': 96594}, 'data': [{'id': 99072, 'eventId': 6334, 'team1Id': 683, 'team2Id': 7258, 'team1Score': None, 'team2Score': None, 'startDate': '2026-03-12T22:00:29"
+      },
+      {
+        "status": "[FAILED 404]",
+        "url": "https://be-prod.rib.gg/v1/tournaments"
+      }
+    ],
+    "api_pattern": [
+      {
+        "status": "[FAILED 404]",
+        "url": "https://be-prod.rib.gg/api/v1/teams"
+      },
+      {
+        "status": "[FAILED 404]",
+        "url": "https://be-prod.rib.gg/api/v1/matches"
+      },
+      {
+        "status": "[FAILED 404]",
+        "url": "https://be-prod.rib.gg/api/v1/events"
+      }
+    ],
+    "specific": [
+      {
+        "status": "[WORKS 200 OK]",
+        "url": "https://be-prod.rib.gg/v1/teams/1",
+        "content_type": "application/json; charset=utf-8",
+        "sample": "{'id': 1, 'name': 'FURY', 'shortName': 'FURY', 'description': 'FURY is an Australian multi-gaming Organization.', 'websiteUrl': 'https://www.furyglobal.com', 'logoUrl': 'https://i.imgur.com/arDkMuS.pn"
+      },
+      {
+        "status": "[FAILED 404]",
+        "url": "https://be-prod.rib.gg/v1/matches/1"
+      },
+      {
+        "status": "[FAILED 404]",
+        "url": "https://be-prod.rib.gg/v1/events/recent"
+      },
+      {
+        "status": "[FAILED 404]",
+        "url": "https://be-prod.rib.gg/v1/stats"
+      }
+    ],
+    "no_version": [
+      {
+        "status": "[FAILED 404]",
+        "url": "https://be-prod.rib.gg/teams/all?take=5"
+      },
+      {
+        "status": "[FAILED 404]",
+        "url": "https://be-prod.rib.gg/matches/all?take=5"
+      }
+    ]
+  },
+  "working_endpoints": [
+    {
+      "status": "[WORKS 200 OK]",
+      "url": "https://be-prod.rib.gg/v1/teams/all?take=5",
+      "content_type": "application/json; charset=utf-8",
+      "sample": "[{'id': 19430, 'name': '^-^', 'shortName': '^-^', 'countryId': 226}, {'id': 16992, 'name': '>.<', 'shortName': '>.<', 'countryId': 226}, {'id': 16903, 'name': '?', 'shortName': 'DRM', 'countryId': 171"
+    },
+    {
+      "status": "[WORKS 200 OK]",
+      "url": "https://be-prod.rib.gg/v1/teams",
+      "content_type": "application/json; charset=utf-8",
+      "sample": "{'meta': {'start': 0, 'results': 100, 'total': 19688}, 'data': [{'id': 1625, 'name': 'FNATIC', 'shortName': 'FNC', 'description': '', 'websiteUrl': 'https://fnatic.com/', 'logoUrl': 'https://i.imgur.c"
+    },
+    {
+      "status": "[WORKS 200 OK]",
+      "url": "https://be-prod.rib.gg/v1/events",
+      "content_type": "application/json; charset=utf-8",
+      "sample": "{'meta': {'start': 0, 'results': 15, 'total': 6081}, 'data': [{'id': 6262, 'name': 'Valorant Masters Santiago 2026 - Main Event', 'shortName': 'Main Event', 'description': None, 'formatMd': None, 'eve"
+    },
+    {
+      "status": "[WORKS 200 OK]",
+      "url": "https://be-prod.rib.gg/v1/series",
+      "content_type": "application/json; charset=utf-8",
+      "sample": "{'meta': {'start': 0, 'results': 15, 'total': 96594}, 'data': [{'id': 99072, 'eventId': 6334, 'team1Id': 683, 'team2Id': 7258, 'team1Score': None, 'team2Score': None, 'startDate': '2026-03-12T22:00:29"
+    },
+    {
+      "status": "[WORKS 200 OK]",
+      "url": "https://be-prod.rib.gg/v1/teams/1",
+      "content_type": "application/json; charset=utf-8",
+      "sample": "{'id': 1, 'name': 'FURY', 'shortName': 'FURY', 'description': 'FURY is an Australian multi-gaming Organization.', 'websiteUrl': 'https://www.furyglobal.com', 'logoUrl': 'https://i.imgur.com/arDkMuS.pn"
+    }
+  ]
+}
