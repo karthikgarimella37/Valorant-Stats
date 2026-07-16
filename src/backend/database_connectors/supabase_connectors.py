@@ -21,8 +21,11 @@ def _find_project_root(start_path: Path) -> Path:
 
 
 PROJECT_ROOT = _find_project_root(Path(__file__).resolve().parent)
-load_dotenv(PROJECT_ROOT / ".env")
-logger.info(f"Loaded .env file: {load_dotenv(PROJECT_ROOT / '.env')}")
+ENV_PATHS = [PROJECT_ROOT / ".env", PROJECT_ROOT / "src" / "config" / ".env"]
+for env_path in ENV_PATHS:
+    if env_path.exists():
+        logger.info("Loading environment variables from %s", env_path)
+        load_dotenv(env_path, override=False)
 
 class SupabaseConnector:
     """

@@ -6,6 +6,9 @@ readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
     "bs4>=0.0.2",
+    "dagster>=1.13.9",
+    "dagster-dg-cli>=1.13.9",
+    "dagster-webserver>=1.13.9",
     "datetime>=6.0",
     "ipykernel>=7.2.0",
     "pandas>=3.0.3",
