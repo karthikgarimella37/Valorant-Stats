@@ -10,6 +10,10 @@ snapshot-paths: ["snapshots"]
 macro-paths: ["macros"]
 test-paths: ["tests"]
 
+# Ensure target schema exists before materializing models (e.g. valorant.dim_*, valorant.fact_*)
+on-run-start:
+  - "create schema if not exists {{ target.schema }}"
+
 models:
   valorant_stats:
     staging:

@@ -1,19 +1,16 @@
 {{ config(materialized='table') }}
 
+-- Phase 2: populate from /matches/{id}/details
 with dummy_data as (
     select
-        cast(null as integer) as economy_id,
-        cast(null as integer) as match_id,
-        cast(null as integer) as player_id,
-        cast(null as integer) as team_id,
-        cast(null as integer) as map_id,
-        cast(null as integer) as total_spent,
-        cast(null as integer) as equipment_value,
-        cast(null as integer) as money_saved,
-        cast(null as integer) as clutches_won,
-        cast(null as integer) as clutches_attempted,
-        cast(null as integer) as multi_kills,
-        cast(null as timestamp) as created_at
+        cast(null as bigint) as id,
+        cast(null as bigint) as match_id,
+        cast(null as bigint) as player_id,
+        cast(null as bigint) as team_id,
+        cast(null as bigint) as map_id,
+        cast(null as bigint) as total_spent,
+        cast(null as bigint) as equipment_value,
+        cast(null as bigint) as money_saved
 )
 
-select * from dummy_data where economy_id is not null
+select * from dummy_data where id is not null

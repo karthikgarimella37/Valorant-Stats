@@ -39,7 +39,7 @@ Dagster and dbt both read these values:
 - `SUPABASE_DB_USER`
 - `SUPABASE_DB_PASSWORD`
 - `SUPABASE_DB_SSLMODE` (optional, defaults to `require`)
-- `DBT_SUPABASE_SCHEMA` (optional, defaults to `analytics`)
+- `DBT_SUPABASE_SCHEMA` (optional, defaults to `valorant`)
 - `DBT_THREADS` (optional, defaults to `4`)
 
 ## Local dbt commands

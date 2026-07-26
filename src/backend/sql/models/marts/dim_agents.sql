@@ -1,11 +1,11 @@
 {{ config(materialized='table') }}
 
+-- Phase 1 stub: agent IDs appear on matches; list endpoint unverified
 with dummy_data as (
     select
-        cast(null as integer) as agent_id,
-        cast(null as varchar(100)) as agent_name,
-        cast(null as varchar(50)) as agent_type,
-        cast(null as timestamp) as created_at
+        cast(null as bigint) as id,
+        cast(null as varchar) as name,
+        cast(null as varchar) as agent_type
 )
 
-select * from dummy_data where agent_id is not null
+select * from dummy_data where id is not null

@@ -1,183 +1,232 @@
--- VALORANT Stats Database Schema for Supabase
--- Dimension Tables
+-- VALORANT Stats — rib.gg aligned schema for Supabase
+-- Tables: valorant.dim_* (Phase 1). Fact tables are Phase 2 (/matches/{id}/details).
+-- Runtime loads may CREATE/REPLACE tables from parquet schemas; this file documents the expected shape.
 
--- Events table
-CREATE TABLE dim_events (
-    event_id SERIAL PRIMARY KEY,
-    event_name VARCHAR(255) NOT NULL,
-    event_type VARCHAR(100),
-    start_date DATE,
-    end_date DATE,
-    location VARCHAR(255),
-    prize_pool DECIMAL(15,2),
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
-);
+CREATE SCHEMA IF NOT EXISTS valorant;
 
--- Teams table
-CREATE TABLE dim_teams (
-    team_id SERIAL PRIMARY KEY,
-    team_name VARCHAR(255) NOT NULL,
-    team_tag VARCHAR(10),
-    region VARCHAR(100),
-    country VARCHAR(100),
+-- Events (/v1/events)
+CREATE TABLE IF NOT EXISTS valorant.dim_events (
+    id BIGINT PRIMARY KEY,
+    name TEXT,
+    short_name TEXT,
+    description TEXT,
+    format_md TEXT,
+    events_md TEXT,
     logo_url TEXT,
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
+    region_id BIGINT,
+    country_id BIGINT,
+    start_date TIMESTAMP,
+    end_date TIMESTAMP,
+    prize_pool DOUBLE PRECISION,
+    prize_pool_currency TEXT,
+    url TEXT,
+    image_url TEXT,
+    livestream_link TEXT,
+    winner_stage_count BIGINT,
+    loser_stage_count BIGINT,
+    live BOOLEAN,
+    rank BIGINT,
+    pmt_json TEXT,
+    parent BOOLEAN,
+    parent_id BIGINT,
+    child_label TEXT,
+    keywords TEXT,
+    slug TEXT,
+    series_count BIGINT,
+    importance BIGINT,
+    type TEXT,
+    liquipedia_slug TEXT,
+    vct_regions TEXT,
+    divisions TEXT,
+    t3_subdivision TEXT,
+    region TEXT,
+    country TEXT
 );
 
--- Players table
-CREATE TABLE dim_players (
-    player_id SERIAL PRIMARY KEY,
-    player_name VARCHAR(255) NOT NULL,
-    player_tag VARCHAR(100),
-    real_name VARCHAR(255),
-    country VARCHAR(100),
-    team_id INTEGER REFERENCES dim_teams(team_id),
-    role VARCHAR(50),
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
+-- Teams (/v1/teams/all or /v1/teams)
+CREATE TABLE IF NOT EXISTS valorant.dim_teams (
+    id BIGINT PRIMARY KEY,
+    name TEXT,
+    short_name TEXT,
+    description TEXT,
+    website_url TEXT,
+    logo_url TEXT,
+    country_id BIGINT,
+    liquipedia_slug TEXT,
+    twitter_url TEXT,
+    twitch_url TEXT,
+    vlr_url TEXT,
+    youtube_url TEXT,
+    founded_date TIMESTAMP,
+    region_id BIGINT,
+    rank BIGINT,
+    region_rank BIGINT,
+    aliases TEXT,
+    vct_region TEXT,
+    division TEXT,
+    grid_team_id TEXT
 );
 
--- Agents table
-CREATE TABLE dim_agents (
-    agent_id SERIAL PRIMARY KEY,
-    agent_name VARCHAR(100) NOT NULL UNIQUE,
-    agent_type VARCHAR(50), -- Duelist, Controller, Initiator, Sentinel
-    created_at TIMESTAMP DEFAULT NOW()
+-- Series / BO fixtures (/v1/series) — not individual maps
+CREATE TABLE IF NOT EXISTS valorant.dim_series (
+    id BIGINT PRIMARY KEY,
+    event_id BIGINT,
+    team1_id BIGINT,
+    team2_id BIGINT,
+    team1_score BIGINT,
+    team2_score BIGINT,
+    start_date TIMESTAMP,
+    best_of BIGINT,
+    stage TEXT,
+    bracket TEXT,
+    completed BOOLEAN,
+    live BOOLEAN,
+    win_condition TEXT,
+    vlr_id TEXT,
+    vod_url TEXT,
+    ggbet_id TEXT,
+    pmt_status TEXT,
+    pmt_reddit_url TEXT,
+    pmt_json TEXT,
+    pickban TEXT,
+    grid_series_id TEXT,
+    liquipedia_slug TEXT,
+    event_livestream_link TEXT,
+    event_name TEXT,
+    event_slug TEXT,
+    event_child_label TEXT,
+    event_logo_url TEXT,
+    event_region_id BIGINT,
+    parent_event_id BIGINT,
+    parent_event_name TEXT,
+    parent_event_slug TEXT,
+    parent_event_livestream_link TEXT
 );
 
--- Maps table
-CREATE TABLE dim_maps (
-    map_id SERIAL PRIMARY KEY,
-    map_name VARCHAR(100) NOT NULL UNIQUE,
-    map_type VARCHAR(50),
-    release_date DATE,
-    created_at TIMESTAMP DEFAULT NOW()
+-- Map-level matches (exploded from series.matches[])
+CREATE TABLE IF NOT EXISTS valorant.dim_matches (
+    id BIGINT PRIMARY KEY,
+    patch_id BIGINT,
+    series_id BIGINT,
+    series_match_number BIGINT,
+    riot_id TEXT,
+    map_id BIGINT,
+    start_date TIMESTAMP,
+    length_millis BIGINT,
+    completed BOOLEAN,
+    riot_season_id TEXT,
+    riot_game_mode TEXT,
+    no_riot_data BOOLEAN,
+    region TEXT,
+    live BOOLEAN,
+    ready_to_display BOOLEAN,
+    attacking_first_team_number BIGINT,
+    red_team_number BIGINT,
+    winning_team_number BIGINT,
+    win_condition TEXT,
+    teams_inverted_in_stream BOOLEAN,
+    team1_score BIGINT,
+    team2_score BIGINT,
+    vlr_id TEXT,
+    vod_url TEXT,
+    cn_vod_url TEXT,
+    team1_player_ids TEXT,
+    team2_player_ids TEXT,
+    team1_agent_ids TEXT,
+    team2_agent_ids TEXT
 );
 
--- Matches table
-CREATE TABLE dim_matches (
-    match_id SERIAL PRIMARY KEY,
-    vlr_match_id VARCHAR(50) UNIQUE, -- VLR.gg match ID
-    event_id INTEGER REFERENCES dim_events(event_id),
-    team1_id INTEGER REFERENCES dim_teams(team_id),
-    team2_id INTEGER REFERENCES dim_teams(team_id),
-    match_date TIMESTAMP,
-    match_format VARCHAR(20), -- BO1, BO3, BO5
-    match_status VARCHAR(20), -- completed, live, upcoming
-    winner_team_id INTEGER REFERENCES dim_teams(team_id),
-    final_score VARCHAR(20), -- e.g., "2-1"
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
+-- Maps (distinct match.map objects)
+CREATE TABLE IF NOT EXISTS valorant.dim_maps (
+    id BIGINT PRIMARY KEY,
+    name TEXT,
+    riot_id TEXT,
+    riot_name TEXT,
+    images TEXT,
+    ow_name TEXT,
+    geo_data TEXT,
+    display_data TEXT
 );
 
--- Fact Tables
-
--- Match Overall Stats (team-level aggregated stats per match)
-CREATE TABLE fact_match_overall_stats (
-    stat_id SERIAL PRIMARY KEY,
-    match_id INTEGER REFERENCES dim_matches(match_id),
-    team_id INTEGER REFERENCES dim_teams(team_id),
-    map_id INTEGER REFERENCES dim_maps(map_id),
-    rounds_won INTEGER,
-    rounds_lost INTEGER,
-    total_kills INTEGER,
-    total_deaths INTEGER,
-    total_assists INTEGER,
-    total_acs DECIMAL(8,2), -- Average Combat Score
-    total_adr DECIMAL(8,2), -- Average Damage per Round
-    first_kills INTEGER,
-    first_deaths INTEGER,
-    clutches_won INTEGER,
-    clutches_attempted INTEGER,
-    created_at TIMESTAMP DEFAULT NOW()
+-- Players (from nested team payloads; no public /players list)
+CREATE TABLE IF NOT EXISTS valorant.dim_players (
+    id BIGINT PRIMARY KEY,
+    ign TEXT,
+    first_name TEXT,
+    last_name TEXT,
+    bio TEXT,
+    country_id BIGINT,
+    instagram_url TEXT,
+    liquipedia_slug TEXT,
+    twitch_url TEXT,
+    twitter_url TEXT,
+    youtube_url TEXT,
+    image_url TEXT,
+    firestore_id TEXT,
+    previous_riot_player_ids TEXT,
+    ufa TEXT,
+    rfa TEXT,
+    metafy_url TEXT,
+    custom_url TEXT,
+    grid_player_id TEXT,
+    team_player_history_id BIGINT,
+    team_id BIGINT,
+    start_date TIMESTAMP,
+    role TEXT,
+    igl BOOLEAN
 );
 
--- Match Performance (individual player performance per map)
-CREATE TABLE fact_match_performance (
-    performance_id SERIAL PRIMARY KEY,
-    match_id INTEGER REFERENCES dim_matches(match_id),
-    player_id INTEGER REFERENCES dim_players(player_id),
-    team_id INTEGER REFERENCES dim_teams(team_id),
-    map_id INTEGER REFERENCES dim_maps(map_id),
-    agent_id INTEGER REFERENCES dim_agents(agent_id),
-    kills INTEGER,
-    deaths INTEGER,
-    assists INTEGER,
-    acs DECIMAL(8,2), -- Average Combat Score
-    adr DECIMAL(8,2), -- Average Damage per Round
-    hs_percentage DECIMAL(5,2), -- Headshot percentage
-    first_kills INTEGER,
-    first_deaths INTEGER,
-    fkfd_diff INTEGER, -- First kill/First death difference
-    rating DECIMAL(4,2),
-    created_at TIMESTAMP DEFAULT NOW()
+-- Agents (Phase 1 stub — fill when /agents list works or via static backfill)
+CREATE TABLE IF NOT EXISTS valorant.dim_agents (
+    id BIGINT PRIMARY KEY,
+    name TEXT,
+    agent_type TEXT
 );
 
--- Match Economy (economy-related stats per player per map)
-CREATE TABLE fact_match_economy (
-    economy_id SERIAL PRIMARY KEY,
-    match_id INTEGER REFERENCES dim_matches(match_id),
-    player_id INTEGER REFERENCES dim_players(player_id),
-    team_id INTEGER REFERENCES dim_teams(team_id),
-    map_id INTEGER REFERENCES dim_maps(map_id),
-    total_spent INTEGER, -- Total credits spent
-    equipment_value INTEGER, -- Average equipment value
-    money_saved INTEGER, -- Credits saved/eco rounds
-    clutches_won INTEGER,
-    clutches_attempted INTEGER,
-    multi_kills INTEGER, -- 2k, 3k, 4k, 5k combined
-    created_at TIMESTAMP DEFAULT NOW()
+-- Phase 2 fact tables (populated from /matches/{id}/details)
+CREATE TABLE IF NOT EXISTS valorant.fact_match_overall_stats (
+    id BIGSERIAL PRIMARY KEY,
+    match_id BIGINT,
+    team_id BIGINT,
+    map_id BIGINT,
+    rounds_won BIGINT,
+    rounds_lost BIGINT,
+    total_kills BIGINT,
+    total_deaths BIGINT,
+    total_assists BIGINT,
+    total_acs DOUBLE PRECISION,
+    total_adr DOUBLE PRECISION
 );
 
--- Insert default agents
-INSERT INTO dim_agents (agent_name, agent_type) VALUES
-('Jett', 'Duelist'),
-('Reyna', 'Duelist'),
-('Raze', 'Duelist'),
-('Phoenix', 'Duelist'),
-('Yoru', 'Duelist'),
-('Neon', 'Duelist'),
-('Iso', 'Duelist'),
-('Brimstone', 'Controller'),
-('Viper', 'Controller'),
-('Omen', 'Controller'),
-('Astra', 'Controller'),
-('Harbor', 'Controller'),
-('Clove', 'Controller'),
-('Sova', 'Initiator'),
-('Breach', 'Initiator'),
-('Skye', 'Initiator'),
-('KAY/O', 'Initiator'),
-('Fade', 'Initiator'),
-('Gekko', 'Initiator'),
-('Sage', 'Sentinel'),
-('Cypher', 'Sentinel'),
-('Killjoy', 'Sentinel'),
-('Chamber', 'Sentinel'),
-('Deadlock', 'Sentinel'),
-('Vyse', 'Sentinel');
+CREATE TABLE IF NOT EXISTS valorant.fact_match_performance (
+    id BIGSERIAL PRIMARY KEY,
+    match_id BIGINT,
+    player_id BIGINT,
+    team_id BIGINT,
+    map_id BIGINT,
+    agent_id BIGINT,
+    kills BIGINT,
+    deaths BIGINT,
+    assists BIGINT,
+    acs DOUBLE PRECISION,
+    adr DOUBLE PRECISION,
+    hs_percentage DOUBLE PRECISION,
+    rating DOUBLE PRECISION
+);
 
--- Insert default maps
-INSERT INTO dim_maps (map_name, map_type) VALUES
-('Bind', 'Standard'),
-('Haven', 'Standard'),
-('Split', 'Standard'),
-('Ascent', 'Standard'),
-('Dust2', 'Standard'),
-('Breeze', 'Standard'),
-('Fracture', 'Standard'),
-('Pearl', 'Standard'),
-('Lotus', 'Standard'),
-('Sunset', 'Standard'),
-('Abyss', 'Standard');
+CREATE TABLE IF NOT EXISTS valorant.fact_match_economy (
+    id BIGSERIAL PRIMARY KEY,
+    match_id BIGINT,
+    player_id BIGINT,
+    team_id BIGINT,
+    map_id BIGINT,
+    total_spent BIGINT,
+    equipment_value BIGINT,
+    money_saved BIGINT
+);
 
--- Create indexes for better performance
-CREATE INDEX idx_matches_vlr_id ON dim_matches(vlr_match_id);
-CREATE INDEX idx_matches_date ON dim_matches(match_date);
-CREATE INDEX idx_performance_match ON fact_match_performance(match_id);
-CREATE INDEX idx_performance_player ON fact_match_performance(player_id);
-CREATE INDEX idx_overall_stats_match ON fact_match_overall_stats(match_id);
-CREATE INDEX idx_economy_match ON fact_match_economy(match_id);
-
+CREATE INDEX IF NOT EXISTS idx_dim_series_event ON valorant.dim_series(event_id);
+CREATE INDEX IF NOT EXISTS idx_dim_series_teams ON valorant.dim_series(team1_id, team2_id);
+CREATE INDEX IF NOT EXISTS idx_dim_matches_series ON valorant.dim_matches(series_id);
+CREATE INDEX IF NOT EXISTS idx_dim_matches_map ON valorant.dim_matches(map_id);
+CREATE INDEX IF NOT EXISTS idx_dim_players_team ON valorant.dim_players(team_id);
