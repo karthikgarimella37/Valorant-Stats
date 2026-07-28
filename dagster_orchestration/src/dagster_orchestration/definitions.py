@@ -16,6 +16,7 @@ if str(SRC_ROOT) not in sys.path:
 from backend.api_connectors.ribs_connector import RibsConnector
 from backend.database_connectors.supabase_connectors import SupabaseConnector
 from backend.rib_gg.extract import RibExtractPipeline, landing_dir_for, read_ndjson
+from backend.vlr.extract import VlrExtractPipeline
 
 DBT_PROJECT_DIR = REPO_ROOT / "src" / "backend" / "sql"
 DBT_BIN = DBT_PROJECT_DIR / ".venv" / "bin" / "dbt"
@@ -89,6 +90,13 @@ def _ensure_schema(context: AssetExecutionContext, schema: str) -> None:
 
 def _pipeline() -> RibExtractPipeline:
     return RibExtractPipeline(repo_root=REPO_ROOT, connector=RibsConnector(), run_date=_run_date())
+
+
+def _vlr_run_date() -> date:
+    raw = os.getenv("VLR_RUN_DATE") or os.getenv("RIB_RUN_DATE")
+    if raw:
+        return date.fromisoformat(raw)
+    return date.today()
 
 
 # ---------------------------------------------------------------------------
@@ -400,6 +408,110 @@ def rib_load_valorant_tables(context: AssetExecutionContext) -> dict:
     return counts
 
 
+# ---------------------------------------------------------------------------
+# VLR.gg extract → parquet → vlr.*
+# ---------------------------------------------------------------------------
+
+
+@asset(group_name="vlr")
+def vlr_extract_events(context: AssetExecutionContext) -> str:
+    """Paginate completed events from vlr.orlandomm.net into data/vlr/dim_events."""
+    context.log.info(
+        "=== STEP vlr_extract_events: pages %s-%s status=%s api_workers=%s parallel=%s ===",
+        os.getenv("VLR_EVENT_PAGE_START", "1"),
+        os.getenv("VLR_EVENT_PAGE_END", "59"),
+        os.getenv("VLR_EVENT_STATUS", "completed"),
+        os.getenv("VLR_API_MAX_WORKERS", "10"),
+        os.getenv("VLR_PARALLEL", "1"),
+    )
+    pipeline = VlrExtractPipeline(repo_root=REPO_ROOT, run_date=_vlr_run_date())
+    path = pipeline.extract_events()
+    context.add_output_metadata({"parquet_path": MetadataValue.path(str(path))})
+    context.log.info("Events parquet: %s", path)
+    return str(path)
+
+
+@asset(group_name="vlr", deps=[vlr_extract_events])
+def vlr_extract_event_matches(context: AssetExecutionContext) -> str:
+    """Scrape /event/matches/{id}/ for each event into the match queue parquet."""
+    context.log.info(
+        "=== STEP vlr_extract_event_matches: scrape schedules ip_rotator=%s html_workers=%s ===",
+        os.getenv("VLR_USE_IP_ROTATOR", "auto"),
+        os.getenv("VLR_HTML_MAX_WORKERS", "auto"),
+    )
+    pipeline = VlrExtractPipeline(repo_root=REPO_ROOT, run_date=_vlr_run_date())
+    path = pipeline.extract_event_matches()
+    context.add_output_metadata({"parquet_path": MetadataValue.path(str(path))})
+    context.log.info("Event match queue: %s", path)
+    return str(path)
+
+
+@asset(group_name="vlr", deps=[vlr_extract_event_matches])
+def vlr_extract_match_details(context: AssetExecutionContext) -> dict:
+    """
+    Scrape overview/performance/economy tabs for each queued match.
+    Writes dim_* and fact_* parquet under data/vlr/ (checkpointed).
+    """
+    context.log.info(
+        "=== STEP vlr_extract_match_details: VLR_MAX_MATCHES=%s html_workers=%s delay=%ss ===",
+        os.getenv("VLR_MAX_MATCHES", "unlimited"),
+        os.getenv("VLR_HTML_MAX_WORKERS", "3"),
+        os.getenv("VLR_REQUEST_DELAY_SEC", "0.35"),
+    )
+    pipeline = VlrExtractPipeline(repo_root=REPO_ROOT, run_date=_vlr_run_date())
+    paths = pipeline.extract_match_details()
+    str_paths = {key: str(path) for key, path in paths.items()}
+    context.add_output_metadata(
+        {key: MetadataValue.path(value) for key, value in str_paths.items()}
+    )
+    context.log.info("Match detail parquet paths: %s", str_paths)
+    return str_paths
+
+
+@asset(
+    group_name="vlr",
+    deps=[vlr_extract_events, vlr_extract_match_details],
+)
+def vlr_load_supabase(context: AssetExecutionContext) -> dict:
+    """Create/replace vlr.* tables in Supabase from parquet landings."""
+    run_date = _vlr_run_date()
+    pipeline = VlrExtractPipeline(repo_root=REPO_ROOT, run_date=run_date)
+    entity_paths = pipeline.entity_paths_for_load()
+    schema = "vlr"
+    primary_keys = {
+        "dim_events": "id",
+        "dim_teams": "id",
+        "dim_players": "id",
+        "dim_agents": "name",
+        "dim_maps": "name",
+        "dim_matches": "match_id",
+    }
+
+    context.log.info("=== STEP vlr_load_supabase: load parquet -> %s.* ===", schema)
+    for table, path in entity_paths.items():
+        context.log.info(
+            "  %s <- %s exists=%s",
+            table,
+            path,
+            path.exists(),
+        )
+
+    connector = SupabaseConnector()
+    counts = connector.load_parquet_dir(
+        entity_paths,
+        schema=schema,
+        primary_keys=primary_keys,
+    )
+    context.add_output_metadata(
+        {
+            "schema": schema,
+            "row_counts": MetadataValue.json(counts),
+        }
+    )
+    context.log.info("Loaded into %s: %s", schema, counts)
+    return counts
+
+
 dbt_job = define_asset_job(
     "dbt_select_one_plus_ten_job",
     selection=[dbt_build_select_one_plus_ten, log_select_one_plus_ten_result],
@@ -422,6 +534,16 @@ rib_gg_star_schema_job = define_asset_job(
     ],
 )
 
+vlr_star_schema_job = define_asset_job(
+    "vlr_star_schema_job",
+    selection=[
+        vlr_extract_events,
+        vlr_extract_event_matches,
+        vlr_extract_match_details,
+        vlr_load_supabase,
+    ],
+)
+
 defs = Definitions(
     assets=[
         dbt_build_select_one_plus_ten,
@@ -433,6 +555,10 @@ defs = Definitions(
         rib_extract_series,
         rib_normalize_star,
         rib_load_valorant_tables,
+        vlr_extract_events,
+        vlr_extract_event_matches,
+        vlr_extract_match_details,
+        vlr_load_supabase,
     ],
-    jobs=[dbt_job, dbt_star_schema_job, rib_gg_star_schema_job],
+    jobs=[dbt_job, dbt_star_schema_job, rib_gg_star_schema_job, vlr_star_schema_job],
 )

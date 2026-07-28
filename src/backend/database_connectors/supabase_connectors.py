@@ -139,6 +139,9 @@ class SupabaseConnector:
         if df.is_empty() and df.width == 0:
             logger.warning("Skipping empty parquet with no columns: %s", path)
             return 0
+        if list(df.columns) == ["_empty"]:
+            logger.warning("Skipping placeholder empty parquet: %s", path)
+            return 0
 
         # Normalize null-only columns to text so CREATE TABLE succeeds.
         cast_exprs = []
@@ -198,10 +201,12 @@ class SupabaseConnector:
         entity_to_path: dict[str, Path],
         *,
         schema: str = "valorant",
+        primary_keys: dict[str, str] | None = None,
     ) -> dict[str, int]:
-        """Load multiple entity parquet files into valorant.<entity> tables."""
+        """Load multiple entity parquet files into schema.<entity> tables."""
         logger.info("[load] Ensuring schema %s exists...", schema)
         self.ensure_schema(schema)
+        primary_keys = primary_keys or {}
         counts: dict[str, int] = {}
         items = list(entity_to_path.items())
         for index, (table, path) in enumerate(items, start=1):
@@ -214,18 +219,21 @@ class SupabaseConnector:
                     path,
                 )
                 continue
+            pk = primary_keys.get(table, "id")
             logger.info(
-                "[load] (%s/%s) Replacing %s.%s from %s ...",
+                "[load] (%s/%s) Replacing %s.%s from %s (pk=%s) ...",
                 index,
                 len(items),
                 schema,
                 table,
                 path,
+                pk,
             )
             counts[table] = self.replace_table_from_parquet(
                 path,
                 schema=schema,
                 table=table,
+                primary_key=pk,
             )
         logger.info("[load] Finished. Row counts: %s", counts)
         return counts

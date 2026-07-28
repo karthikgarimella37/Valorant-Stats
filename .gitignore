@@ -16,8 +16,9 @@ src/backend/sql/logs/
 src/backend/sql/dbt_packages/
 .dbt-venv/
 
-# rib.gg landing zone
+# landing zones
 data/rib_gg/
+data/vlr/
 
 # Notebook / local dumps
 All_Series_List.parquet

@@ -3,12 +3,14 @@ name = "dagster_orchestration"
 requires-python = ">=3.10,<3.15"
 version = "0.1.0"
 dependencies = [
+    "beautifulsoup4>=4.13.0",
     "dagster==1.13.9",
     "polars>=1.41.1",
     "psycopg2-binary>=2.9.12",
     "pyarrow>=20.0.0",
     "python-dotenv>=1.2.2",
     "requests>=2.34.2",
+    "requests-ip-rotator>=1.0.18",
 ]
 
 [dependency-groups]
