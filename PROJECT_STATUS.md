@@ -3,7 +3,7 @@
 > Session-agnostic source of truth. Updated by agents via the `session-continuity` skill. Commit and push this file so every new Cursor chat starts with current context.
 
 **Last updated:** 2026-08-17  
-**Updated by:** standards — logging, parallelization, Supabase speed
+**Updated by:** ribgg.ipynb static agent/map/weapon catalog cells
 
 ---
 
@@ -13,17 +13,17 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 
 ## Current focus
 
-- Continue data exploration / ingestion from rib.gg and related APIs (`ribgg.ipynb`, `valorant-stats.ipynb`)
+- Continue data exploration / ingestion from rib.gg and related APIs (`ribgg.ipynb`)
+- Static Agents / Maps / Weapons catalog now pulled in the notebook via valorant-api.com (rib.gg has no catalog)
 - Advance remaining dimension tables after Matches
-- Follow `ENGINEERING_STANDARDS.md` for all new code
 
 ## Status
 
 | Area | State | Notes |
 |------|--------|-------|
 | Overall | In progress | Pipeline + schema design underway; frontend not started |
-| Data sources | In progress | rib.gg endpoints discovered; VLR/val.gg APIs noted |
-| Dim tables | Partial | Matches marked done; Events, Players, Teams, Economy, Date pending |
+| Data sources | In progress | rib.gg match/RSC routes work; no agent/map/weapon catalog; valorant-api.com used for static game data |
+| Dim tables | Partial | Matches done; Agents/Maps/Weapons catalog explored; Events, Players, Teams, Economy, Date pending |
 | Fact tables | Not started | Match/player/economy fact tables planned |
 | Orchestration | In progress | Dagster project present |
 | Frontend / viz | Not started | Graphs and dashboards listed in `Valorant API.md` |
@@ -37,6 +37,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 - [x] Session continuity process (`PROJECT_STATUS.md`, skill, rule)
 - [x] Engineering standards (`ENGINEERING_STANDARDS.md`, rule, skill): simple English, concise chat, why-docstrings, dbt/Dagster/extract practices
 - [x] Standards require process logging, parallelization by default, and optimized path into Supabase analytics
+- [x] `ribgg.ipynb` cells for agents (abilities), maps (coords/callouts), guns (fire rate/accuracy) via valorant-api.com after rib.gg catalog 404s
 
 ## Next up
 
@@ -47,7 +48,8 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 
 ## Open questions / blockers
 
-- Weapons data may be incomplete for round-level use
+- rib.gg has no static agent/map/weapon catalog; VLR also lacks abilities / map coords / gun stats
+- Weapons data may still be incomplete for *round-level* rib match use (catalog is separate)
 - Choose Gradio vs TypeScript for the web UI when ready
 
 ## Session log
@@ -57,3 +59,4 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 | 2026-08-17 | Created `PROJECT_STATUS.md` and session-continuity skill/rule so future chats load aim + status automatically |
 | 2026-08-17 | Added `ENGINEERING_STANDARDS.md` + always-on rule/skill for concise simple English and service coding standards |
 | 2026-08-17 | Extended standards: process logs for Dagster, parallelization default, optimize for Supabase analytics |
+| 2026-08-17 | Added `ribgg.ipynb` static catalog cells; rib.gg 404s, so agents/maps/guns come from valorant-api.com |
