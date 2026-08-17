@@ -1,0 +1,29 @@
+---
+description: Simple English, concise chat, ENGINEERING_STANDARDS.md, logging, parallelization
+alwaysApply: true
+---
+
+# Engineering standards (always on)
+
+## Language and chat
+
+- Use **simple technical English** in every reply.
+- Keep replies **concise**: answer first, short bullets, no filler.
+- Do not restate the full task or dump long unrelated explanation.
+
+## Required references
+
+Before writing or changing code:
+
+1. Read `PROJECT_STATUS.md` for aim and current focus.
+2. Read `ENGINEERING_STANDARDS.md` and follow the section for the service you touch (shared Python, data extraction, Dagster, or dbt).
+
+## Generation rules
+
+- All new functions, methods, classes, Dagster assets, and dbt models must include a short **why** (docstring or SQL header).
+- Process-level code must log **start / progress / done / error** so Dagster run logs show where work is and what failed.
+- Prefer **parallelization** (`ThreadPoolExecutor` / configurable workers) anywhere independent I/O or items can run together; justify serial steps in a short comment.
+- Optimize for a fast pipeline into **Supabase** (batch I/O, Polars/SQL, no needless row loops).
+- Match naming, file layout, and style in `ENGINEERING_STANDARDS.md`.
+- Do not invent parallel standards docs; update `ENGINEERING_STANDARDS.md` if rules must change.
+- Never put secrets in code or markdown.

@@ -1,0 +1,22 @@
+---
+description: Every chat must load PROJECT_STATUS.md and ENGINEERING_STANDARDS.md
+alwaysApply: true
+---
+
+# Session continuity (always on)
+
+Durable context lives in git-tracked markdown. Chat history is not the source of truth.
+
+## Required at session start
+
+1. Read `PROJECT_STATUS.md` (aim, current focus, done, next).
+2. Read `ENGINEERING_STANDARDS.md` (language, chat style, coding rules per service).
+3. Follow the `session-continuity` and `engineering-standards` skills.
+4. Briefly acknowledge aim + current focus (1–2 short sentences) when starting work in a new chat.
+
+## Required during / after work
+
+- After meaningful progress, task switches, or wrap-up: update `PROJECT_STATUS.md`.
+- All generated code must follow `ENGINEERING_STANDARDS.md`.
+- Never store secrets or API keys in status or standards files.
+- Remind the user to commit and push these markdown files so the next session inherits them; do not commit unless asked.
