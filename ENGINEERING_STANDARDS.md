@@ -2,7 +2,7 @@
 
 > Always-on reference for this repo. Every Cursor chat must follow this file when writing or changing code. Prefer simple technical English. Keep chat replies short.
 
-**Last updated:** 2026-08-17
+**Last updated:** 2026-08-18
 
 **Pipeline goal:** Fast, scalable extract → transform → load → dbt into **Supabase**, so analytics read from the warehouse. Prefer **parallel work** and **optimized functions** everywhere they help.
 
@@ -166,6 +166,7 @@ data/<source>/<entity>/dt=YYYY-MM-DD/   # landing zone (gitignored)
 | Landing files | `data/<source>/<entity>/dt=YYYY-MM-DD/` |
 
 ### Standards
+- Source order: **rib.gg first**, **vlr.gg for gaps and previous years**. Do not use valorant-api.com.
 - Connectors: retries, timeouts, pagination, **parallel page/item fetch**, clear start/progress/done logs. No business transforms beyond parse JSON.
 - Extract modules: camelCase → snake_case; nest complex objects as JSON strings when exploding would explode schema.
 - Partition by `dt=YYYY-MM-DD`. Respect `RIB_RUN_DATE` / source-equivalent env when set.
@@ -269,6 +270,7 @@ data/<source>/<entity>/dt=YYYY-MM-DD/   # landing zone (gitignored)
 | Need | File |
 |------|------|
 | Aim / current work | `PROJECT_STATUS.md` |
+| Snowflake dims / facts / Dagster load map | `DATA_MODEL.md` |
 | rib.gg / VLR API notes | `Valorant API.md` |
 | dbt env commands | `src/backend/sql/README.md` |
 | Dagster run commands | `dagster_orchestration/README.md` |
