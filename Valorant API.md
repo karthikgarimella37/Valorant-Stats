@@ -32,24 +32,9 @@ Series API: https://be-prod.rib.gg/v1/series
 - ?start=N - Pagination offset (for base endpoints)
 - ?results=N - Results per page (for base endpoints)
 
-**Tables**:
-	Dim:
-	- Matches -- Done
-	- Events
-	- Players
-	- Agents - Static (additions once/twice per year)
-	- Maps - Static (only additions once per year)
-	- Teams
-	- Economy
-	- Weapons - Static (only additions rarely) -- Data not there for round use
-	- Date
-	Fact:
-	 - Match Overall Stats (overall match player stats)
-	 - Match Half Round Stats
-	 - Player Match Performance (kills, 2k, 1v5)
-	 - Player v Player Kill Stats
-	 - Match Economy
-	 - Round Economy Detail
+**Source rule:** rib.gg first. vlr.gg for anything rib does not have (including previous years). No valorant-api.com. VLR has no round-by-round data.
+
+**Tables:** see `DATA_MODEL.md` (dims include region + country; half-round stats is a view; facts not locked yet).
 Riot API Developer Key: b858c426-8dee-48c9-beef-32179832976b
 
 **Graphs**
@@ -72,27 +57,7 @@ Tournament prize distribution and event standings, agents played [https://www.vl
 Map Dashaboard (attack/defense win rate) and by how much
 VCT Teams which lost on their map picks graph
 
-**Tables Logical Schema**
-
-	Match Dim
-		1. match_id
-		2. team_1_id
-		3. team_2_id
-		4. event_id
-		5. event_series
-		6. match_date
-		7. match_score
-		8. match_note
-		9. match_patch
-		10. match_map_ids
-	 Team Dim
-    	 1. team_id
-    	 2. team_name
-    	 3. team_code
-    	 4. team_logo_img
-    	 5. team_href
-    	 6. team_country
-    	 7. team_coach
+**Tables Logical Schema:** superseded by `DATA_MODEL.md`.
 
 
 
