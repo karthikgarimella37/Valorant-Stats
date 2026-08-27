@@ -409,20 +409,34 @@ def rib_load_valorant_tables(context: AssetExecutionContext) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# VLR.gg extract → parquet → vlr.*
+# VLR.gg extract → parquet → vlr.*  (self-hosted vlrggapi via VLR_API_BASE)
 # ---------------------------------------------------------------------------
 
 
 @asset(group_name="vlr")
-def vlr_extract_events(context: AssetExecutionContext) -> str:
-    """Paginate completed events from vlr.orlandomm.net into data/vlr/dim_events."""
+def vlr_extract_regions(context: AssetExecutionContext) -> str:
+    """Seed dim_regions so teams and events can join a stable region_code."""
     context.log.info(
-        "=== STEP vlr_extract_events: pages %s-%s status=%s api_workers=%s parallel=%s ===",
+        "=== STEP vlr_extract_regions: VLR_API_BASE=%s ===",
+        os.getenv("VLR_API_BASE", "http://127.0.0.1:3001"),
+    )
+    pipeline = VlrExtractPipeline(repo_root=REPO_ROOT, run_date=_vlr_run_date())
+    path = pipeline.extract_regions()
+    context.add_output_metadata({"parquet_path": MetadataValue.path(str(path))})
+    context.log.info("Regions parquet: %s", path)
+    return str(path)
+
+
+@asset(group_name="vlr", deps=[vlr_extract_regions])
+def vlr_extract_events(context: AssetExecutionContext) -> str:
+    """Page /v2/events into data/vlr/dim_events."""
+    context.log.info(
+        "=== STEP vlr_extract_events: pages %s-%s status=%s api_workers=%s base=%s ===",
         os.getenv("VLR_EVENT_PAGE_START", "1"),
-        os.getenv("VLR_EVENT_PAGE_END", "59"),
+        os.getenv("VLR_EVENT_PAGE_END", "3"),
         os.getenv("VLR_EVENT_STATUS", "completed"),
-        os.getenv("VLR_API_MAX_WORKERS", "10"),
-        os.getenv("VLR_PARALLEL", "1"),
+        os.getenv("VLR_API_MAX_WORKERS", "8"),
+        os.getenv("VLR_API_BASE", "http://127.0.0.1:3001"),
     )
     pipeline = VlrExtractPipeline(repo_root=REPO_ROOT, run_date=_vlr_run_date())
     path = pipeline.extract_events()
@@ -432,13 +446,20 @@ def vlr_extract_events(context: AssetExecutionContext) -> str:
 
 
 @asset(group_name="vlr", deps=[vlr_extract_events])
+def vlr_extract_teams(context: AssetExecutionContext) -> str:
+    """Load dim_teams + dim_country from /v2/event/{id} rosters and /v2/rankings."""
+    context.log.info("=== STEP vlr_extract_teams: event rosters + rankings ===")
+    pipeline = VlrExtractPipeline(repo_root=REPO_ROOT, run_date=_vlr_run_date())
+    path = pipeline.extract_teams()
+    context.add_output_metadata({"parquet_path": MetadataValue.path(str(path))})
+    context.log.info("Teams parquet: %s", path)
+    return str(path)
+
+
+@asset(group_name="vlr", deps=[vlr_extract_events])
 def vlr_extract_event_matches(context: AssetExecutionContext) -> str:
-    """Scrape /event/matches/{id}/ for each event into the match queue parquet."""
-    context.log.info(
-        "=== STEP vlr_extract_event_matches: scrape schedules ip_rotator=%s html_workers=%s ===",
-        os.getenv("VLR_USE_IP_ROTATOR", "auto"),
-        os.getenv("VLR_HTML_MAX_WORKERS", "auto"),
-    )
+    """Queue series from /v2/events/matches into match_queue parquet."""
+    context.log.info("=== STEP vlr_extract_event_matches: /v2/events/matches ===")
     pipeline = VlrExtractPipeline(repo_root=REPO_ROOT, run_date=_vlr_run_date())
     path = pipeline.extract_event_matches()
     context.add_output_metadata({"parquet_path": MetadataValue.path(str(path))})
@@ -448,15 +469,11 @@ def vlr_extract_event_matches(context: AssetExecutionContext) -> str:
 
 @asset(group_name="vlr", deps=[vlr_extract_event_matches])
 def vlr_extract_match_details(context: AssetExecutionContext) -> dict:
-    """
-    Scrape overview/performance/economy tabs for each queued match.
-    Writes dim_* and fact_* parquet under data/vlr/ (checkpointed).
-    """
+    """Fetch /v2/match/details; land dims plus overall/round/performance/economy facts."""
     context.log.info(
-        "=== STEP vlr_extract_match_details: VLR_MAX_MATCHES=%s html_workers=%s delay=%ss ===",
+        "=== STEP vlr_extract_match_details: VLR_MAX_MATCHES=%s base=%s ===",
         os.getenv("VLR_MAX_MATCHES", "unlimited"),
-        os.getenv("VLR_HTML_MAX_WORKERS", "3"),
-        os.getenv("VLR_REQUEST_DELAY_SEC", "0.35"),
+        os.getenv("VLR_API_BASE", "http://127.0.0.1:3001"),
     )
     pipeline = VlrExtractPipeline(repo_root=REPO_ROOT, run_date=_vlr_run_date())
     paths = pipeline.extract_match_details()
@@ -470,7 +487,7 @@ def vlr_extract_match_details(context: AssetExecutionContext) -> dict:
 
 @asset(
     group_name="vlr",
-    deps=[vlr_extract_events, vlr_extract_match_details],
+    deps=[vlr_extract_regions, vlr_extract_teams, vlr_extract_match_details],
 )
 def vlr_load_supabase(context: AssetExecutionContext) -> dict:
     """Create/replace vlr.* tables in Supabase from parquet landings."""
@@ -479,12 +496,18 @@ def vlr_load_supabase(context: AssetExecutionContext) -> dict:
     entity_paths = pipeline.entity_paths_for_load()
     schema = "vlr"
     primary_keys = {
+        "dim_regions": "id",
+        "dim_country": "id",
         "dim_events": "id",
         "dim_teams": "id",
         "dim_players": "id",
-        "dim_agents": "name",
-        "dim_maps": "name",
-        "dim_matches": "match_id",
+        "dim_agents": "id",
+        "dim_maps": "id",
+        "dim_matches": "id",
+        "fact_match_overall_stats": "id",
+        "fact_round_results": "id",
+        "fact_player_match_performance": "id",
+        "fact_match_economy": "id",
     }
 
     context.log.info("=== STEP vlr_load_supabase: load parquet -> %s.* ===", schema)
@@ -512,6 +535,29 @@ def vlr_load_supabase(context: AssetExecutionContext) -> dict:
     return counts
 
 
+@asset(group_name="vlr", deps=[vlr_load_supabase])
+def vlr_dbt_half_round_view(context: AssetExecutionContext) -> None:
+    """Build the team attack/defense round view after VLR facts are in schema vlr."""
+    if not DBT_BIN.exists():
+        raise RuntimeError(
+            "dbt executable not found. Create the dbt virtualenv in "
+            "`src/backend/sql` and install dbt there first."
+        )
+    command = [
+        str(DBT_BIN),
+        "build",
+        "--project-dir",
+        str(DBT_PROJECT_DIR),
+        "--profiles-dir",
+        str(DBT_PROJECT_DIR),
+        "--select",
+        "fact_match_half_round_stats",
+    ]
+    context.log.info("=== STEP vlr_dbt_half_round_view: dbt build fact_match_half_round_stats ===")
+    _run_command(context, command, cwd=DBT_PROJECT_DIR)
+    context.log.info("Half-round view built")
+
+
 dbt_job = define_asset_job(
     "dbt_select_one_plus_ten_job",
     selection=[dbt_build_select_one_plus_ten, log_select_one_plus_ten_result],
@@ -537,10 +583,13 @@ rib_gg_star_schema_job = define_asset_job(
 vlr_star_schema_job = define_asset_job(
     "vlr_star_schema_job",
     selection=[
+        vlr_extract_regions,
         vlr_extract_events,
+        vlr_extract_teams,
         vlr_extract_event_matches,
         vlr_extract_match_details,
         vlr_load_supabase,
+        vlr_dbt_half_round_view,
     ],
 )
 
@@ -555,10 +604,13 @@ defs = Definitions(
         rib_extract_series,
         rib_normalize_star,
         rib_load_valorant_tables,
+        vlr_extract_regions,
         vlr_extract_events,
+        vlr_extract_teams,
         vlr_extract_event_matches,
         vlr_extract_match_details,
         vlr_load_supabase,
+        vlr_dbt_half_round_view,
     ],
     jobs=[dbt_job, dbt_star_schema_job, rib_gg_star_schema_job, vlr_star_schema_job],
 )

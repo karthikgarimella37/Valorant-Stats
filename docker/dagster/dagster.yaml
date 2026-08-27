@@ -1,0 +1,16 @@
+storage:
+  sqlite:
+    base_dir: /opt/dagster/dagster_home
+
+run_launcher:
+  module: dagster.core.launcher
+  class: DefaultRunLauncher
+
+compute_logs:
+  module: dagster.core.storage.local_compute_log_manager
+  class: LocalComputeLogManager
+  config:
+    base_dir: /opt/dagster/dagster_home/compute_logs
+
+telemetry:
+  enabled: false

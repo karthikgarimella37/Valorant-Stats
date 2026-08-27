@@ -1,0 +1,12 @@
+version: 2
+
+# Why: dbt marts read VLR landings already loaded into schema vlr by Dagster.
+sources:
+  - name: vlr
+    schema: vlr
+    tables:
+      - name: dim_matches
+      - name: fact_round_results
+      - name: fact_match_overall_stats
+      - name: fact_player_match_performance
+      - name: fact_match_economy

@@ -1,0 +1,67 @@
+# Run pipelines locally. vlrggapi scrapes vlr.gg; Dagster/dbt talk to it on the compose network.
+# Start the VLR wrapper first: docker compose up vlrggapi
+# Docs: https://github.com/axsddlr/vlrggapi
+
+services:
+  vlrggapi:
+    image: ghcr.io/axsddlr/vlrggapi:latest
+    container_name: vlrggapi
+    ports:
+      - "3001:3001"
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request, json; r = urllib.request.urlopen('http://127.0.0.1:3001/v2/health', timeout=3); assert json.loads(r.read())['status'] == 'success'",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  dagster-webserver:
+    build:
+      context: .
+      dockerfile: docker/dagster/Dockerfile
+    depends_on:
+      vlrggapi:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      VLR_API_BASE: http://vlrggapi:3001
+      DAGSTER_HOME: /opt/dagster/dagster_home
+    volumes:
+      - ./data:/opt/dagster/app/data
+      - dagster_home:/opt/dagster/dagster_home
+    command: ["dagster-webserver", "-h", "0.0.0.0", "-p", "3000", "-m", "dagster_orchestration.definitions"]
+
+  dagster-daemon:
+    build:
+      context: .
+      dockerfile: docker/dagster/Dockerfile
+    depends_on:
+      vlrggapi:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      VLR_API_BASE: http://vlrggapi:3001
+      DAGSTER_HOME: /opt/dagster/dagster_home
+    volumes:
+      - ./data:/opt/dagster/app/data
+      - dagster_home:/opt/dagster/dagster_home
+    command: ["dagster-daemon", "run"]
+
+volumes:
+  dagster_home:
