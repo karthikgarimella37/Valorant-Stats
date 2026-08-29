@@ -96,6 +96,7 @@ def cover_event(event_detail: dict[str, Any]) -> list[dict[str, Any]]:
         _check("prize pool", _present(event.get("prize")), str(event.get("prize"))),
         _check("location/venue", _present(event.get("location")), str(event.get("location"))),
         _check("prize rows", len(prizes) >= 4, f"n={len(prizes)} with_team={prize_with_team}"),
+        _check("prize points/note", any(p.get("points") or p.get("note") for p in prizes), "not in prize objects"),
         _check("participating teams", len(teams) >= 1, f"n={len(teams)}"),
         _check("group/playoff standings tables", len(stands) > 0, "0 tables — use events/matches.event_series instead"),
     ]
