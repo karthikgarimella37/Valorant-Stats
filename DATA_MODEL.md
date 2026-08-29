@@ -4,7 +4,7 @@
 > Use this file to track **what is done**, **what is still required**, and **which API feeds which table**.  
 > Dagster runs daily: upsert dims first, then facts. dbt models live in `src/backend/sql/models/marts/`.
 
-**Last updated:** 2026-08-27
+**Last updated:** 2026-08-29
 
 ---
 
@@ -85,7 +85,8 @@ CREATE SEQUENCE valorant.seq_<table>_row_number
 | `dim_weapons` | dim | Required (static) | Rare | Names seen on rib replay kills (nullable on facts) |
 | `dim_date` | dim | Required (static) | Rare (extend range) | Generated calendar |
 | `fact_match_overall_stats` | fact | Landed (parquet) | Yes | VLR `/v2/match/details` map `players[]` |
-| `fact_round_results` | fact | Landed (parquet) | Yes | VLR map `rounds[]` (winner, side t/ct, method) |
+| `fact_round_results` | fact | Landed (parquet) | Yes | VLR map `rounds[]` (winner, side t/ct; **no win method**) |
+| `vlr_watermarks` | ops | JSON landing | Yes | Last successful fetch per match/event/team/player (`data/vlr/watermarks.json`) |
 | `fact_match_half_round_stats` | **view** | dbt view | n/a (dbt view) | Aggregate `vlr.fact_round_results` by match/map/team/side |
 | `fact_player_match_performance` | fact | Landed (parquet) | Yes | Scoreboard kast/hs/fk + series `advanced_stats` on map 1 |
 | `fact_player_vs_player_kills` | fact | Not started | Yes (rib only) | rib.gg replay-data; empty for historical VLR-only matches |
@@ -711,6 +712,9 @@ These read from the warehouse. Frontend not started.
 - rib overlay join is **fuzzy**: event name + team names + date.
 - `fact_player_vs_player_kills` is empty for historical VLR-only matches (no replay).
 - `fact_round_economy_detail` waits on round bank/loadout (not in vlrggapi JSON).
+- `/v2/match/details` omits `event_id` (resolve via `/v2/search` or events/matches) and Attack/Defend player splits (`.side.mod-both` only).
+- Performance 2K–1v5 / ECON / PL / DE and economy buy columns arrive as keys `"1"`…`"13"` / `"0"`…`"5"` — remap in `src/backend/vlr/field_maps.py`.
+- Incremental extract cursor: `vlr_watermarks` (`entity_type`, `entity_id`, `last_fetched_at`, `source_url`). JSON first; load to Supabase when Dagster runs.
 - `dim_agents` / `dim_maps` / `dim_weapons` are **name lists**, not ability / coordinate / gun-stat catalogs.
 - Current dbt dim stubs in schema `valorant` are still dummy; live facts load into schema `vlr`.
 - Do not store API keys in this file. Use `.env` only.

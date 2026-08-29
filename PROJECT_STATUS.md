@@ -2,8 +2,8 @@
 
 > Session-agnostic source of truth. Updated by agents via the `session-continuity` skill. Commit and push this file so every new Cursor chat starts with current context.
 
-**Last updated:** 2026-08-27  
-**Updated by:** VLR fact landings + half-round dbt view
+**Last updated:** 2026-08-29  
+**Updated by:** vlrggapi coverage probe for match 742485 + JSON landings + watermarks
 
 ---
 
@@ -13,18 +13,19 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 
 ## Current focus
 
-- Smoke `vlr_star_schema_job` (`docker compose up vlrggapi`, then extract → `vlr.*` → half-round view)
-- rib overlay (replay kills) when a match can join `vlr_match_id`
+- Use `/v2` JSON landings + `data/vlr/watermarks.json` as the extract source of truth
+- Remap unlabeled performance/economy keys; patch or fork vlrggapi for Attack/Defend, `event_id`, round bank
+- Do **not** expand Docker until those gaps are handled in extract
 
 ## Status
 
 | Area | State | Notes |
 |------|--------|-------|
-| Overall | In progress | Dims + VLR facts land to parquet; warehouse smoke not run |
-| Data sources | In progress | **Self-hosted vlrggapi** (`/v2`) is the VLR wrapper; rib overlay via fuzzy join |
-| Orchestration | In progress | `vlr_star_schema_job` now includes facts + half-round dbt view |
-| Dim tables | Partial | Regions → events/teams + match/player/agent/map parquet; warehouse unproven |
-| Fact tables | Partial | overall / rounds / performance / economy parquet; half-round is dbt view; PvP kills rib-only |
+| Overall | In progress | Live probe of Gen.G vs T1: 29 fields OK, 12 gaps |
+| Data sources | Validated | Self-hosted vlrggapi `/v2` is enough for header + All-stats + event + team + player |
+| Orchestration | Paused | `vlr_star_schema_job` exists; next is incremental JSON via watermarks, then Dagster |
+| Dim tables | Partial | Parquet extract exists; JSON landings started for 742485 / 2776 / 17 / 9196 |
+| Fact tables | Partial | All-side overview + rounds + unlabeled advanced/economy; no half-split or round bank |
 | Frontend / viz | Not started | Graphs and dashboards listed in `Valorant API.md` |
 | Session process | Done | Status + standards markdown; always-on Cursor rules/skills; auto-commit hook |
 
@@ -34,27 +35,30 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 - [x] rib.gg endpoint discovery (`rib_discovery_results.json`, notes in `Valorant API.md`)
 - [x] Matches dimension marked done
 - [x] Session continuity process (`PROJECT_STATUS.md`, skill, rule)
-- [x] Engineering standards (`ENGINEERING_STANDARDS.md`, rule, skill): simple English, concise chat, why-docstrings, dbt/Dagster/extract practices
-- [x] Standards require process logging, parallelization by default, and optimized path into Supabase analytics
-- [x] `ribgg.ipynb` cells for agents (abilities), maps (coords/callouts), guns (fire rate/accuracy) via valorant-api.com after rib.gg catalog 404s
-- [x] Snowflake schema tracker `DATA_MODEL.md`: dim/fact grains, sequences, FKs, API insert sources, Dagster order
-- [x] `docker-compose.yml`: vlrggapi + dagster-webserver + dagster-daemon; Dagster `VLR_API_BASE=http://vlrggapi:3001`
-- [x] `src/backend/vlr/extract.py` + `VlrV2Connector`; Dagster assets: regions → events → teams / match queue → details → Supabase
-- [x] Always-on Cursor `afterFileEdit` hook: `git add` + commit (no push; skips `.env`)
-- [x] VLR facts from `/v2/match/details`: overall stats, round results, performance, team economy win %
-- [x] dbt view `fact_match_half_round_stats` over `vlr.fact_round_results`
+- [x] Engineering standards (`ENGINEERING_STANDARDS.md`, rule, skill)
+- [x] `DATA_MODEL.md` snowflake contract
+- [x] `docker-compose.yml` + `VlrV2Connector` + parquet extract + half-round dbt view
+- [x] Live `/v2` probe vs [Gen.G vs T1 742485](https://www.vlr.gg/742485/gen-g-vs-t1-vct-2026-pacific-stage-2-lr2): event 2776, Gen.G 17, t3xture 9196
+- [x] JSON landings: `data/vlr/json/{matches,events,teams,players}/<id>.json` (gitignored)
+- [x] Watermark file: `data/vlr/watermarks.json` (`entity_type`, `entity_id`, `last_fetched_at`, `source_url`)
+- [x] Probe script: `PYTHONPATH=src python src/backend/vlr/probe_api_coverage.py`
+- [x] Unlabeled column remap: `src/backend/vlr/field_maps.py`
 
 ## Next up
 
-- [ ] `docker compose up vlrggapi` and materialize `vlr_star_schema_job` (smoke load into Supabase)
-- [ ] Seed `dim_economy` / `dim_date` if still needed
-- [ ] `fact_round_economy_detail` when round bank/loadout exists
+- [ ] Apply `field_maps` in extract; join `event_id` from `/v2/events/matches` (not match details)
+- [ ] Incremental extract: skip ids already in `vlr_watermarks` unless status changed
+- [ ] Fork/patch vlrggapi parsers: event_id href, `.side.mod-t` / `.side.mod-ct`, thead labels, transaction date/role, prize points
+- [ ] `fact_round_economy_detail` only after round bank/loadout exists (not in API today)
+- [ ] Wire Dagster to JSON snapshots + watermark table (then Compose smoke)
 - [ ] rib overlay: replay kills when `vlr_match_id` can join
 - [ ] Build viz: player profile, match report, team comparison, map dashboard
 
 ## Open questions / blockers
 
-- `vlr.orlandomm.net` / public vlrggapi Vercel are down — **self-host** `vlrggapi` in Compose
+- **API gaps (do not treat as present):** Attack/Defend player stats; labeled 2K/1vX/ECON; per-round economy; prize points/note; event standings tables; match `event_id` / team tag; transaction dates
+- **Recoverable without a fork:** remap keys `"1"`–`"13"` / `"0"`–`"5"`; stage from `events/matches.event_series`; staff via `role` containing `coach`; event via `/v2/search`
+- `vlr.orlandomm.net` / public vlrggapi Vercel are down — **self-host** `vlrggapi` (`http://127.0.0.1:3001`)
 - rib overlay join: fuzzy (event name + team names + date)
 - Choose Gradio vs TypeScript for the web UI when ready
 
@@ -70,3 +74,4 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 | 2026-08-27 | Flipped source to VLR-primary + rib overlay; added dim_regions/country; half-round is a view |
 | 2026-08-27 | Added vlrggapi extract (`VLR_API_BASE`), Docker compose, and always-on auto-commit hook |
 | 2026-08-27 | Landed VLR facts from match/details; added dbt half-round view |
+| 2026-08-29 | Probed match 742485 / event 2776 / team 17 / player 9196; JSON landings + watermarks; 12 API gaps documented |
