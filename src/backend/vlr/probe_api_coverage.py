@@ -102,7 +102,7 @@ def cover_event(event_detail: dict[str, Any]) -> list[dict[str, Any]]:
     ]
 
 
-def cover_team(profile: dict[str, Any]) -> list[dict[str, Any]]:
+def cover_team(profile: dict[str, Any], transactions: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Score Gen.G team page fields."""
     roster = profile.get("roster") or []
     coaches = [p for p in roster if "coach" in str(p.get("role") or "").lower()]
