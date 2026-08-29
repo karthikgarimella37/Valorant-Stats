@@ -117,12 +117,34 @@ class VlrV2Connector:
 
     def get_match_details(self, match_id: str) -> dict[str, Any]:
         """Map stats, rounds, performance, economy for one series."""
-        data = self.get_json("v2/match/details", params={"match_id": match_id})
-        return data if isinstance(data, dict) else {}
+        return self._first_segment(self.get_json("v2/match/details", params={"match_id": match_id}))
 
     def get_team_profile(self, team_id: str) -> dict[str, Any]:
-        """Roster + country for a VLR team id."""
-        data = self.get_json("v2/team", params={"id": team_id, "q": "profile"})
+        """Roster + country + socials for a VLR team id."""
+        return self._first_segment(self.get_json("v2/team", params={"id": team_id, "q": "profile"}))
+
+    def get_team_roster(self, team_id: str) -> dict[str, Any]:
+        """Grouped active/staff/former/benched roster (staff flag is often wrong; use role)."""
+        return self._first_segment(self.get_json("v2/team", params={"id": team_id, "q": "roster"}))
+
+    def get_team_transactions(self, team_id: str) -> list[dict[str, Any]]:
+        """Join/leave log for watermarked team history."""
+        data = self.get_json("v2/team", params={"id": team_id, "q": "transactions"})
+        if isinstance(data, dict) and isinstance(data.get("segments"), list):
+            return [row for row in data["segments"] if isinstance(row, dict)]
+        return []
+
+    def get_player_profile(self, player_id: str, timespan: str = "all") -> dict[str, Any]:
+        """Career/agent stats so player JSON landings have a stable id."""
+        return self._first_segment(
+            self.get_json("v2/player", params={"id": player_id, "q": "profile", "timespan": timespan})
+        )
+
+    def search(self, query: str) -> dict[str, Any]:
+        """Resolve names to VLR ids when a match payload omits event_id."""
+        data = self.get_json("v2/search", params={"q": query})
+        if isinstance(data, dict) and isinstance(data.get("segments"), dict):
+            return data["segments"]
         return data if isinstance(data, dict) else {}
 
     def get_rankings(self, region: str) -> list[dict[str, Any]]:
