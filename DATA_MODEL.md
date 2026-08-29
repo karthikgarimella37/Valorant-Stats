@@ -4,7 +4,7 @@
 > Use this file to track **what is done**, **what is still required**, and **which API feeds which table**.  
 > Dagster runs daily: upsert dims first, then facts. dbt models live in `src/backend/sql/models/marts/`.
 
-**Last updated:** 2026-08-27
+**Last updated:** 2026-08-29
 
 ---
 
