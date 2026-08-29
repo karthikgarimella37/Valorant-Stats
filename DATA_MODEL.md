@@ -85,7 +85,8 @@ CREATE SEQUENCE valorant.seq_<table>_row_number
 | `dim_weapons` | dim | Required (static) | Rare | Names seen on rib replay kills (nullable on facts) |
 | `dim_date` | dim | Required (static) | Rare (extend range) | Generated calendar |
 | `fact_match_overall_stats` | fact | Landed (parquet) | Yes | VLR `/v2/match/details` map `players[]` |
-| `fact_round_results` | fact | Landed (parquet) | Yes | VLR map `rounds[]` (winner, side t/ct, method) |
+| `fact_round_results` | fact | Landed (parquet) | Yes | VLR map `rounds[]` (winner, side t/ct; **no win method**) |
+| `vlr_watermarks` | ops | JSON landing | Yes | Last successful fetch per match/event/team/player (`data/vlr/watermarks.json`) |
 | `fact_match_half_round_stats` | **view** | dbt view | n/a (dbt view) | Aggregate `vlr.fact_round_results` by match/map/team/side |
 | `fact_player_match_performance` | fact | Landed (parquet) | Yes | Scoreboard kast/hs/fk + series `advanced_stats` on map 1 |
 | `fact_player_vs_player_kills` | fact | Not started | Yes (rib only) | rib.gg replay-data; empty for historical VLR-only matches |
