@@ -133,7 +133,9 @@ src/backend/
   vlr/                     # vlr extract / scrape transforms
   sql/                     # dbt project (own .venv)
 dagster_orchestration/     # Dagster defs, assets, jobs only
-data/<source>/<entity>/dt=YYYY-MM-DD/   # landing zone (gitignored)
+data/<source>/<entity>/dt=YYYY-MM-DD/   # parquet landing (gitignored)
+data/vlr/json/<entity>/<id>.json        # raw /v2 snapshots
+data/vlr/watermarks.json                # incremental fetch cursor
 ```
 - Do not put extract logic inside Dagster modules beyond orchestration glue.
 - Do not put dbt SQL under `dagster_orchestration/`.
