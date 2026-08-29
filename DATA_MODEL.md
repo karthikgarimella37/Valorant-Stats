@@ -712,6 +712,9 @@ These read from the warehouse. Frontend not started.
 - rib overlay join is **fuzzy**: event name + team names + date.
 - `fact_player_vs_player_kills` is empty for historical VLR-only matches (no replay).
 - `fact_round_economy_detail` waits on round bank/loadout (not in vlrggapi JSON).
+- `/v2/match/details` omits `event_id` (resolve via `/v2/search` or events/matches) and Attack/Defend player splits (`.side.mod-both` only).
+- Performance 2K–1v5 / ECON / PL / DE and economy buy columns arrive as keys `"1"`…`"13"` / `"0"`…`"5"` — remap in `src/backend/vlr/field_maps.py`.
+- Incremental extract cursor: `vlr_watermarks` (`entity_type`, `entity_id`, `last_fetched_at`, `source_url`). JSON first; load to Supabase when Dagster runs.
 - `dim_agents` / `dim_maps` / `dim_weapons` are **name lists**, not ability / coordinate / gun-stat catalogs.
 - Current dbt dim stubs in schema `valorant` are still dummy; live facts load into schema `vlr`.
 - Do not store API keys in this file. Use `.env` only.
