@@ -157,7 +157,7 @@ def run_probe(repo_root: Path | None = None) -> dict[str, Any]:
             repo_root,
             entity_type="events",
             entity_id=event_id,
-            payload={"event_id": event_id, **event_detail, "match_count": len(event_matches)},
+            payload={"event_id": event_id, **event_detail, "matches": event_matches},
             source_url=f"https://www.vlr.gg/event/{event_id}",
         )
 
