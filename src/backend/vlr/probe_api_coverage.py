@@ -188,6 +188,11 @@ def run_probe(repo_root: Path | None = None) -> dict[str, Any]:
             source_url=f"https://www.vlr.gg/player/{player_id}",
         )
 
+    example_stage = next(
+        (row.get("event_series") for row in event_matches if str(row.get("match_id")) == EXAMPLE_MATCH_ID),
+        "",
+    )
+
     report = {
         "example_match_url": EXAMPLE_MATCH_URL,
         "resolved": {
