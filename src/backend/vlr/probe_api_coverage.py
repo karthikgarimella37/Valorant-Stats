@@ -203,7 +203,14 @@ def run_probe(repo_root: Path | None = None) -> dict[str, Any]:
             "event_match_count": len(event_matches),
         },
         "match": cover_match(match),
-        "event": cover_event(event_detail),
+        "event": cover_event(event_detail)
+        + [
+            _check(
+                "match list stage label",
+                "Lower Round 2" in str(example_stage),
+                str(example_stage),
+            )
+        ],
         "team": cover_team(team, transactions),
         "player": [
             _check("player profile", _present(player.get("name")), str(player.get("name"))),
