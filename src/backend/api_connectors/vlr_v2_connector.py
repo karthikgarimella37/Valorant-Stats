@@ -82,6 +82,13 @@ class VlrV2Connector:
             return payload["data"]
         return payload
 
+    def _first_segment(self, data: Any) -> dict[str, Any]:
+        """Unwrap vlrggapi `{status, segments:[...]}` so callers get one entity dict."""
+        if isinstance(data, dict) and isinstance(data.get("segments"), list) and data["segments"]:
+            first = data["segments"][0]
+            return first if isinstance(first, dict) else {}
+        return data if isinstance(data, dict) else {}
+
     def health(self) -> dict[str, Any]:
         """Fail fast if the self-hosted wrapper is down."""
         return self.get_json("v2/health")
