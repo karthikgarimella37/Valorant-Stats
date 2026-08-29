@@ -199,7 +199,7 @@ def run_probe(repo_root: Path | None = None) -> dict[str, Any]:
         },
         "match": cover_match(match),
         "event": cover_event(event_detail),
-        "team": cover_team(team),
+        "team": cover_team(team, transactions),
         "player": [
             _check("player profile", _present(player.get("name")), str(player.get("name"))),
             _check("current team", _present((player.get("current_team") or {}).get("name")), str(player.get("current_team"))),
