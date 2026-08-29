@@ -118,6 +118,12 @@ def cover_team(profile: dict[str, Any], transactions: list[dict[str, Any]]) -> l
         _check("staff/coaches", len(coaches) >= 1, f"roles={[p.get('alias')+':'+str(p.get('role')) for p in coaches]}"),
         _check("is_staff flag", any(p.get("is_staff") for p in roster), "false for coaches — filter on role"),
         _check("description parsed", "geng.gg" not in str(profile.get("description") or "").replace(" ", ""), "header text is concatenated"),
+        _check("transactions present", len(transactions) >= 1, f"n={len(transactions)}"),
+        _check(
+            "transaction date/role aligned",
+            bool(transactions) and str(transactions[0].get("date") or "").count("-") >= 2,
+            "date is real name; role is often a tweet URL",
+        ),
     ]
 
 
