@@ -109,10 +109,11 @@ class VlrV2Connector:
         return data if isinstance(data, dict) else {}
 
     def get_event_matches(self, event_id: str) -> list[dict[str, Any]]:
-        """All series for one event."""
+        """All series for one event (`segments` is the match list)."""
         data = self.get_json("v2/events/matches", params={"event_id": event_id})
         if isinstance(data, dict):
-            return list(data.get("matches") or [])
+            rows = data.get("segments") or data.get("matches") or []
+            return [row for row in rows if isinstance(row, dict)]
         return []
 
     def get_match_details(self, match_id: str) -> dict[str, Any]:
