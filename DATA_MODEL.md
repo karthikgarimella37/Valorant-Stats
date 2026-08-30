@@ -643,7 +643,7 @@ Grain: **one team on one round of one map game**.
 | `insert_date` | `TIMESTAMPTZ` | |
 | `update_date` | `TIMESTAMPTZ` | |
 
-**Insert from:** VLR economy rounds if present; else rib `roundEconomy`. Historical years may only have VLR.  
+**Insert from:** `src/backend/vlr/scrape_economy.py` on `/?game=all&tab=economy` (`round_economy[].team1/team2.bank_credits` + `loadout_credits`). Not in vlrggapi `/v2`.  
 **Dagster:** daily, completed maps.
 
 ---
