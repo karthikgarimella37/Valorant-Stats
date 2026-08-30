@@ -711,7 +711,7 @@ These read from the warehouse. Frontend not started.
 - `src/backend/vlr/extract.py` lands catalog + overall/round/performance/economy parquet.
 - rib overlay join is **fuzzy**: event name + team names + date.
 - `fact_player_vs_player_kills` is empty for historical VLR-only matches (no replay).
-- `fact_round_economy_detail` waits on round bank/loadout (not in vlrggapi JSON).
+- `fact_round_economy_detail` is scraped from the VLR economy tab (`scrape_economy.py`); `/v2` still only has the buy-win table.
 - `/v2/match/details` omits `event_id` (resolve via `/v2/search` or events/matches) and Attack/Defend player splits (`.side.mod-both` only).
 - Performance 2K–1v5 / ECON / PL / DE and economy buy columns arrive as keys `"1"`…`"13"` / `"0"`…`"5"` — remap in `src/backend/vlr/field_maps.py`.
 - Incremental extract cursor: `vlr_watermarks` (`entity_type`, `entity_id`, `last_fetched_at`, `source_url`). JSON first; load to Supabase when Dagster runs.
