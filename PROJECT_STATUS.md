@@ -14,7 +14,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 ## Current focus
 
 - Use `/v2` JSON landings + `data/vlr/watermarks.json` as the extract source of truth
-- Remap unlabeled performance/economy keys; patch or fork vlrggapi for Attack/Defend, `event_id`, round bank
+- Remap unlabeled performance keys; patch or fork vlrggapi for Attack/Defend and `event_id`
 - Do **not** expand Docker until those gaps are handled in extract
 
 ## Status
