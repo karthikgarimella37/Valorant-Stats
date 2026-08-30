@@ -142,7 +142,7 @@ def run_probe(repo_root: Path | None = None) -> dict[str, Any]:
     connector = VlrV2Connector()
     connector.health()
 
-    match = connector.get_match_details(EXAMPLE_MATCH_ID)
+    match = attach_round_economy(connector.get_match_details(EXAMPLE_MATCH_ID))
     write_entity_json(
         repo_root,
         entity_type="matches",
