@@ -3,7 +3,7 @@
 > Session-agnostic source of truth. Updated by agents via the `session-continuity` skill. Commit and push this file so every new Cursor chat starts with current context.
 
 **Last updated:** 2026-08-29  
-**Updated by:** VLR economy-tab round bank scrape into match JSON
+**Updated by:** Auto-commit messages now describe staged file changes
 
 ---
 
