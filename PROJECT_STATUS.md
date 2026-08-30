@@ -50,7 +50,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 - [ ] Apply `field_maps` in extract; join `event_id` from `/v2/events/matches` (not match details)
 - [ ] Incremental extract: skip ids already in `vlr_watermarks` unless status changed
 - [ ] Fork/patch vlrggapi parsers: event_id href, `.side.mod-t` / `.side.mod-ct`, thead labels, transaction date/role, prize points
-- [ ] `fact_round_economy_detail` only after round bank/loadout exists (not in API today)
+- [ ] Land `fact_round_economy_detail` from `maps[].round_economy` (bank_credits + loadout_credits)
 - [ ] Wire Dagster to JSON snapshots + watermark table (then Compose smoke)
 - [ ] rib overlay: replay kills when `vlr_match_id` can join
 - [ ] Build viz: player profile, match report, team comparison, map dashboard
