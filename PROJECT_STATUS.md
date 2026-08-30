@@ -43,6 +43,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 - [x] Watermark file: `data/vlr/watermarks.json` (`entity_type`, `entity_id`, `last_fetched_at`, `source_url`)
 - [x] Probe script: `PYTHONPATH=src python src/backend/vlr/probe_api_coverage.py`
 - [x] Unlabeled column remap: `src/backend/vlr/field_maps.py`
+- [x] Per-round bank/loadout scrape: `scrape_economy.py` → `maps[].round_economy` (Lotus 18 + Split 24 on 742485)
 
 ## Next up
 
