@@ -25,7 +25,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 | Data sources | Validated | Self-hosted vlrggapi `/v2` is enough for header + All-stats + event + team + player |
 | Orchestration | Paused | `vlr_star_schema_job` exists; next is incremental JSON via watermarks, then Dagster |
 | Dim tables | Partial | Parquet extract exists; JSON landings started for 742485 / 2776 / 17 / 9196 |
-| Fact tables | Partial | All-side overview + rounds + unlabeled advanced/economy; no half-split or round bank |
+| Fact tables | Partial | All-side overview + rounds + unlabeled advanced; **round bank is on match JSON** |
 | Frontend / viz | Not started | Graphs and dashboards listed in `Valorant API.md` |
 | Session process | Done | Status + standards markdown; always-on Cursor rules/skills; auto-commit hook |
 
