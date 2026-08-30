@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from backend.api_connectors.vlr_v2_connector import VlrV2Connector
+from backend.vlr.scrape_economy import attach_round_economy
 from backend.vlr.snapshot_json import write_entity_json
 
 logger = logging.getLogger(__name__)
