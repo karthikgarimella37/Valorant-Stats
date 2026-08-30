@@ -200,15 +200,22 @@ def attach_round_economy(match: dict[str, Any], *, html: str | None = None) -> d
             game_id,
             len(map_row["round_economy"]),
         )
-    match["round_economy_by_map"] = [
-        {
-            "game_id": game_id,
-            "map_name": (maps[i].get("map_name") if i < len(maps) and isinstance(maps[i], dict) else None),
-            "round_economy": (by_game.get(game_id) or {}).get("round_economy") or [],
-        }
-        for i, item in enumerate(eco_maps)
-        if isinstance(item, dict) and (game_id := str(item.get("game_id") or ""))
-    ]
+    round_economy_by_map: list[dict[str, Any]] = []
+    for index, item in enumerate(eco_maps):
+        if not isinstance(item, dict):
+            continue
+        game_id = str(item.get("game_id") or "")
+        if not game_id:
+            continue
+        map_name = maps[index].get("map_name") if index < len(maps) and isinstance(maps[index], dict) else None
+        round_economy_by_map.append(
+            {
+                "game_id": game_id,
+                "map_name": map_name,
+                "round_economy": (by_game.get(game_id) or {}).get("round_economy") or [],
+            }
+        )
+    match["round_economy_by_map"] = round_economy_by_map
     total = sum(len(block.get("round_economy") or []) for block in match["round_economy_by_map"])
     logger.info("[scrape_economy] Done match_id=%s maps=%s rounds=%s", match_id, len(by_game), total)
     return match
