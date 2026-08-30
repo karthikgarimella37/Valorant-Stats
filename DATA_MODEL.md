@@ -619,7 +619,7 @@ Grain: **one team on one series** (VLR publishes buy-type **win %**, not player 
 
 ---
 
-### `fact_round_economy_detail` — Not started
+### `fact_round_economy_detail` — JSON landing (`maps[].round_economy`)
 
 Grain: **one team on one round of one map game**.  
 **Sequence:** `seq_fact_round_economy_detail_row_number`  
