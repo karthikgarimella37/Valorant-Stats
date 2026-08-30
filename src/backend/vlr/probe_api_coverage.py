@@ -78,7 +78,11 @@ def cover_match(match: dict[str, Any]) -> list[dict[str, Any]]:
         _check("round win method", has_round_method, "not in payload"),
         _check("performance 2K..1v5/ECON/PL/DE labeled", labeled_adv, f"keys={list(adv0.keys())}"),
         _check("economy team buy-win table labeled", labeled_eco, f"eco0={eco0}"),
-        _check("economy per round bank/loadout", has_round_bank, "not scraped from economy tab"),
+        _check(
+            "economy per round bank/loadout",
+            has_round_bank,
+            f"n={len(bank_rounds)} r1={bank_rounds[0] if bank_rounds else None}",
+        ),
     ]
 
 
