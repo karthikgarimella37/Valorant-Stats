@@ -57,8 +57,9 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 
 ## Open questions / blockers
 
-- **API gaps (do not treat as present):** Attack/Defend player stats; labeled 2K/1vX/ECON; per-round economy; prize points/note; event standings tables; match `event_id` / team tag; transaction dates
-- **Recoverable without a fork:** remap keys `"1"`–`"13"` / `"0"`–`"5"`; stage from `events/matches.event_series`; staff via `role` containing `coach`; event via `/v2/search`
+- **API gaps (do not treat as present):** Attack/Defend player stats; labeled 2K/1vX/ECON; prize points/note; event standings tables; match `event_id` / team tag; transaction dates
+- **Recoverable without a fork:** remap keys `"1"`–`"13"`; stage from `events/matches.event_series`; staff via `role`; event via `/v2/search`; **round bank via `scrape_economy`**
+- `/v2` economy is still the buy-win table only; we fetch `/?game=all&tab=economy` ourselves
 - `vlr.orlandomm.net` / public vlrggapi Vercel are down — **self-host** `vlrggapi` (`http://127.0.0.1:3001`)
 - rib overlay join: fuzzy (event name + team names + date)
 - Choose Gradio vs TypeScript for the web UI when ready
