@@ -91,7 +91,7 @@ CREATE SEQUENCE valorant.seq_<table>_row_number
 | `fact_player_match_performance` | fact | Landed (parquet) | Yes | Scoreboard kast/hs/fk + series `advanced_stats` on map 1 |
 | `fact_player_vs_player_kills` | fact | Not started | Yes (rib only) | rib.gg replay-data; empty for historical VLR-only matches |
 | `fact_match_economy` | fact | Landed (parquet) | Yes | VLR team pistol/eco/full **win %** (not player spend) |
-| `fact_round_economy_detail` | fact | Not started | Yes | Round bank/loadout not on vlrggapi payload |
+| `fact_round_economy_detail` | fact | JSON landing | Yes | VLR economy tab `.bank` + `.rnd-sq` via `scrape_economy` (not /v2) |
 
 VLR does **not** have replay (kills/positions). It **does** have round winners + attack/defense side on the match page. That is enough for the half-round **view**.
 
