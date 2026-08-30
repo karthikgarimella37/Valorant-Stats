@@ -109,19 +109,31 @@ def _parse_bank_table(table: Tag) -> tuple[list[str], list[dict[str, Any]]]:
     return tags, rounds
 
 
+def _clean_cell(text: str) -> str:
+    """Collapse VLR padded win-count cells (`4 (0)`)."""
+    return re.sub(r"\s+", " ", text or "").strip()
+
+
 def _parse_summary_table(table: Tag) -> list[dict[str, Any]]:
-    """Labeled pistol/eco/$/$$/$$$ win counts (thead is present on HTML, dropped by /v2)."""
-    headers = [th.get_text(" ", strip=True) for th in table.select("thead th")]
+    """Labeled pistol/eco/$/$$/$$$ win counts (headers are `th`, not always `thead`)."""
+    header_aliases = {
+        "": "team",
+        "pistol won": "pistol_won",
+        "eco (won)": "eco_won",
+        "$ (won)": "semi_eco_won",
+        "$$ (won)": "semi_buy_won",
+        "$$$ (won)": "full_buy_won",
+    }
+    raw_headers = [_clean_cell(th.get_text(" ", strip=True)) for th in table.select("tr th")]
+    headers = [header_aliases.get(h.lower(), h or f"col_{i}") for i, h in enumerate(raw_headers)]
     if not headers:
         headers = ["team", "pistol_won", "eco_won", "semi_eco_won", "semi_buy_won", "full_buy_won"]
     rows: list[dict[str, Any]] = []
-    for tr in table.select("tbody tr"):
-        cells = [td.get_text(" ", strip=True) for td in tr.select("td")]
+    for tr in table.select("tr"):
+        cells = [_clean_cell(td.get_text(" ", strip=True)) for td in tr.select("td")]
         if not cells:
             continue
         row = {headers[i] if i < len(headers) else str(i): cells[i] for i in range(len(cells))}
-        if "team" not in row and cells:
-            row["team"] = cells[0]
         rows.append(row)
     return rows
 
