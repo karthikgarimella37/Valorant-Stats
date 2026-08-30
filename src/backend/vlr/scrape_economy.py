@@ -80,6 +80,10 @@ def _parse_round_td(td: Tag, team1_tag: str, team2_tag: str) -> dict[str, Any] |
     team2["tag"] = team2_tag
     team2["bank"] = banks[1]
     team2["bank_credits"] = _bank_credits(banks[1])
+    if team1["side"] and not team2["side"]:
+        team2["side"] = "t" if team1["side"] == "ct" else "ct"
+    elif team2["side"] and not team1["side"]:
+        team1["side"] = "t" if team2["side"] == "ct" else "ct"
     round_num = int(re.sub(r"[^\d]", "", round_el.get_text()) or 0)
     return {
         "round_num": round_num,
