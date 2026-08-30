@@ -51,7 +51,8 @@ def cover_match(match: dict[str, Any]) -> list[dict[str, Any]]:
     )
     rounds = (maps[0].get("rounds") or []) if maps else []
     has_round_method = any(r.get("method") for r in rounds)
-    has_round_bank = any("bank" in r or "loadout" in r for r in rounds)
+    bank_rounds = (maps[0].get("round_economy") or []) if maps else []
+    has_round_bank = bool(bank_rounds) and bool((bank_rounds[0].get("team1") or {}).get("bank"))
     return [
         _check("event.name", _present(event.get("name")), str(event.get("name"))),
         _check("event.series / stage", _present(event.get("series")), str(event.get("series"))),
