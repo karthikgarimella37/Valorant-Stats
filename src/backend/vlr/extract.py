@@ -207,6 +207,7 @@ class VlrExtractPipeline:
                 event_id = segment.get("id") or _event_id_from_url(str(url_path))
                 if not event_id:
                     continue
+                vct_code, local_code = split_event_region(segment.get("region"))
                 rows.append(
                     {
                         "id": str(event_id),
@@ -215,7 +216,8 @@ class VlrExtractPipeline:
                         "status": segment.get("status"),
                         "prize_pool_text": segment.get("prize"),
                         "dates_text": segment.get("dates"),
-                        "region_code": segment.get("region"),
+                        "vct_region_code": vct_code,
+                        "region_code": local_code,
                         "url_path": url_path,
                     }
                 )
@@ -227,6 +229,7 @@ class VlrExtractPipeline:
                 "status": pl.String,
                 "prize_pool_text": pl.String,
                 "dates_text": pl.String,
+                "vct_region_code": pl.String,
                 "region_code": pl.String,
                 "url_path": pl.String,
             }
