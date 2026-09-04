@@ -81,3 +81,4 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 | 2026-08-29 | Probed match 742485 / event 2776 / team 17 / player 9196; JSON landings + watermarks; 12 API gaps documented |
 | 2026-08-29 | Scraped VLR economy-tab round bank into `742485.json` (`scrape_economy.py`) |
 | 2026-08-29 | Auto-commit hook writes a change-based message from `git diff --cached --name-status` |
+| 2026-09-04 | Split VCT circuits from local ranking codes; events get one or the other |
