@@ -711,6 +711,7 @@ class VlrExtractPipeline:
     def entity_paths_for_load(self) -> dict[str, Path]:
         """Map warehouse table names to parquet landings for Supabase load."""
         names = (
+            "dim_vct_regions",
             "dim_regions",
             "dim_country",
             "dim_teams",
