@@ -253,7 +253,8 @@ One row per tournament / event.
 |--------|------|--------|
 | `vlr_event_id` | `TEXT` | |
 | `parent_event_id` | `BIGINT` FK | → `dim_events.row_number` (nullable) |
-| `region_id` | `BIGINT` FK | → `dim_regions.row_number` |
+| `vct_region_id` | `BIGINT` FK | → `dim_vct_regions` when the event is a VCT circuit (Pacific Stage, Americas, …) |
+| `region_id` | `BIGINT` FK | → `dim_regions` when the event is local/challengers (`na`, `kr`, …) |
 | `event_name` | `TEXT` | |
 | `short_name` | `TEXT` | |
 | `slug` | `TEXT` | |
