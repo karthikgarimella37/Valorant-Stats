@@ -15,21 +15,20 @@ from urllib3.util.retry import Retry
 logger = logging.getLogger(__name__)
 
 DEFAULT_API_BASE = "http://127.0.0.1:3001"
+# VLR /v2/rankings query params only (local grain). Aliases cn/la-n/la-s normalize in extract.
 RANKING_REGIONS = (
     "na",
     "eu",
-    "ap",
-    "la",
-    "la-s",
-    "la-n",
-    "oce",
-    "kr",
-    "mn",
-    "gc",
     "br",
+    "ap",
+    "kr",
     "cn",
     "jp",
-    "col",
+    "la-n",
+    "la-s",
+    "oce",
+    "mn",
+    "gc",
 )
 
 

@@ -415,7 +415,7 @@ def rib_load_valorant_tables(context: AssetExecutionContext) -> dict:
 
 @asset(group_name="vlr")
 def vlr_extract_regions(context: AssetExecutionContext) -> str:
-    """Seed dim_regions so teams and events can join a stable region_code."""
+    """Seed dim_regions (local) and dim_vct_regions (circuit). Never mixed in one table."""
     context.log.info(
         "=== STEP vlr_extract_regions: VLR_API_BASE=%s ===",
         os.getenv("VLR_API_BASE", "http://127.0.0.1:3001"),
