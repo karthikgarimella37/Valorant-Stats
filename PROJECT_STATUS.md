@@ -45,6 +45,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 - [x] Unlabeled column remap: `src/backend/vlr/field_maps.py`
 - [x] Per-round bank/loadout scrape: `scrape_economy.py` → `maps[].round_economy` (Lotus 18 + Split 24 on 742485)
 - [x] Auto-commit subject/body from staged add/update/delete paths (no more fixed "after file change")
+- [x] Regions are two grains: `dim_vct_regions` (americas/emea/pacific/china) vs `dim_regions` (na/eu/br/…) — never mixed
 
 ## Next up
 
