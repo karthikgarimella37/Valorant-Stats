@@ -197,7 +197,7 @@ One row per country string VLR uses.
 | Column | Type | Notes |
 |--------|------|--------|
 | `country_name` | `TEXT` | As returned by VLR (`United States`, …) |
-| `region_id` | `BIGINT` FK | → `dim_regions.row_number` (nullable) |
+| `region_id` | `BIGINT` FK | → `dim_regions.row_number` (local only, nullable) |
 | `row_number` | `BIGINT` PK | |
 | `insert_date` | `TIMESTAMPTZ` | |
 | `update_date` | `TIMESTAMPTZ` | |
