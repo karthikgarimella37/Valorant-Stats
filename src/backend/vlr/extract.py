@@ -293,6 +293,8 @@ class VlrExtractPipeline:
         )
         ranking_rows: list[dict[str, Any]] = []
         for region, segments in ranking_batches:
+            parsed = normalize_region_code(region)
+            local_code = parsed[1] if parsed and parsed[0] == "local" else None
             for segment in segments:
                 country = segment.get("country")
                 if country:
@@ -301,7 +303,7 @@ class VlrExtractPipeline:
                     {
                         "team_name": segment.get("team"),
                         "country_name": country,
-                        "region_code": region,
+                        "region_code": local_code,
                         "rank": segment.get("rank"),
                         "logo_url": segment.get("logo"),
                     }
