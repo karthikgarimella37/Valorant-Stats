@@ -104,8 +104,11 @@ Facts sit in the middle. Dims can point at other dims (snowflake), not only at f
 
 ```mermaid
 flowchart LR
+  dim_vct_regions --> dim_regions
+  dim_vct_regions --> dim_events
   dim_regions --> dim_events
   dim_regions --> dim_teams
+  dim_regions --> dim_country
   dim_country --> dim_teams
   dim_country --> dim_players
   dim_date --> dim_matches
