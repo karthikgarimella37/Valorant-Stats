@@ -357,7 +357,7 @@ One row per org / team.
 |--------|------|--------|
 | `vlr_team_id` | `TEXT` | |
 | `rib_team_id` | `BIGINT` | Overlay; nullable |
-| `region_id` | `BIGINT` FK | → `dim_regions.row_number` |
+| `region_id` | `BIGINT` FK | → `dim_regions.row_number` (local only; circuit via `vct_region_code`) |
 | `country_id` | `BIGINT` FK | → `dim_country.row_number` |
 | `team_name` | `TEXT` | |
 | `team_code` | `TEXT` | Short name |
