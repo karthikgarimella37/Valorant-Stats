@@ -13,29 +13,18 @@ from typing import Any
 import polars as pl
 
 from backend.api_connectors.vlr_v2_connector import RANKING_REGIONS, VlrV2Connector, vlr_api_base
+from backend.vlr.regions import (
+    LOCAL_REGIONS,
+    LOCAL_TO_VCT,
+    VCT_REGIONS,
+    normalize_region_code,
+    split_event_region,
+)
 
 logger = logging.getLogger(__name__)
 
-REGION_SEED: tuple[tuple[str, str], ...] = (
-    ("na", "North America"),
-    ("eu", "Europe"),
-    ("ap", "Asia Pacific"),
-    ("la", "Latin America"),
-    ("la-s", "Latin America South"),
-    ("la-n", "Latin America North"),
-    ("oce", "Oceania"),
-    ("kr", "Korea"),
-    ("mn", "MENA"),
-    ("gc", "Game Changers"),
-    ("br", "Brazil"),
-    ("cn", "China"),
-    ("jp", "Japan"),
-    ("col", "Collegiate"),
-    ("americas", "Americas"),
-    ("emea", "EMEA"),
-    ("pacific", "Pacific"),
-    ("china", "China (VCT)"),
-)
+# Back-compat alias: local ranking codes only (not VCT circuits).
+REGION_SEED = LOCAL_REGIONS
 
 _EVENT_ID_RE = re.compile(r"/event/(\d+)")
 _MATCH_ID_RE = re.compile(r"vlr\.gg/(\d+)")
