@@ -73,7 +73,8 @@ CREATE SEQUENCE valorant.seq_<table>_row_number
 
 | Table | Kind | Status | Daily Dagster? | Source |
 |-------|------|--------|----------------|--------|
-| `dim_regions` | dim | Required (static) | Rare | Seed from VLR region codes (`na`, `eu`, `ap`, …) |
+| `dim_vct_regions` | dim | Required (static) | Rare | VCT circuits only: `americas`, `emea`, `pacific`, `china` |
+| `dim_regions` | dim | Required (static) | Rare | Local ranking codes only: `na`, `eu`, `br`, `ap`, `kr`, `ch`, `jp`, `lan`, `las`, `oce`, `mn`, `gc` |
 | `dim_country` | dim | Required | Yes | Distinct `country` on VLR teams/players |
 | `dim_matches` | dim | Required | Yes | `/v2/events/matches` + `/v2/match/details` |
 | `dim_events` | dim | Required | Yes | `/v2/events`, `/v2/event/{id}` |
