@@ -681,7 +681,7 @@ Grain: **one team on one round of one map game**.
 Run extract + dbt from the **Dockerfile / compose**, not a laptop venv. Order:
 
 ```text
-1. dim_date, dim_regions, dim_economy     (seed / extend)
+1. dim_date, dim_vct_regions, dim_regions, dim_economy     (seed / extend)
 2. Parallel VLR catalog:  dim_country (from teams/players), dim_teams, dim_events
 3. dim_players           (needs teams + country)
 4. dim_matches           (needs events + teams + date)
