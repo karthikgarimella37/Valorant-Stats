@@ -152,14 +152,28 @@ class VlrExtractPipeline:
         return landing_dir_for(self.repo_root, entity, self.run_date) / "data.parquet"
 
     def extract_regions(self) -> Path:
-        """Seed dim_regions so teams/events can FK a stable region_code."""
-        logger.info("[extract_regions] Seeding %s VLR region codes...", len(REGION_SEED))
-        rows = [
-            {"id": code, "region_code": code, "region_name": name}
-            for code, name in REGION_SEED
+        """Seed local dim_regions and VCT dim_vct_regions as two grains (never mixed)."""
+        logger.info(
+            "[extract_regions] Seeding local=%s vct=%s",
+            len(LOCAL_REGIONS),
+            len(VCT_REGIONS),
+        )
+        local_rows = [
+            {
+                "id": code,
+                "region_code": code,
+                "region_name": name,
+                "vct_region_code": LOCAL_TO_VCT.get(code),
+            }
+            for code, name in LOCAL_REGIONS
         ]
-        path = write_parquet(pl.DataFrame(rows), self._entity_path("dim_regions"))
-        logger.info("[extract_regions] Done path=%s", path)
+        vct_rows = [
+            {"id": code, "vct_region_code": code, "vct_region_name": name}
+            for code, name in VCT_REGIONS
+        ]
+        path = write_parquet(pl.DataFrame(local_rows), self._entity_path("dim_regions"))
+        vct_path = write_parquet(pl.DataFrame(vct_rows), self._entity_path("dim_vct_regions"))
+        logger.info("[extract_regions] Done local=%s vct=%s", path, vct_path)
         return path
 
     def extract_events(self) -> Path:
