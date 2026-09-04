@@ -269,7 +269,7 @@ One row per tournament / event.
 | `insert_date` | `TIMESTAMPTZ` | |
 | `update_date` | `TIMESTAMPTZ` | |
 
-**Insert from:** VLR `/events` + `/events/{id}`.  
+**Insert from:** VLR `/events` + `/events/{id}`. Classify `region` with `split_event_region`: VCT circuit **or** local code, never both.  
 **Dagster:** daily upsert on `vlr_event_id`.
 
 ---
