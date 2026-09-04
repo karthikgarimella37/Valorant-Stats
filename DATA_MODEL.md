@@ -144,23 +144,46 @@ Add these on **every dim**, in this order at the ends of the column list:
 
 ## Dimensions
 
+### `dim_vct_regions` — Required (static)
+
+One row per **VCT international circuit**. Do not put `na` / `eu` / `kr` here.  
+**PK:** `row_number`  
+**Business key:** `vct_region_code`  
+**Sequence:** `seq_dim_vct_regions_row_number`
+
+| Column | Type | Notes |
+|--------|------|--------|
+| `vct_region_code` | `TEXT` | `americas`, `emea`, `pacific`, `china` |
+| `vct_region_name` | `TEXT` | |
+| `row_number` | `BIGINT` PK | |
+| `insert_date` | `TIMESTAMPTZ` | |
+| `update_date` | `TIMESTAMPTZ` | |
+
+**Insert from:** seed in `src/backend/vlr/regions.py` (`VCT_REGIONS`).  
+**Dagster:** load once with `dim_regions`.
+
+---
+
 ### `dim_regions` — Required (static)
 
-One row per VLR region code.  
+One row per **local VLR ranking code**. Do not put `americas` / `emea` / `pacific` / `china` here.  
 **PK:** `row_number`  
 **Business key:** `region_code`  
 **Sequence:** `seq_dim_regions_row_number`
 
 | Column | Type | Notes |
 |--------|------|--------|
-| `region_code` | `TEXT` | `na`, `eu`, `br`, `ap`, `kr`, `ch`, `jp`, `lan`, `las`, `oce`, `mn`, `gc`, `americas`, `emea`, `pacific`, `china` |
+| `region_code` | `TEXT` | `na`, `eu`, `br`, `ap`, `kr`, `ch`, `jp`, `lan`, `las`, `oce`, `mn`, `gc` |
 | `region_name` | `TEXT` | |
+| `vct_region_code` | `TEXT` | FK business key → `dim_vct_regions` (null for `gc`) |
 | `row_number` | `BIGINT` PK | |
 | `insert_date` | `TIMESTAMPTZ` | |
 | `update_date` | `TIMESTAMPTZ` | |
 
-**Insert from:** seed SQL matching VLR `region` query params.  
+**Insert from:** seed in `src/backend/vlr/regions.py` (`LOCAL_REGIONS`). API aliases: `cn`→`ch`, `la-n`→`lan`, `la-s`→`las`.  
 **Dagster:** load once.
+
+Rule: a row is **either** a VCT circuit **or** a local code. Events store at most one of `vct_region_id` / `region_id`. Teams and countries always use local `region_id`; circuit is via `dim_regions.vct_region_code`.
 
 ---
 
