@@ -496,6 +496,7 @@ def vlr_load_supabase(context: AssetExecutionContext) -> dict:
     entity_paths = pipeline.entity_paths_for_load()
     schema = "vlr"
     primary_keys = {
+        "dim_vct_regions": "id",
         "dim_regions": "id",
         "dim_country": "id",
         "dim_events": "id",
