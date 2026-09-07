@@ -430,7 +430,7 @@ def vlr_historical_extract_events(context: AssetExecutionContext) -> int:
     """Page every VLR event, append insert rows to data/vlr/events.jsonl."""
     context.log.info(
         "=== STEP vlr_historical_extract_events: workers=%s max_events=%s ===",
-        os.getenv("VLR_EVENT_DETAIL_WORKERS", "4"),
+        os.getenv("VLR_EVENT_DETAIL_WORKERS", "2"),
         os.getenv("VLR_MAX_EVENTS", "unlimited"),
     )
     rows = extract_historical_events(REPO_ROOT)
