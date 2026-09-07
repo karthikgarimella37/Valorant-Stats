@@ -94,11 +94,17 @@ def list_event_catalog(connector: VlrV2Connector) -> list[dict[str, Any]]:
                     if not isinstance(segment, dict):
                         continue
                     url_path = segment.get("url_path") or segment.get("url") or ""
-                    event_id = str(segment.get("id") or event_id_from_url(str(url_path)) or "")
+                    event_id = str(
+                        segment.get("event_id")
+                        or segment.get("id")
+                        or event_id_from_url(str(url_path))
+                        or ""
+                    )
                     if not event_id:
                         continue
                     row = dict(segment)
                     row["id"] = event_id
+                    row["event_id"] = event_id
                     row["status"] = row.get("status") or status
                     by_id[event_id] = row
             if hit_empty and empty_streak >= 2:
