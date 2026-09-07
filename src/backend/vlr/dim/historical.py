@@ -114,14 +114,19 @@ def list_event_catalog(connector: VlrV2Connector) -> list[dict[str, Any]]:
 def format_dim_event_row(listing: dict[str, Any], detail: dict[str, Any]) -> dict[str, Any]:
     """Flatten list + detail into one dim_events row (codes, not mixed region grains)."""
     event = detail.get("event") if isinstance(detail.get("event"), dict) else {}
-    event_id = str(listing.get("id") or detail.get("event_id") or "")
+    event_id = str(listing.get("event_id") or listing.get("id") or detail.get("event_id") or "")
     name = event.get("name") or listing.get("title") or listing.get("name")
     series = event.get("series")
     dates_text = event.get("dates") or listing.get("dates")
-    start_date, end_date = parse_event_dates(dates_text)
+    start_date, end_date = parse_event_dates(dates_text, fallback_year=year_from_text(name, series, dates_text))
     prize_text = event.get("prize") or listing.get("prize") or listing.get("prizepool")
     prize_pool, currency, prize_raw = parse_prize_pool(prize_text)
-    vct_code, local_code = split_event_region(listing.get("region") or listing.get("country"))
+    tier = infer_event_tier(name, series)
+    vct_from_title = infer_vct_region_from_text(name, series) if tier == "vct" else None
+    if vct_from_title:
+        vct_code, local_code = vct_from_title, None
+    else:
+        vct_code, local_code = split_event_region(listing.get("region") or listing.get("country"))
     url_path = listing.get("url_path") or listing.get("url") or ""
     url = str(url_path)
     if url and not url.startswith("http"):
