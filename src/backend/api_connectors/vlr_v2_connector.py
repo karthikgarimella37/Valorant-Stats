@@ -74,10 +74,11 @@ class VlrV2Connector:
             if self._session_obj is not None:
                 return self._session_obj
             session = requests.Session()
+            # 502/503 are handled in get_json with a long sleep (vlrggapi circuit breaker).
             retry = Retry(
-                total=4,
-                backoff_factor=1.0,
-                status_forcelist=[429, 500, 502, 503, 504],
+                total=2,
+                backoff_factor=1.5,
+                status_forcelist=[429, 500],
                 allowed_methods=["GET"],
             )
             adapter = HTTPAdapter(max_retries=retry, pool_maxsize=max(self.max_workers, 4))
