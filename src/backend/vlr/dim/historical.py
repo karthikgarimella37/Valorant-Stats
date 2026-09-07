@@ -171,8 +171,6 @@ def _fetch_one_event(
     event_id = str(listing.get("id") or "")
     path = event_json_path(repo_root, event_id)
     if skip_existing and path.exists():
-        import json
-
         payload = json.loads(path.read_text())
         detail = payload.get("detail") if isinstance(payload, dict) else {}
         return format_dim_event_row(listing, detail if isinstance(detail, dict) else {})
