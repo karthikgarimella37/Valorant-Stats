@@ -131,6 +131,8 @@ src/backend/
   database_connectors/     # Supabase / DB clients
   rib_gg/                  # rib.gg normalize + land parquet/ndjson
   vlr/                     # vlr extract / scrape transforms
+  vlr/dim/                 # dim extract (historical.py, util.py)
+  vlr/fact/                # fact extract (later historical facts)
   sql/                     # dbt project (own .venv)
 dagster_orchestration/     # Dagster defs, assets, jobs only
 data/<source>/<entity>/dt=YYYY-MM-DD/   # parquet landing (gitignored)
