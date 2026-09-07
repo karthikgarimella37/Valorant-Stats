@@ -387,7 +387,7 @@ def extract_historical_events(repo_root: Path | None = None) -> list[dict[str, A
         detail_workers,
         events_jsonl_path(repo_root),
     )
-    # Serial comment: workers share landing + progress locks; items themselves are independent.
+    # Each event detail is independent I/O; landing/progress use locks.
     with ThreadPoolExecutor(max_workers=detail_workers) as pool:
         futures = [
             pool.submit(
