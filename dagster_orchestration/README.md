@@ -72,11 +72,11 @@ uv run dagster job execute -m dagster_orchestration.definitions -j vlr_historica
 Needs: vlrggapi on `http://127.0.0.1:3001` and working Supabase env.
 
 ```bash
-# from repo root (Docker Desktop must be running)
-docker compose up -d vlrggapi
+# from repo root — rebuild so the container uses AWS IPs for www.vlr.gg
+docker compose up -d --build vlrggapi
 ```
 
-AWS keys in any repo `.env` enable the IP rotator only when `VLR_API_BASE` is a vlr.gg host. Local `/v2` is not rotated.
+Pass `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` in `src/config/.env`. The overlay image (`docker/vlrggapi`) creates API Gateway endpoints at boot. If you see 0 endpoints, the IAM user needs API Gateway in that region (`VLR_IP_ROTATOR_REGIONS` or `AWS_DEFAULT_REGION`).
 
 Optional env vars:
 
