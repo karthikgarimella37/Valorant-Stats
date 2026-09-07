@@ -94,13 +94,48 @@ class VlrV2Connector:
     def get_json(self, path: str, params: dict[str, Any] | None = None) -> Any:
         """GET one /v2 path and unwrap `{status, data}` so callers see the payload only."""
         url = f"{self.base_url}/{path.lstrip('/')}"
-        logger.debug("[vlr_v2] GET %s params=%s", url, params)
-        response = self._session().get(url, params=params, timeout=self.timeout)
-        response.raise_for_status()
-        payload = response.json()
-        if isinstance(payload, dict) and "data" in payload:
-            return payload["data"]
-        return payload
+        attempts = int(os.getenv("VLR_API_ATTEMPTS", "8"))
+        last_error: Exception | None = None
+        for attempt in range(1, attempts + 1):
+            logger.debug("[vlr_v2] GET %s params=%s attempt=%s", url, params, attempt)
+            try:
+                response = self._session().get(url, params=params, timeout=self.timeout)
+            except (requests.ConnectionError, requests.Timeout) as exc:
+                last_error = exc
+                wait = min(5.0 * attempt, 45.0)
+                logger.warning(
+                    "[vlr_v2] Connection failed %s attempt=%s/%s; sleep=%.0fs",
+                    url,
+                    attempt,
+                    attempts,
+                    wait,
+                )
+                time.sleep(wait)
+                continue
+            if response.status_code in {429, 502, 503, 504}:
+                wait = min(10.0 * attempt, 90.0)
+                logger.warning(
+                    "[vlr_v2] status=%s %s attempt=%s/%s; sleep=%.0fs (vlrggapi/VLR backoff)",
+                    response.status_code,
+                    url,
+                    attempt,
+                    attempts,
+                    wait,
+                )
+                time.sleep(wait)
+                last_error = requests.HTTPError(
+                    f"{response.status_code} for {url}", response=response
+                )
+                continue
+            if response.status_code == 422:
+                response.raise_for_status()
+            response.raise_for_status()
+            payload = response.json()
+            if isinstance(payload, dict) and "data" in payload:
+                return payload["data"]
+            return payload
+        assert last_error is not None
+        raise last_error
 
     def _first_segment(self, data: Any) -> dict[str, Any]:
         """Unwrap vlrggapi `{status, segments:[...]}` so callers get one entity dict."""
