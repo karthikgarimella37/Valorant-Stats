@@ -333,20 +333,29 @@ def extract_historical_events(repo_root: Path | None = None) -> list[dict[str, A
     """Pull every VLR event once, append data/vlr/events.jsonl, return dim rows."""
     load_project_env(repo_root)
     repo_root = _repo_root(repo_root)
-    if ip_rotator_enabled():
+    connector = VlrV2Connector()
+    # Rotator only applies when /v2 is on vlr.gg. Local vlrggapi is not rotated.
+    if connector._rotate_api:
         logger.info(
-            "[events_historical] IP rotator on aws_keys_present=%s (www.vlr.gg HTML / vlr.gg API host)",
+            "[events_historical] IP rotator on aws_keys_present=%s base=%s",
             _aws_keys_present(),
+            connector.base_url,
         )
         VlrIpRotator.get_gateway(VLR_SITE)
     else:
         logger.info(
-            "[events_historical] IP rotator off aws_keys_present=%s",
+            "[events_historical] IP rotator skipped (API host is not vlr.gg) base=%s aws_keys_present=%s",
+            connector.base_url,
             _aws_keys_present(),
         )
-    connector = VlrV2Connector()
     logger.info("[events_historical] Health check base=%s", connector.base_url)
-    connector.health()
+    try:
+        connector.health()
+    except Exception as exc:
+        raise RuntimeError(
+            f"vlrggapi is not reachable at {connector.base_url}. "
+            "Start it with: docker compose up -d vlrggapi"
+        ) from exc
     listings = list_event_catalog(connector)
     max_events = os.getenv("VLR_MAX_EVENTS")
     if max_events:
