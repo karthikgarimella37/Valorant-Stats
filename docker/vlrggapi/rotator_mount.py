@@ -122,4 +122,7 @@ def rotator_mounts() -> dict[str, httpx.AsyncBaseTransport] | None:
 
 
 if _enabled():
-    start_gateway()
+    try:
+        start_gateway()
+    except Exception:
+        logger.exception("[vlrggapi_rotator] Failed to start; scrapes will use the container IP")
