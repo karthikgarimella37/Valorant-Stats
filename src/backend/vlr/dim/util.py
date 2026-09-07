@@ -121,12 +121,14 @@ def _parse_one_date(month: str, day: str, year: str) -> date | None:
         return None
 
 
-def parse_event_dates(raw: str | None) -> tuple[date | None, date | None]:
-    """Parse `Jul 15 – Sep 6, 2026` / `May 10, 2026` into start/end dates."""
+def parse_event_dates(raw: str | None, fallback_year: int | None = None) -> tuple[date | None, date | None]:
+    """Parse `Jul 15 – Sep 6, 2026` / `Jul 16—Sep 6` into start/end dates."""
     if not raw:
         return None, None
     text = str(raw).replace("–", "-").replace("—", "-").replace(",", " ")
     text = re.sub(r"\s+", " ", text).strip()
+    if fallback_year and not re.search(r"\d{4}", text):
+        text = f"{text} {fallback_year}"
     range_match = re.search(
         r"([A-Za-z]+)\s+(\d{1,2})\s*-\s*([A-Za-z]+)\s+(\d{1,2})\s+(\d{4})",
         text,
