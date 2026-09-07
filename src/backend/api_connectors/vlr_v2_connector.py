@@ -12,7 +12,13 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
+from backend.api_connectors.ip_rotator_gateway import VlrIpRotator, ip_rotator_enabled
+from backend.config.env import load_project_env
+
 logger = logging.getLogger(__name__)
+
+load_project_env()
+SITE_BASE = "https://www.vlr.gg"
 
 DEFAULT_API_BASE = "http://127.0.0.1:3001"
 # VLR /v2/rankings query params only (local grain). Aliases cn/la-n/la-s normalize in extract.
