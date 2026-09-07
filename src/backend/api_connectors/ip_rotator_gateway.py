@@ -17,7 +17,11 @@ import os
 import threading
 from typing import Any
 
+from backend.config.env import load_project_env
+
 logger = logging.getLogger(__name__)
+
+load_project_env()
 
 
 def ip_rotator_enabled() -> bool:
