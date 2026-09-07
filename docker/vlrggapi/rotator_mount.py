@@ -91,11 +91,10 @@ def start_gateway() -> list[str]:
     atexit.register(_shutdown)
     logger.info("[vlrggapi_rotator] Ready endpoints=%s", len(_endpoints))
     if not _endpoints:
-        raise RuntimeError(
-            "AWS IP rotator created 0 API Gateway endpoints inside vlrggapi. "
-            "Keys may be invalid, or the region is not enabled. "
-            "IAM needs apigateway CreateRestApi / GetRestApis. "
-            "Set VLR_IP_ROTATOR_REGIONS or AWS_DEFAULT_REGION to one enabled region."
+        logger.error(
+            "[vlrggapi_rotator] 0 API Gateway endpoints. "
+            "Check IAM (apigateway CreateRestApi/GetRestApis) and that the region is enabled. "
+            "Set VLR_IP_ROTATOR_REGIONS or AWS_DEFAULT_REGION. Falling back to container IP."
         )
     return _endpoints
 
