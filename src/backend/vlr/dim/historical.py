@@ -182,7 +182,7 @@ def list_event_catalog(connector: VlrV2Connector) -> list[dict[str, Any]]:
     by_id: dict[str, dict[str, Any]] = {}
     # Serial by default: vlrggapi circuit-breaks www.vlr.gg when many pages hit at once.
     page_size = int(os.getenv("VLR_EVENT_PAGE_WORKERS", "1"))
-    page_delay = float(os.getenv("VLR_EVENT_PAGE_DELAY_SEC", "0.75"))
+    page_delay = float(os.getenv("VLR_EVENT_PAGE_DELAY_SEC", "1.5"))
     max_pages = int(os.getenv("VLR_EVENT_MAX_PAGES", "500"))
     for status in EVENT_STATUSES:
         page = 1
