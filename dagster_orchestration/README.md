@@ -102,16 +102,11 @@ Optional env vars:
 - `VLR_EVENT_PAGE_START` / `VLR_EVENT_PAGE_END` (default `1` / `59`)
 - `VLR_EVENT_STATUS` (default `completed`)
 - `VLR_API_MAX_WORKERS` (default `10`) — parallel orlandomm API pages
-- `VLR_HTML_MAX_WORKERS` (default `3`, or `10` with IP rotator) — parallel www.vlr.gg scrapes
+- `VLR_HTML_MAX_WORKERS` (default `3`) — parallel www.vlr.gg scrapes
 - `VLR_PARALLEL` (default `1`) — set `0` to force sequential
-- `VLR_REQUEST_DELAY_SEC` (default `0.35`, or `0.1` with IP rotator)
+- `VLR_REQUEST_DELAY_SEC` (default `0.35`)
 - `VLR_MAX_MATCHES` — cap match detail scrapes for testing
 - `VLR_RUN_DATE=YYYY-MM-DD` — landing partition date
-- `VLR_USE_IP_ROTATOR=1` — route HTML via AWS API Gateway (`requests-ip-rotator`)
-- `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` — IAM user with API Gateway access
-- `VLR_IP_ROTATOR_REGIONS` — optional comma-separated AWS regions
-
-Put AWS keys in any `.env` under the repo (never commit). `load_project_env` finds them. Gateways auto-shutdown via `atexit`.
 
 Parquet lands under `data/vlr/<entity>/dt=YYYY-MM-DD/` (gitignored). Checkpoints live in `data/vlr/_checkpoints/`.
 
