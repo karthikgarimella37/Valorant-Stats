@@ -137,6 +137,7 @@ src/backend/
 dagster_orchestration/     # Dagster defs, assets, jobs only
 data/<source>/<entity>/dt=YYYY-MM-DD/   # parquet landing (gitignored)
 data/vlr/json/<entity>/<id>.json        # raw /v2 snapshots
+data/vlr/events/<id>.json               # historical event payloads
 data/vlr/watermarks.json                # incremental fetch cursor
 ```
 - Do not put extract logic inside Dagster modules beyond orchestration glue.
