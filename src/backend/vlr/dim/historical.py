@@ -145,7 +145,7 @@ def format_dim_event_row(listing: dict[str, Any], detail: dict[str, Any]) -> dic
         "subtitle": event.get("subtitle"),
         "short_name": listing.get("short_name") or listing.get("tag"),
         "slug": slug_from_url(str(url_path)) or listing.get("slug"),
-        "event_tier": infer_event_tier(name, series),
+        "event_tier": tier,
         "status": listing.get("status"),
         "dates_text": dates_text,
         "start_date": start_date,
