@@ -9,6 +9,8 @@ from typing import Any
 
 from backend.api_connectors.vlr_v2_connector import VlrV2Connector
 from backend.database_connectors.supabase_connectors import SupabaseConnector
+import json
+
 from backend.vlr.dim.util import (
     event_id_from_url,
     event_json_path,
@@ -21,7 +23,7 @@ from backend.vlr.dim.util import (
     write_event_json,
 )
 from backend.vlr.regions import split_event_region
-from backend.vlr.watermarks import upsert_watermark
+from backend.vlr.watermarks import upsert_watermarks_batch
 
 logger = logging.getLogger(__name__)
 
