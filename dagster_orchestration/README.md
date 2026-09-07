@@ -82,9 +82,9 @@ docker logs vlrggapi | grep vlrggapi_rotator
 
 Optional env vars:
 
-- `VLR_EVENT_DETAIL_WORKERS` (default `2`)
-- `VLR_EVENT_PAGE_WORKERS` (default `1`) — keep at 1; parallel catalog trips vlrggapi’s circuit breaker
-- `VLR_EVENT_PAGE_DELAY_SEC` (default `1.5`)
+- `VLR_EVENT_DETAIL_WORKERS` (default `12`)
+- `VLR_EVENT_PAGE_WORKERS` (default `8`)
+- `VLR_EVENT_PAGE_DELAY_SEC` (default `0.2`) — pause between catalog page batches
 - `VLR_MAX_EVENTS` — cap for a smoke run
 - `VLR_EVENT_SKIP_EXISTING=1` — skip ids already in `events.jsonl`
 
