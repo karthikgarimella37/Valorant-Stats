@@ -110,11 +110,19 @@ class VlrIpRotator:
         logger.info("Starting AWS ApiGateway IP rotator for %s regions=%s", site, regions or "DEFAULT")
         gateway = ApiGateway(site, **kwargs)
         endpoints = gateway.start()
+        count = len(endpoints) if endpoints is not None else 0
         logger.info(
             "IP rotator ready for %s (%s endpoint(s)). Remember gateway.shutdown() / atexit.",
             site,
-            len(endpoints) if endpoints is not None else "?",
+            count,
         )
+        if count == 0:
+            raise RuntimeError(
+                "AWS IP rotator created 0 API Gateway endpoints. "
+                "UnrecognizedClientException means the key is invalid or the region is not enabled. "
+                "IAM needs apigateway CreateRestApi / GetRestApis in that region. "
+                "Set VLR_IP_ROTATOR_REGIONS (or AWS_DEFAULT_REGION) to one enabled region, e.g. us-east-1."
+            )
         return gateway
 
     @classmethod
