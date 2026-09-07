@@ -13,7 +13,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 
 ## Current focus
 
-- Historical events job is ready to run (do not run until vlrggapi + Supabase env work)
+- Run historical events through Dagster (`vlr_historical_events_job` in the UI or `dagster job execute`)
 - Flow: ensure `vlr.dim_events` → append `data/vlr/events.jsonl` → upsert
 - Next historical dims after events: teams, then matches/facts
 
