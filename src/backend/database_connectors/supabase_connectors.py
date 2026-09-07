@@ -305,7 +305,7 @@ class SupabaseConnector:
             """,
             (schema, table),
         )
-        return {str(row["column_name"]): str(row["data_type"]) for row in rows}
+        return {str(row[0]): str(row[1]) for row in rows}
 
     def ensure_table_columns(
         self,
