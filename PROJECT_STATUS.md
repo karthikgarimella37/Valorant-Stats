@@ -60,7 +60,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 
 - Keep `docker compose up -d vlrggapi` running before `vlr_historical_events_job` (extract hits `127.0.0.1:3001`)
 - Catalog pages must stay serial (`VLR_EVENT_PAGE_WORKERS=1`); 8-wide fan-out opened vlrggapi’s www.vlr.gg circuit (502/503)
-- IP rotator uses AWS keys for **www.vlr.gg**. Local `/v2` (`127.0.0.1`) is not rotated; rotator mounts if `VLR_API_BASE` is a vlr.gg host
+- vlrggapi image is a local overlay: scrapes `www.vlr.gg` through AWS API Gateway (keys from `src/config/.env`). Dagster still calls `127.0.0.1:3001`.
 - **API gaps:** Attack/Defend player stats; labeled 2K/1vX/ECON; prize points/note; match `event_id`
 - rib overlay join: fuzzy (event name + team names + date)
 
