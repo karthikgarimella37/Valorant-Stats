@@ -180,23 +180,21 @@ def list_event_catalog(connector: VlrV2Connector) -> list[dict[str, Any]]:
     """Page every /v2/events status until empty so the historical load is complete."""
     logger.info("[events_historical] Starting catalog statuses=%s", EVENT_STATUSES)
     by_id: dict[str, dict[str, Any]] = {}
-    # Serial by default: vlrggapi circuit-breaks www.vlr.gg when many pages hit at once.
-    page_size = int(os.getenv("VLR_EVENT_PAGE_WORKERS", "1"))
-    page_delay = float(os.getenv("VLR_EVENT_PAGE_DELAY_SEC", "1.5"))
+    page_size = int(os.getenv("VLR_EVENT_PAGE_WORKERS", "8"))
+    page_delay = float(os.getenv("VLR_EVENT_PAGE_DELAY_SEC", "0.2"))
     max_pages = int(os.getenv("VLR_EVENT_MAX_PAGES", "500"))
+    logger.info("[events_historical] Catalog workers=%s page_delay=%s", page_size, page_delay)
     for status in EVENT_STATUSES:
         page = 1
         while page <= max_pages:
             batch_pages = list(range(page, min(page + page_size, max_pages + 1)))
-            if page_size <= 1:
-                results = [(p, connector.get_events_page(p, status)) for p in batch_pages]
-            else:
-                results = connector.map_parallel(
-                    batch_pages,
-                    lambda p, q=status: (p, connector.get_events_page(p, q)),
-                    desc=f"events {status}",
-                )
-                results.sort(key=lambda item: item[0])
+            # Independent list pages — parallel; 502/503 retries live in the connector.
+            results = connector.map_parallel(
+                batch_pages,
+                lambda p, q=status: (p, connector.get_events_page(p, q)),
+                desc=f"events {status}",
+            )
+            results.sort(key=lambda item: item[0])
             new_ids = 0
             for _page_no, segments in results:
                 if not segments:
