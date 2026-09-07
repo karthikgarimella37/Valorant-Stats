@@ -417,8 +417,8 @@ def rib_load_valorant_tables(context: AssetExecutionContext) -> dict:
 
 @asset(group_name="vlr_historical")
 def vlr_historical_events_schema(context: AssetExecutionContext) -> str:
-    """Create vlr.dim_events so the historical extract has a place to land."""
-    context.log.info("=== STEP vlr_historical_events_schema: apply vlr_dim_events.sql ===")
+    """Create or alter vlr.dim_events so extract rows match warehouse columns."""
+    context.log.info("=== STEP vlr_historical_events_schema: ensure vlr.dim_events ===")
     path = apply_dim_events_schema(REPO_ROOT)
     context.add_output_metadata({"sql_path": MetadataValue.path(str(path))})
     return str(path)
@@ -426,17 +426,17 @@ def vlr_historical_events_schema(context: AssetExecutionContext) -> str:
 
 @asset(group_name="vlr_historical", deps=[vlr_historical_events_schema])
 def vlr_historical_extract_events(context: AssetExecutionContext) -> int:
-    """Page every VLR event, write data/vlr/events/<id>.json, return row count."""
+    """Page every VLR event, append insert rows to data/vlr/events.jsonl."""
     context.log.info(
         "=== STEP vlr_historical_extract_events: workers=%s max_events=%s ===",
-        os.getenv("VLR_API_MAX_WORKERS", "8"),
+        os.getenv("VLR_EVENT_DETAIL_WORKERS", "4"),
         os.getenv("VLR_MAX_EVENTS", "unlimited"),
     )
     rows = extract_historical_events(REPO_ROOT)
     context.add_output_metadata(
         {
             "event_count": len(rows),
-            "json_dir": MetadataValue.path(str(REPO_ROOT / "data" / "vlr" / "events")),
+            "json_path": MetadataValue.path(str(REPO_ROOT / "data" / "vlr" / "events.jsonl")),
         }
     )
     context.log.info("Historical events extracted: %s", len(rows))
@@ -445,9 +445,9 @@ def vlr_historical_extract_events(context: AssetExecutionContext) -> int:
 
 @asset(group_name="vlr_historical", deps=[vlr_historical_extract_events])
 def vlr_historical_load_dim_events(context: AssetExecutionContext) -> int:
-    """Upsert the just-extracted event rows into vlr.dim_events."""
+    """Upsert insert-ready rows from events.jsonl into vlr.dim_events."""
     context.log.info("=== STEP vlr_historical_load_dim_events: upsert vlr.dim_events ===")
-    rows = rows_from_event_json_dir(REPO_ROOT)
+    rows = rows_from_events_landing(REPO_ROOT)
     loaded = load_dim_events(rows)
     context.add_output_metadata({"upserted": loaded})
     context.log.info("dim_events upserted=%s", loaded)
