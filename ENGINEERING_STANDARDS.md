@@ -142,6 +142,7 @@ src/backend/
   vlr/dim/                 # dim extract (historical.py, util.py)
   vlr/fact/                # fact extract (later historical facts)
   sql/                     # dbt project (own .venv)
+  config/env.py            # discover and load every repo .env
 dagster_orchestration/     # Dagster defs, assets, jobs only
 data/<source>/<entity>/dt=YYYY-MM-DD/   # parquet landing (gitignored)
 data/vlr/json/<entity>/<id>.json        # raw /v2 snapshots
