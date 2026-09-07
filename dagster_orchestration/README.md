@@ -69,11 +69,15 @@ cd dagster_orchestration
 uv run dagster job execute -m dagster_orchestration.definitions -j vlr_historical_events_job
 ```
 
-Needs: vlrggapi on `http://127.0.0.1:3001` and working Supabase env. No AWS / IP rotator (that is paid).
+Needs: vlrggapi on `http://127.0.0.1:3001` and working Supabase env.
+
+To use AWS IPs for vlr.gg scrapes, put keys in `src/config/.env` then:
 
 ```bash
 # from repo root
-docker compose up -d vlrggapi
+docker compose up -d --build vlrggapi
+docker logs vlrggapi | grep vlrggapi_rotator
+# expect: Ready endpoints=1 (or more). 0 means IAM/region/keys are wrong.
 ```
 
 Optional env vars:
