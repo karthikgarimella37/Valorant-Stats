@@ -42,7 +42,8 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 - [x] `vlr.dim_events` DDL is create-if-missing (no DROP); Python ADD/ALTER columns
 - [x] Single landing file `data/vlr/events.jsonl` (one insert row per event, append)
 - [x] Event logs: `N/total Event Name (start–end)`
-- [x] Load every repo `.env`; AWS keys drive IP rotator (`AWS_*` or `VLR_AWS_*`)
+- [x] Load every repo `.env` under the repo
+- [x] AWS IP rotator left off (paid). Historical extract uses local vlrggapi + serial pages
 - [x] Project calendar dates: `YYYY/M/D` no pad (example `2026/7/8`)
 
 ## Next up
