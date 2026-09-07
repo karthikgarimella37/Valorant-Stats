@@ -1,4 +1,5 @@
 -- Why: create vlr.dim_events if missing. Python ensure adds/alters columns (no DROP).
+-- Indexes are created after column ensure so an older table can be altered first.
 CREATE SCHEMA IF NOT EXISTS vlr;
 
 CREATE SEQUENCE IF NOT EXISTS vlr.seq_dim_events_row_number;
@@ -33,7 +34,3 @@ CREATE TABLE IF NOT EXISTS vlr.dim_events (
     insert_date TIMESTAMPTZ NOT NULL DEFAULT now(),
     update_date TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-
-CREATE INDEX IF NOT EXISTS idx_vlr_dim_events_status ON vlr.dim_events (status);
-CREATE INDEX IF NOT EXISTS idx_vlr_dim_events_vct ON vlr.dim_events (vct_region_code);
-CREATE INDEX IF NOT EXISTS idx_vlr_dim_events_region ON vlr.dim_events (region_code);
