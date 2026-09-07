@@ -21,8 +21,8 @@ from backend.vlr.dim.util import (
     slug_from_url,
     utc_now,
     write_event_json,
+    year_from_text,
 )
-from backend.vlr.dim.util import year_from_text
 from backend.vlr.regions import infer_vct_region_from_text, split_event_region
 from backend.vlr.watermarks import upsert_watermarks_batch
 
