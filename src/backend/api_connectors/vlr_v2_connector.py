@@ -93,8 +93,15 @@ class VlrV2Connector:
         return self.get_json("v2/health")
 
     def get_events_page(self, page: int, query: str) -> list[dict[str, Any]]:
-        """One events list page (`q=completed|upcoming|live`)."""
-        data = self.get_json("v2/events", params={"q": query, "page": page})
+        """One events list page (`q=completed|upcoming|live`). Empty list past the last page."""
+        try:
+            data = self.get_json("v2/events", params={"q": query, "page": page})
+        except requests.HTTPError as exc:
+            # vlrggapi returns 422 when page is past the last catalog page.
+            if exc.response is not None and exc.response.status_code == 422:
+                logger.info("[vlr_v2] Events page past end q=%s page=%s", query, page)
+                return []
+            raise
         if isinstance(data, dict):
             return list(data.get("segments") or [])
         return []
