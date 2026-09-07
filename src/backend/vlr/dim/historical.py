@@ -313,21 +313,8 @@ def _fetch_one_event(
         )
         progress.mark(name, start_date, end_date, skipped=True)
         return None
-    detail: dict[str, Any] = {}
-    if skip_existing:
-        legacy = _legacy_detail(repo_root, event_id)
-        if legacy is not None:
-            detail = legacy
-        else:
-            try:
-                detail = connector.get_event_detail(event_id)
-            except Exception:
-                logger.exception(
-                    "[events_historical] Detail failed event_id=%s; landing list row only",
-                    event_id,
-                )
-                detail = {}
-    else:
+    detail: dict[str, Any] | None = _legacy_detail(repo_root, event_id) if skip_existing else None
+    if detail is None:
         try:
             detail = connector.get_event_detail(event_id)
         except Exception:
