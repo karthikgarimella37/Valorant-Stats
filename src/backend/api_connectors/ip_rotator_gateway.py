@@ -44,9 +44,12 @@ def _access_key_secret() -> str | None:
 
 def _regions() -> list[str] | None:
     raw = os.getenv("VLR_IP_ROTATOR_REGIONS", "").strip()
-    if not raw:
-        return None
-    return [part.strip() for part in raw.split(",") if part.strip()]
+    if raw:
+        return [part.strip() for part in raw.split(",") if part.strip()]
+    default = os.getenv("AWS_DEFAULT_REGION", "").strip()
+    if default:
+        return [default]
+    return None
 
 
 class VlrIpRotator:
