@@ -20,6 +20,7 @@ from backend.vlr.dim.historical import (
     apply_dim_events_schema,
     extract_historical_events,
     load_dim_events,
+    rows_from_event_json_dir,
 )
 from backend.vlr.extract import VlrExtractPipeline
 
