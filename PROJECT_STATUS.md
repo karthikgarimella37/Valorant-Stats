@@ -76,3 +76,4 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 | 2026-09-04 | Split VCT circuits from local ranking codes |
 | 2026-09-07 | Historical events Dagster job: schema, per-id JSON, upsert `vlr.dim_events` |
 | 2026-09-07 | Events jsonl + date format + schema ensure + env/rotator (no extract run) |
+| 2026-09-07 | Documented Dagster as the run path for `vlr_historical_events_job` |
