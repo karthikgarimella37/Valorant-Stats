@@ -5,13 +5,19 @@ from __future__ import annotations
 import json
 import logging
 import re
+import threading
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
+# Project-wide calendar dates: YYYY/M/D with no zero-pad (example 2026/7/8).
+PROJECT_DATE_EXAMPLE = "2026/7/8"
+
 _EVENT_ID_RE = re.compile(r"/event/(\d+)")
+_PROJECT_DATE_RE = re.compile(r"^(\d{4})/(\d{1,2})/(\d{1,2})$")
+_JSONL_LOCK = threading.Lock()
 _MONTHS = {
     "jan": 1,
     "january": 1,
@@ -45,15 +51,110 @@ def utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def format_project_date(value: date | datetime | None) -> str | None:
+    """Render a calendar date as YYYY/M/D so logs, JSON, and warehouse text match."""
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        value = value.date()
+    return f"{value.year}/{value.month}/{value.day}"
+
+
+def parse_project_date(raw: str | None) -> date | None:
+    """Parse YYYY/M/D back to a date when a caller needs a real date object."""
+    if not raw:
+        return None
+    match = _PROJECT_DATE_RE.match(str(raw).strip())
+    if not match:
+        return None
+    year, month, day = (int(part) for part in match.groups())
+    try:
+        return date(year, month, day)
+    except ValueError:
+        return None
+
+
+def events_jsonl_path(repo_root: Path) -> Path:
+    """Single append file of insert-ready dim_events rows (one JSON object per line)."""
+    path = Path(repo_root) / "data" / "vlr" / "events.jsonl"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return path
+
+
 def event_json_path(repo_root: Path, event_id: str) -> Path:
-    """One raw event file under data/vlr/events/<id>.json."""
+    """Legacy per-event snapshot path (used only to resume older extracts)."""
     path = Path(repo_root) / "data" / "vlr" / "events" / f"{event_id}.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     return path
 
 
+def serialize_event_row(row: dict[str, Any]) -> dict[str, Any]:
+    """JSON-safe copy of an insert row (datetimes as ISO)."""
+    out = dict(row)
+    for key in ("insert_date", "update_date"):
+        value = out.get(key)
+        if isinstance(value, datetime):
+            out[key] = value.isoformat()
+        elif isinstance(value, date):
+            out[key] = format_project_date(value)
+    for key in ("start_date", "end_date"):
+        value = out.get(key)
+        if isinstance(value, (date, datetime)):
+            out[key] = format_project_date(value)
+    return out
+
+
+def append_event_row(repo_root: Path, row: dict[str, Any]) -> Path:
+    """Append one insert row so the landing file grows without rewriting."""
+    path = events_jsonl_path(repo_root)
+    payload = json.dumps(serialize_event_row(row), ensure_ascii=False, default=str)
+    with _JSONL_LOCK:
+        with path.open("a", encoding="utf-8") as handle:
+            handle.write(payload + "\n")
+    return path
+
+
+def event_ids_in_jsonl(repo_root: Path) -> set[str]:
+    """Ids already appended so a resume does not duplicate lines."""
+    path = events_jsonl_path(repo_root)
+    ids: set[str] = set()
+    if not path.exists():
+        return ids
+    with path.open(encoding="utf-8") as handle:
+        for line in handle:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+            except json.JSONDecodeError:
+                logger.warning("[events_landing] Skip bad JSONL line in %s", path)
+                continue
+            event_id = obj.get("vlr_event_id") if isinstance(obj, dict) else None
+            if event_id:
+                ids.add(str(event_id))
+    return ids
+
+
+def read_event_rows_jsonl(repo_root: Path) -> list[dict[str, Any]]:
+    """Load insert rows from the single landing file for the upsert step."""
+    path = events_jsonl_path(repo_root)
+    rows: list[dict[str, Any]] = []
+    if not path.exists():
+        return rows
+    with path.open(encoding="utf-8") as handle:
+        for line in handle:
+            line = line.strip()
+            if not line:
+                continue
+            obj = json.loads(line)
+            if isinstance(obj, dict) and obj.get("vlr_event_id"):
+                rows.append(obj)
+    return rows
+
+
 def write_event_json(repo_root: Path, event_id: str, payload: Any) -> Path:
-    """Overwrite the event snapshot so re-runs stay idempotent."""
+    """Legacy per-id write kept so older checkpoints can still be read."""
     path = event_json_path(repo_root, event_id)
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n")
     return path
@@ -130,8 +231,10 @@ def _parse_one_date(month: str, day: str, year: str) -> date | None:
         return None
 
 
-def parse_event_dates(raw: str | None, fallback_year: int | None = None) -> tuple[date | None, date | None]:
-    """Parse `Jul 15 – Sep 6, 2026` / `Jul 16—Sep 6` into start/end dates."""
+def parse_event_dates(
+    raw: str | None, fallback_year: int | None = None
+) -> tuple[str | None, str | None]:
+    """Parse `Jul 15 – Sep 6, 2026` into project dates (`2026/7/15`, `2026/9/6`)."""
     if not raw:
         return None, None
     text = str(raw).replace("–", "-").replace("—", "-").replace(",", " ")
@@ -144,18 +247,22 @@ def parse_event_dates(raw: str | None, fallback_year: int | None = None) -> tupl
     )
     if range_match:
         m1, d1, m2, d2, year = range_match.groups()
-        return _parse_one_date(m1, d1, year), _parse_one_date(m2, d2, year)
+        return format_project_date(_parse_one_date(m1, d1, year)), format_project_date(
+            _parse_one_date(m2, d2, year)
+        )
     same_month = re.search(
         r"([A-Za-z]+)\s+(\d{1,2})\s*-\s*(\d{1,2})\s+(\d{4})",
         text,
     )
     if same_month:
         month, d1, d2, year = same_month.groups()
-        return _parse_one_date(month, d1, year), _parse_one_date(month, d2, year)
+        return format_project_date(_parse_one_date(month, d1, year)), format_project_date(
+            _parse_one_date(month, d2, year)
+        )
     single = re.search(r"([A-Za-z]+)\s+(\d{1,2})\s+(\d{4})", text)
     if single:
         month, day, year = single.groups()
-        parsed = _parse_one_date(month, day, year)
+        parsed = format_project_date(_parse_one_date(month, day, year))
         return parsed, parsed
     return None, None
 
