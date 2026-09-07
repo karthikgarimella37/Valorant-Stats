@@ -265,12 +265,23 @@ One row per tournament / event.
 | `prize_pool` | `NUMERIC` | |
 | `prize_pool_currency` | `TEXT` | |
 | `logo_url` | `TEXT` | |
+| `url` | `TEXT` | vlr.gg event page |
+| `series` | `TEXT` | Circuit line (`Valorant Champions Tour 2026`) |
+| `subtitle` | `TEXT` | |
+| `location` | `TEXT` | Venue / city |
+| `dates_text` | `TEXT` | Raw VLR date string |
+| `prize_pool_text` | `TEXT` | Raw prize string |
+| `participating_team_count` | `INT` | |
+| `prize_placement_count` | `INT` | |
+| `prizes_json` | `JSONB` | Place / amount / team |
+| `teams_json` | `JSONB` | Participating rosters |
+| `standings_json` | `JSONB` | Empty on many live events |
 | `row_number` | `BIGINT` PK | |
 | `insert_date` | `TIMESTAMPTZ` | |
 | `update_date` | `TIMESTAMPTZ` | |
 
-**Insert from:** VLR `/events` + `/events/{id}`. Classify `region` with `split_event_region`: VCT circuit **or** local code, never both.  
-**Dagster:** daily upsert on `vlr_event_id`.
+**Insert from:** historical job `vlr_historical_events_job` (`/v2/events` + `/v2/event/{id}`). Classify `region` with `split_event_region`: VCT circuit **or** local code, never both. JSON landings: `data/vlr/events/<id>.json`.  
+**Dagster:** one-shot historical, then later incremental upsert on `vlr_event_id`.
 
 ---
 
