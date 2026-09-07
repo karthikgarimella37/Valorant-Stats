@@ -71,9 +71,11 @@ def slug_from_url(url_path: str | None) -> str | None:
     """Take the trailing slug from /event/2776/vct-2026-pacific-stage-2."""
     if not url_path:
         return None
-    parts = [p for p in str(url_path).split("/") if p]
-    if len(parts) >= 3 and parts[0] == "event":
-        return parts[-1]
+    parts = [p for p in str(url_path).split("/") if p and p not in {"https:", "http:"}]
+    if "event" in parts:
+        idx = parts.index("event")
+        if idx + 2 < len(parts):
+            return parts[-1]
     return None
 
 
