@@ -57,25 +57,37 @@ class VlrV2Connector:
         self.timeout = timeout
         self.max_workers = max_workers or int(os.getenv("VLR_API_MAX_WORKERS", "8"))
         self._lock = threading.Lock()
+        self._session_obj: requests.Session | None = None
+        host = (urlparse(self.base_url).hostname or "").lower()
+        self._rotate_api = ip_rotator_enabled() and host.endswith("vlr.gg")
         logger.info(
-            "[vlr_v2] Connector ready base=%s workers=%s",
+            "[vlr_v2] Connector ready base=%s workers=%s ip_rotator=%s (vlr.gg host only)",
             self.base_url,
             self.max_workers,
+            self._rotate_api,
         )
 
     def _session(self) -> requests.Session:
-        session = requests.Session()
-        retry = Retry(
-            total=4,
-            backoff_factor=1.0,
-            status_forcelist=[429, 500, 502, 503, 504],
-            allowed_methods=["GET"],
-        )
-        adapter = HTTPAdapter(max_retries=retry, pool_maxsize=max(self.max_workers, 4))
-        session.mount("https://", adapter)
-        session.mount("http://", adapter)
-        session.headers.update({"Accept": "application/json", "User-Agent": "valorant-stats-extract/1.0"})
-        return session
+        """Reuse one session so the AWS gateway mounts once when the API host is vlr.gg."""
+        with self._lock:
+            if self._session_obj is not None:
+                return self._session_obj
+            session = requests.Session()
+            retry = Retry(
+                total=4,
+                backoff_factor=1.0,
+                status_forcelist=[429, 500, 502, 503, 504],
+                allowed_methods=["GET"],
+            )
+            adapter = HTTPAdapter(max_retries=retry, pool_maxsize=max(self.max_workers, 4))
+            session.mount("https://", adapter)
+            session.mount("http://", adapter)
+            session.headers.update({"Accept": "application/json", "User-Agent": "valorant-stats-extract/1.0"})
+            if self._rotate_api:
+                mounted = VlrIpRotator.mount(session, SITE_BASE)
+                logger.info("[vlr_v2] IP rotator mounted=%s site=%s", mounted, SITE_BASE)
+            self._session_obj = session
+            return session
 
     def get_json(self, path: str, params: dict[str, Any] | None = None) -> Any:
         """GET one /v2 path and unwrap `{status, data}` so callers see the payload only."""
