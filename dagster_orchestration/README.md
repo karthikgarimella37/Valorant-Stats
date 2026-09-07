@@ -69,20 +69,18 @@ cd dagster_orchestration
 uv run dagster job execute -m dagster_orchestration.definitions -j vlr_historical_events_job
 ```
 
-Needs: vlrggapi on `http://127.0.0.1:3001` and working Supabase env.
+Needs: vlrggapi on `http://127.0.0.1:3001` and working Supabase env. No AWS / IP rotator (that is paid).
 
 ```bash
-# from repo root — rebuild so the container uses AWS IPs for www.vlr.gg
-docker compose up -d --build vlrggapi
+# from repo root
+docker compose up -d vlrggapi
 ```
-
-Pass `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` in `src/config/.env`. The overlay image (`docker/vlrggapi`) creates API Gateway endpoints at boot. If you see 0 endpoints, the IAM user needs API Gateway in that region (`VLR_IP_ROTATOR_REGIONS` or `AWS_DEFAULT_REGION`).
 
 Optional env vars:
 
 - `VLR_EVENT_DETAIL_WORKERS` (default `2`)
 - `VLR_EVENT_PAGE_WORKERS` (default `1`) — keep at 1; parallel catalog trips vlrggapi’s circuit breaker
-- `VLR_EVENT_PAGE_DELAY_SEC` (default `0.75`)
+- `VLR_EVENT_PAGE_DELAY_SEC` (default `1.5`)
 - `VLR_MAX_EVENTS` — cap for a smoke run
 - `VLR_EVENT_SKIP_EXISTING=1` — skip ids already in `events.jsonl`
 
