@@ -414,6 +414,50 @@ def rib_load_valorant_tables(context: AssetExecutionContext) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# VLR historical (one-shot) — all events → data/vlr/events + vlr.dim_events
+# ---------------------------------------------------------------------------
+
+
+@asset(group_name="vlr_historical")
+def vlr_historical_events_schema(context: AssetExecutionContext) -> str:
+    """Create vlr.dim_events so the historical extract has a place to land."""
+    context.log.info("=== STEP vlr_historical_events_schema: apply vlr_dim_events.sql ===")
+    path = apply_dim_events_schema(REPO_ROOT)
+    context.add_output_metadata({"sql_path": MetadataValue.path(str(path))})
+    return str(path)
+
+
+@asset(group_name="vlr_historical", deps=[vlr_historical_events_schema])
+def vlr_historical_extract_events(context: AssetExecutionContext) -> int:
+    """Page every VLR event, write data/vlr/events/<id>.json, return row count."""
+    context.log.info(
+        "=== STEP vlr_historical_extract_events: workers=%s max_events=%s ===",
+        os.getenv("VLR_API_MAX_WORKERS", "8"),
+        os.getenv("VLR_MAX_EVENTS", "unlimited"),
+    )
+    rows = extract_historical_events(REPO_ROOT)
+    context.add_output_metadata(
+        {
+            "event_count": len(rows),
+            "json_dir": MetadataValue.path(str(REPO_ROOT / "data" / "vlr" / "events")),
+        }
+    )
+    context.log.info("Historical events extracted: %s", len(rows))
+    return len(rows)
+
+
+@asset(group_name="vlr_historical", deps=[vlr_historical_extract_events])
+def vlr_historical_load_dim_events(context: AssetExecutionContext) -> int:
+    """Upsert the just-extracted event rows into vlr.dim_events."""
+    context.log.info("=== STEP vlr_historical_load_dim_events: upsert vlr.dim_events ===")
+    rows = extract_historical_events(REPO_ROOT)
+    loaded = load_dim_events(rows)
+    context.add_output_metadata({"upserted": loaded})
+    context.log.info("dim_events upserted=%s", loaded)
+    return loaded
+
+
+# ---------------------------------------------------------------------------
 # VLR.gg extract → parquet → vlr.*  (self-hosted vlrggapi via VLR_API_BASE)
 # ---------------------------------------------------------------------------
 
