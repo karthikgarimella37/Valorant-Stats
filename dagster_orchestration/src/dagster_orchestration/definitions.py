@@ -6,6 +6,7 @@ from pathlib import Path
 
 import psycopg2
 from dagster import AssetExecutionContext, Definitions, MetadataValue, asset, define_asset_job
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SRC_ROOT = REPO_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
