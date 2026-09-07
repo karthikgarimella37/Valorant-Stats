@@ -118,3 +118,7 @@ def rotator_mounts() -> dict[str, httpx.AsyncBaseTransport] | None:
     if not endpoints:
         return None
     return {VLR_SITE: VlrGatewayTransport(endpoints)}
+
+
+if _enabled():
+    start_gateway()
