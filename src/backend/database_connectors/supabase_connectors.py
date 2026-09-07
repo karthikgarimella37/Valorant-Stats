@@ -238,6 +238,68 @@ class SupabaseConnector:
         logger.info("[load] Finished. Row counts: %s", counts)
         return counts
 
+    def execute_sql_file(self, path: Path) -> None:
+        """Run a DDL file so warehouse tables match the extract contract."""
+        sql_path = Path(path)
+        logger.info("[sql] Starting file=%s", sql_path)
+        script = sql_path.read_text()
+        with self._connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(script)
+            conn.commit()
+        logger.info("[sql] Done file=%s", sql_path)
+
+    def upsert_rows(
+        self,
+        rows: list[dict[str, Any]],
+        *,
+        schema: str,
+        table: str,
+        columns: tuple[str, ...] | list[str],
+        conflict_column: str,
+        update_columns: list[str] | None = None,
+        jsonb_columns: tuple[str, ...] = ("prizes_json", "teams_json", "standings_json"),
+    ) -> int:
+        """Insert/update dim rows in batches; keep existing row_number on conflict."""
+        from psycopg2.extras import execute_values
+
+        if not rows:
+            return 0
+        schema = _safe_ident(schema)
+        table = _safe_ident(table)
+        conflict_column = _safe_ident(conflict_column)
+        cols = [_safe_ident(c) for c in columns]
+        update_columns = update_columns or [c for c in cols if c != conflict_column]
+        update_sql = ", ".join(f'"{c}" = EXCLUDED."{c}"' for c in update_columns)
+        col_sql = ", ".join(f'"{c}"' for c in cols)
+        values_sql = ", ".join(
+            f"%s::{'jsonb' if c in jsonb_columns else 'text'}"
+            if c in jsonb_columns
+            else "%s"
+            for c in cols
+        )
+        # execute_values uses a single template for the row tuple.
+        template_parts = []
+        for col in cols:
+            if col in jsonb_columns:
+                template_parts.append("%s::jsonb")
+            else:
+                template_parts.append("%s")
+        template = "(" + ", ".join(template_parts) + ")"
+        insert_sql = f'''
+            INSERT INTO "{schema}"."{table}" ({col_sql})
+            VALUES %s
+            ON CONFLICT ("{conflict_column}") DO UPDATE SET {update_sql}
+        '''
+        tuples = [tuple(row.get(col) for col in columns) for row in rows]
+        logger.info("[upsert] Start %s.%s rows=%s", schema, table, len(tuples))
+        with self._connect() as conn:
+            with conn.cursor() as cur:
+                execute_values(cur, insert_sql, tuples, template=template, page_size=500)
+            conn.commit()
+        logger.info("[upsert] Done %s.%s rows=%s", schema, table, len(tuples))
+        return len(tuples)
+
 
 def main() -> None:
     logger.info("Starting main function")
