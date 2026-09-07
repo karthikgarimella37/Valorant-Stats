@@ -6,27 +6,14 @@ from typing import Any, Iterable, Optional
 
 import polars as pl
 import psycopg2 as psy
-from dotenv import load_dotenv
 from psycopg2 import sql
+
+from backend.config.env import load_project_env
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
-def _find_project_root(start_path: Path) -> Path:
-    """Walk upward until we find the repository's Python project root."""
-    for path in (start_path, *start_path.parents):
-        if (path / "pyproject.toml").exists():
-            return path
-    return start_path
-
-
-PROJECT_ROOT = _find_project_root(Path(__file__).resolve().parent)
-ENV_PATHS = [PROJECT_ROOT / ".env", PROJECT_ROOT / "src" / "config" / ".env"]
-for env_path in ENV_PATHS:
-    if env_path.exists():
-        logger.info("Loading environment variables from %s", env_path)
-        load_dotenv(env_path, override=False)
+load_project_env()
 
 
 _POLARS_TO_PG = {
