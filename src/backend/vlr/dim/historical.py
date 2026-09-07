@@ -246,3 +246,13 @@ def run_historical_events(repo_root: Path | None = None) -> dict[str, int]:
     rows = extract_historical_events(repo_root)
     loaded = load_dim_events(rows)
     return {"extracted": len(rows), "loaded": loaded}
+
+
+def apply_dim_events_schema(repo_root: Path | None = None) -> Path:
+    """Create/replace vlr.dim_events before the historical load."""
+    repo_root = _repo_root(repo_root)
+    sql_path = repo_root / "src" / "backend" / "sql" / "ddl" / "vlr_dim_events.sql"
+    logger.info("[events_historical] Applying schema %s", sql_path)
+    SupabaseConnector().execute_sql_file(sql_path)
+    logger.info("[events_historical] Schema ready")
+    return sql_path
