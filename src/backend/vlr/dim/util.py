@@ -79,6 +79,15 @@ def slug_from_url(url_path: str | None) -> str | None:
     return None
 
 
+def year_from_text(*parts: str | None) -> int | None:
+    """Pull a 20xx year from the event title when the date string omits it."""
+    for part in parts:
+        match = re.search(r"(20\d{2})", str(part or ""))
+        if match:
+            return int(match.group(1))
+    return None
+
+
 def infer_event_tier(name: str | None, series: str | None = None) -> str | None:
     """Bucket VLR titles into vct / vcl / game-changers / t3 for dim_events.event_tier."""
     blob = f"{name or ''} {series or ''}".lower()

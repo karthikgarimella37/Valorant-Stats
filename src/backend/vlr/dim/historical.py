@@ -22,7 +22,8 @@ from backend.vlr.dim.util import (
     utc_now,
     write_event_json,
 )
-from backend.vlr.regions import split_event_region
+from backend.vlr.dim.util import year_from_text
+from backend.vlr.regions import infer_vct_region_from_text, split_event_region
 from backend.vlr.watermarks import upsert_watermarks_batch
 
 logger = logging.getLogger(__name__)
