@@ -220,9 +220,18 @@ def list_event_catalog(connector: VlrV2Connector) -> list[dict[str, Any]]:
                     row["event_id"] = event_id
                     row["status"] = row.get("status") or status
                     by_id[event_id] = row
+            logger.info(
+                "[events_historical] Catalog %s pages=%s new=%s total=%s",
+                status,
+                batch_pages,
+                new_ids,
+                len(by_id),
+            )
             # Stop when a window adds nothing (repeat last page or 422/empty).
             if new_ids == 0:
                 break
+            if page_delay > 0:
+                time.sleep(page_delay)
             page += page_size
         logger.info("[events_historical] Status %s done catalog_size=%s", status, len(by_id))
     logger.info("[events_historical] Catalog done unique_events=%s", len(by_id))
