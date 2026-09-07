@@ -183,7 +183,11 @@ def _fetch_one_event(
         payload = json.loads(path.read_text())
         detail = payload.get("detail") if isinstance(payload, dict) else {}
         return format_dim_event_row(listing, detail if isinstance(detail, dict) else {})
-    detail = connector.get_event_detail(event_id)
+    try:
+        detail = connector.get_event_detail(event_id)
+    except Exception:
+        logger.exception("[events_historical] Detail failed event_id=%s; landing list row only", event_id)
+        detail = {}
     payload = {
         "event_id": event_id,
         "listing": listing,
