@@ -25,13 +25,9 @@ load_project_env()
 
 
 def ip_rotator_enabled() -> bool:
+    """Off unless VLR_USE_IP_ROTATOR=1. AWS API Gateway is paid; do not auto-enable."""
     flag = os.getenv("VLR_USE_IP_ROTATOR", "").strip().lower()
-    if flag in ("0", "false", "no", "off"):
-        return False
-    if flag in ("1", "true", "yes", "on"):
-        return True
-    # Auto-enable when AWS keys are present (unless explicitly disabled).
-    return bool(_access_key_id() and _access_key_secret())
+    return flag in ("1", "true", "yes", "on")
 
 
 def _access_key_id() -> str | None:
