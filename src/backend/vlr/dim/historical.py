@@ -210,13 +210,15 @@ def extract_historical_events(repo_root: Path | None = None) -> list[dict[str, A
         listings = listings[: int(max_events)]
         logger.info("[events_historical] Capped listings=%s", len(listings))
     skip_existing = os.getenv("VLR_EVENT_SKIP_EXISTING", "1") == "1"
+    detail_workers = int(os.getenv("VLR_EVENT_DETAIL_WORKERS", "4"))
+    detail_connector = VlrV2Connector(max_workers=detail_workers)
     logger.info(
         "[events_historical] Fetching details events=%s skip_existing=%s workers=%s",
         len(listings),
         skip_existing,
-        connector.max_workers,
+        detail_workers,
     )
-    rows = connector.map_parallel(
+    rows = detail_connector.map_parallel(
         listings,
         lambda listing: _fetch_one_event(connector, repo_root, listing, skip_existing=skip_existing),
         desc="event details",
