@@ -478,11 +478,15 @@ def apply_dim_events_schema(repo_root: Path | None = None) -> Path:
         DIM_EVENT_COLUMN_TYPES,
         type_using=type_using,
     )
-    # After columns exist on an older table so ON CONFLICT (vlr_event_id) works.
-    connector.execute(
+    # Indexes after columns exist so an older table can be altered first.
+    for stmt in (
         "CREATE UNIQUE INDEX IF NOT EXISTS uq_vlr_dim_events_vlr_event_id "
-        "ON vlr.dim_events (vlr_event_id)"
-    )
+        "ON vlr.dim_events (vlr_event_id)",
+        "CREATE INDEX IF NOT EXISTS idx_vlr_dim_events_status ON vlr.dim_events (status)",
+        "CREATE INDEX IF NOT EXISTS idx_vlr_dim_events_vct ON vlr.dim_events (vct_region_code)",
+        "CREATE INDEX IF NOT EXISTS idx_vlr_dim_events_region ON vlr.dim_events (region_code)",
+    ):
+        connector.execute(stmt)
     logger.info("[events_historical] Schema ready (create-if-missing + alter, no drop)")
     return sql_path
 
