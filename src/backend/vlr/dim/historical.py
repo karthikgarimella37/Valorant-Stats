@@ -293,3 +293,8 @@ def apply_dim_events_schema(repo_root: Path | None = None) -> Path:
     SupabaseConnector().execute_sql_file(sql_path)
     logger.info("[events_historical] Schema ready")
     return sql_path
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+    print(run_historical_events())
