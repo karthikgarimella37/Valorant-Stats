@@ -209,14 +209,18 @@ def extract_historical_events(repo_root: Path | None = None) -> list[dict[str, A
         desc="event details",
     )
     rows = [row for row in rows if row.get("vlr_event_id")]
-    for row in rows:
-        upsert_watermark(
-            repo_root,
-            entity_type="events",
-            entity_id=str(row["vlr_event_id"]),
-            source_url=row.get("url") or f"https://www.vlr.gg/event/{row['vlr_event_id']}",
-            extra={"json_path": str(event_json_path(repo_root, str(row["vlr_event_id"])))},
-        )
+    upsert_watermarks_batch(
+        repo_root,
+        [
+            {
+                "entity_type": "events",
+                "entity_id": str(row["vlr_event_id"]),
+                "source_url": row.get("url") or f"https://www.vlr.gg/event/{row['vlr_event_id']}",
+                "json_path": str(event_json_path(repo_root, str(row["vlr_event_id"]))),
+            }
+            for row in rows
+        ],
+    )
     logger.info("[events_historical] Done dim_rows=%s json_dir=%s", len(rows), repo_root / "data" / "vlr" / "events")
     return rows
 
