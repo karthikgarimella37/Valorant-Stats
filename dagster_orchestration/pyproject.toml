@@ -15,7 +15,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "dagster-dg-cli",
+    "dagster-dg-cli==1.13.9",
     "dagster-webserver",
 ]
 
