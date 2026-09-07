@@ -105,6 +105,8 @@ def _shutdown() -> None:
         return
     try:
         _gateway.shutdown()
+    except RuntimeError:
+        logger.warning("[vlrggapi_rotator] Shutdown skipped (interpreter exiting)")
     except Exception:
         logger.exception("[vlrggapi_rotator] Shutdown failed")
     _gateway = None
