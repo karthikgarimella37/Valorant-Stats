@@ -4,16 +4,34 @@
 CREATE SCHEMA IF NOT EXISTS vlr;
 
 CREATE TABLE IF NOT EXISTS vlr.dim_events (
-    id TEXT PRIMARY KEY,
-    name TEXT,
+    row_number BIGINT PRIMARY KEY,
+    vlr_event_id TEXT NOT NULL UNIQUE,
+    parent_vlr_event_id TEXT,
+    vct_region_code TEXT,
+    region_code TEXT,
+    event_name TEXT,
+    series TEXT,
+    subtitle TEXT,
+    short_name TEXT,
+    slug TEXT,
+    event_tier TEXT,
     status TEXT,
-    prizepool TEXT,
-    dates_raw TEXT,
-    start_date TEXT,
-    end_date TEXT,
-    country TEXT,
-    img TEXT,
-    url TEXT
+    dates_text TEXT,
+    start_date DATE,
+    end_date DATE,
+    prize_pool NUMERIC,
+    prize_pool_currency TEXT,
+    prize_pool_text TEXT,
+    location TEXT,
+    logo_url TEXT,
+    url TEXT,
+    participating_team_count INTEGER,
+    prize_placement_count INTEGER,
+    prizes_json JSONB,
+    teams_json JSONB,
+    standings_json JSONB,
+    insert_date TIMESTAMPTZ,
+    update_date TIMESTAMPTZ
 );
 
 CREATE TABLE IF NOT EXISTS vlr.dim_teams (
