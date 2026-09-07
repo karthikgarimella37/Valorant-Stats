@@ -6,31 +6,27 @@ from pathlib import Path
 
 import psycopg2
 from dagster import AssetExecutionContext, Definitions, MetadataValue, asset, define_asset_job
-from dotenv import load_dotenv
-
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SRC_ROOT = REPO_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 from backend.api_connectors.ribs_connector import RibsConnector
+from backend.config.env import load_project_env
 from backend.database_connectors.supabase_connectors import SupabaseConnector
 from backend.rib_gg.extract import RibExtractPipeline, landing_dir_for, read_ndjson
 from backend.vlr.dim.historical import (
     apply_dim_events_schema,
     extract_historical_events,
     load_dim_events,
-    rows_from_event_json_dir,
+    rows_from_events_landing,
 )
 from backend.vlr.extract import VlrExtractPipeline
 
+load_project_env(REPO_ROOT)
+
 DBT_PROJECT_DIR = REPO_ROOT / "src" / "backend" / "sql"
 DBT_BIN = DBT_PROJECT_DIR / ".venv" / "bin" / "dbt"
-ENV_PATHS = [REPO_ROOT / ".env", REPO_ROOT / "src" / "config" / ".env"]
-
-for env_path in ENV_PATHS:
-    if env_path.exists():
-        load_dotenv(env_path, override=False)
 
 
 def _run_command(context: AssetExecutionContext, command: list[str], cwd: Path) -> None:
