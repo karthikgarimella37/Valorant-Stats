@@ -260,8 +260,8 @@ One row per tournament / event.
 | `slug` | `TEXT` | |
 | `event_tier` | `TEXT` | vct / vcl / t3 / game-changers / … |
 | `status` | `TEXT` | upcoming / ongoing / completed |
-| `start_date_id` | `BIGINT` FK | → `dim_date.row_number` |
-| `end_date_id` | `BIGINT` FK | → `dim_date.row_number` |
+| `start_date_id` | `BIGINT` FK | → `dim_date.row_number` (later; landing uses `start_date` TEXT `YYYY/M/D` e.g. `2026/7/8`) |
+| `end_date_id` | `BIGINT` FK | → `dim_date.row_number` (later; landing uses `end_date` TEXT `YYYY/M/D`) |
 | `prize_pool` | `NUMERIC` | |
 | `prize_pool_currency` | `TEXT` | |
 | `logo_url` | `TEXT` | |
