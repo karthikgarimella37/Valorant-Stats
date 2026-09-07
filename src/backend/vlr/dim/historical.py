@@ -377,7 +377,7 @@ def extract_historical_events(repo_root: Path | None = None) -> list[dict[str, A
         listings = listings[: int(max_events)]
         logger.info("[events_historical] Capped listings=%s", len(listings))
     skip_existing = os.getenv("VLR_EVENT_SKIP_EXISTING", "1") == "1"
-    detail_workers = int(os.getenv("VLR_EVENT_DETAIL_WORKERS", "4"))
+    detail_workers = int(os.getenv("VLR_EVENT_DETAIL_WORKERS", "2"))
     detail_connector = VlrV2Connector(max_workers=detail_workers)
     landing = EventLanding.open(repo_root)
     progress = EventProgress(total=len(listings))
