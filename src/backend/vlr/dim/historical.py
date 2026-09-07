@@ -225,6 +225,28 @@ def extract_historical_events(repo_root: Path | None = None) -> list[dict[str, A
     return rows
 
 
+def rows_from_event_json_dir(repo_root: Path | None = None) -> list[dict[str, Any]]:
+    """Rebuild dim rows from landed JSON so load does not hit the API again."""
+    repo_root = _repo_root(repo_root)
+    folder = repo_root / "data" / "vlr" / "events"
+    rows: list[dict[str, Any]] = []
+    if not folder.exists():
+        return rows
+    paths = sorted(folder.glob("*.json"))
+    logger.info("[events_historical] Reading landed JSON files=%s", len(paths))
+    for path in paths:
+        payload = json.loads(path.read_text())
+        if not isinstance(payload, dict):
+            continue
+        listing = payload.get("listing") if isinstance(payload.get("listing"), dict) else {}
+        detail = payload.get("detail") if isinstance(payload.get("detail"), dict) else {}
+        if not listing.get("id"):
+            listing = {**listing, "id": payload.get("event_id") or path.stem}
+        rows.append(format_dim_event_row(listing, detail))
+    logger.info("[events_historical] JSON dim rows=%s", len(rows))
+    return rows
+
+
 def load_dim_events(rows: list[dict[str, Any]]) -> int:
     """Upsert formatted rows into vlr.dim_events without dropping row_number on re-run."""
     logger.info("[events_historical] Load start rows=%s", len(rows))
