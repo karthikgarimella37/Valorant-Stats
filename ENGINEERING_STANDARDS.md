@@ -115,6 +115,14 @@ Parallel work is a **default**, not an optional nicety. Build for a fast, scalab
 - When adding a loop over many independent items, ask: “Can this use a thread pool?” If yes, do it.
 - Document why a step stays serial (ordering, single connection, API rule).
 
+### Calendar dates (project-wide)
+
+All event / match **calendar** dates in logs, JSON landings, and warehouse text columns use **`YYYY/M/D` with no zero-padding** (example: `2026/7/8`).
+
+- Helpers: `format_project_date` and `parse_event_dates` in `src/backend/vlr/dim/util.py`.
+- Partition folders stay ISO `dt=YYYY-MM-DD` (filesystem only).
+- Do not use `2026-07-08` or `7/8/2026` in event start/end fields.
+
 ### Optimization (fast path to Supabase analytics)
 
 - Batch I/O: paginate with sensible page size; bulk load parquet → Supabase (avoid per-row inserts when bulk exists).
