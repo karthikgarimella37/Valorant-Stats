@@ -3,7 +3,7 @@
 > Session-agnostic source of truth. Updated by agents via the `session-continuity` skill. Commit and push this file so every new Cursor chat starts with current context.
 
 **Last updated:** 2026-09-07  
-**Updated by:** vlrggapi container scrapes vlr.gg via AWS API Gateway IPs
+**Updated by:** Drop AWS IP rotator; free path is serial vlrggapi scrapes
 
 ---
 
