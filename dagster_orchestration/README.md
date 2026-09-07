@@ -69,7 +69,14 @@ cd dagster_orchestration
 uv run dagster job execute -m dagster_orchestration.definitions -j vlr_historical_events_job
 ```
 
-Needs: local vlrggapi (`VLR_API_BASE`) and working Supabase env. AWS keys in any repo `.env` enable the IP rotator.
+Needs: vlrggapi on `http://127.0.0.1:3001` and working Supabase env.
+
+```bash
+# from repo root (Docker Desktop must be running)
+docker compose up -d vlrggapi
+```
+
+AWS keys in any repo `.env` enable the IP rotator only when `VLR_API_BASE` is a vlr.gg host. Local `/v2` is not rotated.
 
 Optional env vars:
 
