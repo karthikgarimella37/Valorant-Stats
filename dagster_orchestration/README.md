@@ -75,7 +75,7 @@ Optional env vars:
 - `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` — IAM user with API Gateway access
 - `VLR_IP_ROTATOR_REGIONS` — optional comma-separated AWS regions
 
-Put AWS keys in repo-root `.env` or `src/config/.env` (never commit). Gateways auto-shutdown via `atexit`.
+Put AWS keys in any `.env` under the repo (never commit). `load_project_env` finds them. Gateways auto-shutdown via `atexit`.
 
 Parquet lands under `data/vlr/<entity>/dt=YYYY-MM-DD/` (gitignored). Checkpoints live in `data/vlr/_checkpoints/`.
 
