@@ -48,6 +48,35 @@ Optional env vars:
 - `RIB_MAX_TEAM_DETAILS=200` — cap for API player enrichment
 - `DBT_SUPABASE_SCHEMA=valorant` — target Postgres schema
 
+## Run the historical VLR events job (Dagster)
+
+Job: `vlr_historical_events_job`
+
+This is the production path. Launch it from the Dagster UI or the CLI — do not run `python -m backend.vlr.dim.historical` for warehouse loads.
+
+Flow: ensure `vlr.dim_events` → append `data/vlr/events.jsonl` → upsert `vlr.dim_events`.
+
+```bash
+cd dagster_orchestration
+./dev.sh
+# then Jobs → vlr_historical_events_job → Materialize
+```
+
+CLI:
+
+```bash
+cd dagster_orchestration
+uv run dagster job execute -m dagster_orchestration.definitions -j vlr_historical_events_job
+```
+
+Needs: local vlrggapi (`VLR_API_BASE`) and working Supabase env. AWS keys in any repo `.env` enable the IP rotator.
+
+Optional env vars:
+
+- `VLR_EVENT_DETAIL_WORKERS` (default `4`)
+- `VLR_MAX_EVENTS` — cap for a smoke run
+- `VLR_EVENT_SKIP_EXISTING=1` — skip ids already in `events.jsonl`
+
 ## Run the VLR.gg extract → parquet → Supabase job
 
 Job: `vlr_star_schema_job`
