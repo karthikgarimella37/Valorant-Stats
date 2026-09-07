@@ -73,7 +73,6 @@ def list_event_catalog(connector: VlrV2Connector) -> list[dict[str, Any]]:
     page_size = int(os.getenv("VLR_EVENT_PAGE_WORKERS", str(connector.max_workers)))
     max_pages = int(os.getenv("VLR_EVENT_MAX_PAGES", "500"))
     for status in EVENT_STATUSES:
-        empty_streak = 0
         page = 1
         while page <= max_pages:
             batch_pages = list(range(page, min(page + page_size, max_pages + 1)))
@@ -83,13 +82,10 @@ def list_event_catalog(connector: VlrV2Connector) -> list[dict[str, Any]]:
                 desc=f"events {status}",
             )
             results.sort(key=lambda item: item[0])
-            hit_empty = False
-            for page_no, segments in results:
+            new_ids = 0
+            for _page_no, segments in results:
                 if not segments:
-                    empty_streak += 1
-                    hit_empty = True
                     continue
-                empty_streak = 0
                 for segment in segments:
                     if not isinstance(segment, dict):
                         continue
@@ -102,14 +98,15 @@ def list_event_catalog(connector: VlrV2Connector) -> list[dict[str, Any]]:
                     )
                     if not event_id:
                         continue
+                    if event_id not in by_id:
+                        new_ids += 1
                     row = dict(segment)
                     row["id"] = event_id
                     row["event_id"] = event_id
                     row["status"] = row.get("status") or status
                     by_id[event_id] = row
-            if hit_empty and empty_streak >= 2:
-                break
-            if all(not segs for _, segs in results):
+            # Stop when a window adds nothing (repeat last page or 422/empty).
+            if new_ids == 0:
                 break
             page += page_size
         logger.info("[events_historical] Status %s done catalog_size=%s", status, len(by_id))
