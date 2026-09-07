@@ -580,7 +580,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "dagster-dg-cli" },
+    { name = "dagster-dg-cli", specifier = "==1.13.9" },
     { name = "dagster-webserver" },
 ]
 
