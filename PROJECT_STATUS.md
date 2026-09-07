@@ -58,7 +58,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 
 ## Open questions / blockers
 
-- Historical events needs local vlrggapi (`VLR_API_BASE`) and working Supabase env (pooler user previously ENOTFOUND)
+- Keep `docker compose up -d vlrggapi` running before `vlr_historical_events_job` (extract hits `127.0.0.1:3001`)
 - Catalog saw **2980** events; detail fetch must use ~4 workers (12 workers 502’d vlrggapi)
 - IP rotator uses AWS keys for **www.vlr.gg**. Local `/v2` (`127.0.0.1`) is not rotated; rotator mounts if `VLR_API_BASE` is a vlr.gg host
 - **API gaps:** Attack/Defend player stats; labeled 2K/1vX/ECON; prize points/note; match `event_id`
