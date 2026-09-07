@@ -156,7 +156,7 @@ data/vlr/watermarks.json                # incremental fetch cursor
 ### Code style (Python)
 - `from __future__ import annotations` in new modules when useful.
 - Module logger: `logger = logging.getLogger(__name__)`.
-- No secrets in code or markdown. Load **every** `.env` under the repo (`backend.config.env.load_project_env`); skip `.venv` / `node_modules`. AWS rotator keys: `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` (or `VLR_AWS_*`).
+- No secrets in code or markdown. Load **every** `.env` under the repo (`backend.config.env.load_project_env`); skip `.venv` / `node_modules`.
 - Prefer `pathlib.Path` over string paths.
 - Prefer Polars for tabular landings in extract code (match existing `rib_gg/extract.py`).
 - Keep imports ordered: stdlib → third party → local.
