@@ -73,6 +73,22 @@ def normalize_region_code(raw: str | None) -> tuple[RegionKind, str] | None:
     return None
 
 
+def infer_vct_region_from_text(*parts: str | None) -> str | None:
+    """Read Americas/EMEA/Pacific/China from a VCT title so list `region=br` is not used."""
+    blob = " ".join(p for p in parts if p).lower()
+    if not blob:
+        return None
+    if "america" in blob:
+        return "americas"
+    if "emea" in blob or "europe" in blob:
+        return "emea"
+    if "pacific" in blob:
+        return "pacific"
+    if "china" in blob:
+        return "china"
+    return None
+
+
 def split_event_region(raw: str | None) -> tuple[str | None, str | None]:
     """Return (vct_region_code, region_code) with at most one side set."""
     parsed = normalize_region_code(raw)
