@@ -220,7 +220,7 @@ def extract_historical_events(repo_root: Path | None = None) -> list[dict[str, A
     )
     rows = detail_connector.map_parallel(
         listings,
-        lambda listing: _fetch_one_event(connector, repo_root, listing, skip_existing=skip_existing),
+        lambda listing: _fetch_one_event(detail_connector, repo_root, listing, skip_existing=skip_existing),
         desc="event details",
     )
     rows = [row for row in rows if row.get("vlr_event_id")]
