@@ -51,6 +51,48 @@ def _safe_ident(name: str) -> str:
     return name
 
 
+def _split_sql_statements(script: str) -> list[str]:
+    """Split a DDL file so psycopg2 can run one statement at a time."""
+    statements: list[str] = []
+    buf: list[str] = []
+    for raw_line in script.splitlines():
+        stripped = raw_line.strip()
+        if stripped.startswith("--"):
+            continue
+        buf.append(raw_line)
+        if stripped.endswith(";"):
+            stmt = "\n".join(buf).strip()
+            if stmt:
+                statements.append(stmt)
+            buf = []
+    tail = "\n".join(buf).strip()
+    if tail:
+        statements.append(tail)
+    return statements
+
+
+def _normalize_pg_type(raw: str) -> str:
+    """Compare information_schema types to our contract names."""
+    key = raw.lower().replace(" ", "").replace("_", "")
+    aliases = {
+        "timestampwithtimezone": "timestamptz",
+        "timestampwithouttimezone": "timestamp",
+        "charactervarying": "text",
+        "varchar": "text",
+        "character": "text",
+        "int": "integer",
+        "int4": "integer",
+        "int8": "bigint",
+        "int2": "smallint",
+        "bool": "boolean",
+        "float8": "doubleprecision",
+        "numeric": "numeric",
+        "decimal": "numeric",
+        "json": "jsonb",
+    }
+    return aliases.get(key, key)
+
+
 class SupabaseConnector:
     """A connector for the Supabase / Postgres database."""
 
