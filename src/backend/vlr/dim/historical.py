@@ -491,6 +491,11 @@ def apply_dim_events_schema(repo_root: Path | None = None) -> Path:
         DIM_EVENT_COLUMN_TYPES,
         type_using=type_using,
     )
+    # After columns exist on an older table so ON CONFLICT (vlr_event_id) works.
+    connector.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_vlr_dim_events_vlr_event_id "
+        "ON vlr.dim_events (vlr_event_id)"
+    )
     logger.info("[events_historical] Schema ready (create-if-missing + alter, no drop)")
     return sql_path
 
