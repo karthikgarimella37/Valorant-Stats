@@ -268,15 +268,97 @@ class SupabaseConnector:
         return counts
 
     def execute_sql_file(self, path: Path) -> None:
-        """Run a DDL file so warehouse tables match the extract contract."""
+        """Run a DDL file one statement at a time so CREATE IF NOT EXISTS is safe."""
         sql_path = Path(path)
         logger.info("[sql] Starting file=%s", sql_path)
-        script = sql_path.read_text()
+        statements = _split_sql_statements(sql_path.read_text())
         with self._connect() as conn:
             with conn.cursor() as cur:
-                cur.execute(script)
+                for stmt in statements:
+                    cur.execute(stmt)
             conn.commit()
-        logger.info("[sql] Done file=%s", sql_path)
+        logger.info("[sql] Done file=%s statements=%s", sql_path, len(statements))
+
+    def table_exists(self, schema: str, table: str) -> bool:
+        """Check information_schema so ensure can create vs alter."""
+        schema = _safe_ident(schema)
+        table = _safe_ident(table)
+        row = self.fetch_one(
+            """
+            SELECT 1
+            FROM information_schema.tables
+            WHERE table_schema = %s AND table_name = %s
+            """,
+            (schema, table),
+        )
+        return row is not None
+
+    def list_columns(self, schema: str, table: str) -> dict[str, str]:
+        """Return {column: data_type} so we can ADD / ALTER missing or mismatched types."""
+        schema = _safe_ident(schema)
+        table = _safe_ident(table)
+        rows = self.fetch_all(
+            """
+            SELECT column_name, data_type
+            FROM information_schema.columns
+            WHERE table_schema = %s AND table_name = %s
+            """,
+            (schema, table),
+        )
+        return {str(row["column_name"]): str(row["data_type"]) for row in rows}
+
+    def ensure_table_columns(
+        self,
+        schema: str,
+        table: str,
+        columns: dict[str, str],
+        *,
+        type_using: dict[str, str] | None = None,
+    ) -> dict[str, str]:
+        """ADD missing columns and ALTER type when the live table does not match the contract."""
+        schema_s = _safe_ident(schema)
+        table_s = _safe_ident(table)
+        type_using = type_using or {}
+        existing = self.list_columns(schema_s, table_s)
+        if not existing:
+            raise RuntimeError(f"{schema_s}.{table_s} does not exist after CREATE")
+        logger.info("[sql] Ensure %s.%s live_columns=%s", schema_s, table_s, len(existing))
+        with self._connect() as conn:
+            with conn.cursor() as cur:
+                for name, pg_type in columns.items():
+                    col = _safe_ident(name)
+                    live = existing.get(name)
+                    if live is None:
+                        logger.info("[sql] ADD COLUMN %s.%s.%s %s", schema_s, table_s, col, pg_type)
+                        cur.execute(
+                            f'ALTER TABLE "{schema_s}"."{table_s}" ADD COLUMN "{col}" {pg_type}'
+                        )
+                        continue
+                    if _normalize_pg_type(live) == _normalize_pg_type(pg_type):
+                        continue
+                    using = type_using.get(name)
+                    logger.info(
+                        "[sql] ALTER COLUMN %s.%s.%s %s -> %s",
+                        schema_s,
+                        table_s,
+                        col,
+                        live,
+                        pg_type,
+                    )
+                    if using:
+                        cur.execute(
+                            f'ALTER TABLE "{schema_s}"."{table_s}" '
+                            f'ALTER COLUMN "{col}" TYPE {pg_type} USING {using}'
+                        )
+                    else:
+                        cur.execute(
+                            f'ALTER TABLE "{schema_s}"."{table_s}" '
+                            f'ALTER COLUMN "{col}" TYPE {pg_type} USING "{col}"::{pg_type}'
+                        )
+            conn.commit()
+        updated = self.list_columns(schema_s, table_s)
+        logger.info("[sql] Ensure done %s.%s columns=%s", schema_s, table_s, len(updated))
+        return updated
 
     def upsert_rows(
         self,
