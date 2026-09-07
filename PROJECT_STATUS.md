@@ -80,3 +80,4 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 | 2026-09-07 | Documented Dagster as the run path for `vlr_historical_events_job` |
 | 2026-09-07 | Extract failed: no vlrggapi on :3001; started `docker compose up -d vlrggapi` |
 | 2026-09-07 | Catalog 503: serial pages + long backoff on 502/503 |
+| 2026-09-07 | Dropped AWS IP rotator; official vlrggapi + serial scrape (free) |
