@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS vlr.dim_events (
     update_date TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS uq_vlr_dim_events_vlr_event_id ON vlr.dim_events (vlr_event_id);
 CREATE INDEX IF NOT EXISTS idx_vlr_dim_events_status ON vlr.dim_events (status);
 CREATE INDEX IF NOT EXISTS idx_vlr_dim_events_vct ON vlr.dim_events (vct_region_code);
 CREATE INDEX IF NOT EXISTS idx_vlr_dim_events_region ON vlr.dim_events (region_code);
