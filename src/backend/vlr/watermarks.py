@@ -56,3 +56,37 @@ def upsert_watermark(
     path.write_text(json.dumps(doc, indent=2) + "\n")
     logger.info("[watermark] Done path=%s rows=%s", path, len(rows))
     return row
+
+
+def upsert_watermarks_batch(
+    repo_root: Path,
+    items: list[dict[str, Any]],
+) -> int:
+    """Write many event/match cursors in one file so historical loads are not O(n) rewrites."""
+    if not items:
+        return 0
+    logger.info("[watermark] Batch upsert n=%s", len(items))
+    doc = load_watermarks(repo_root)
+    rows: list[dict[str, Any]] = list(doc.get("rows") or [])
+    now = datetime.now(timezone.utc).isoformat()
+    incoming = {(item["entity_type"], str(item["entity_id"])): item for item in items}
+    kept = [
+        row
+        for row in rows
+        if (row.get("entity_type"), str(row.get("entity_id"))) not in incoming
+    ]
+    for item in incoming.values():
+        kept.append(
+            {
+                "entity_type": item["entity_type"],
+                "entity_id": str(item["entity_id"]),
+                "source_url": item.get("source_url"),
+                "last_fetched_at": now,
+                "last_status": "ok",
+                **{k: v for k, v in item.items() if k not in {"entity_type", "entity_id", "source_url"}},
+            }
+        )
+    path = watermark_path(repo_root)
+    path.write_text(json.dumps({"updated_at": now, "rows": kept}, indent=2) + "\n")
+    logger.info("[watermark] Batch done path=%s rows=%s", path, len(kept))
+    return len(items)
