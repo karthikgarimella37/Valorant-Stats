@@ -451,7 +451,7 @@ def vlr_historical_extract_events(context: AssetExecutionContext) -> int:
 def vlr_historical_load_dim_events(context: AssetExecutionContext) -> int:
     """Upsert the just-extracted event rows into vlr.dim_events."""
     context.log.info("=== STEP vlr_historical_load_dim_events: upsert vlr.dim_events ===")
-    rows = extract_historical_events(REPO_ROOT)
+    rows = rows_from_event_json_dir(REPO_ROOT)
     loaded = load_dim_events(rows)
     context.add_output_metadata({"upserted": loaded})
     context.log.info("dim_events upserted=%s", loaded)
