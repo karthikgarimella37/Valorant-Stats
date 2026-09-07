@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 from pathlib import Path
@@ -9,7 +10,6 @@ from typing import Any
 
 from backend.api_connectors.vlr_v2_connector import VlrV2Connector
 from backend.database_connectors.supabase_connectors import SupabaseConnector
-import json
 
 from backend.vlr.dim.util import (
     event_id_from_url,
