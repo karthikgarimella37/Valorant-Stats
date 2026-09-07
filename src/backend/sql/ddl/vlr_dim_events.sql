@@ -1,9 +1,11 @@
 -- Why: historical event load needs a stable vlr.dim_events shape (business key + row_number).
+-- DROP so an older list-only dim_events (id/name/prizepool) does not block the new columns.
 CREATE SCHEMA IF NOT EXISTS vlr;
 
+DROP TABLE IF EXISTS vlr.dim_events CASCADE;
 CREATE SEQUENCE IF NOT EXISTS vlr.seq_dim_events_row_number;
 
-CREATE TABLE IF NOT EXISTS vlr.dim_events (
+CREATE TABLE vlr.dim_events (
     row_number BIGINT PRIMARY KEY DEFAULT nextval('vlr.seq_dim_events_row_number'),
     vlr_event_id TEXT NOT NULL UNIQUE,
     parent_vlr_event_id TEXT,
