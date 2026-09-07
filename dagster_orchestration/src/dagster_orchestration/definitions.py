@@ -16,6 +16,11 @@ if str(SRC_ROOT) not in sys.path:
 from backend.api_connectors.ribs_connector import RibsConnector
 from backend.database_connectors.supabase_connectors import SupabaseConnector
 from backend.rib_gg.extract import RibExtractPipeline, landing_dir_for, read_ndjson
+from backend.vlr.dim.historical import (
+    apply_dim_events_schema,
+    extract_historical_events,
+    load_dim_events,
+)
 from backend.vlr.extract import VlrExtractPipeline
 
 DBT_PROJECT_DIR = REPO_ROOT / "src" / "backend" / "sql"
