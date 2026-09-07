@@ -272,13 +272,6 @@ class SupabaseConnector:
         update_columns = update_columns or [c for c in cols if c != conflict_column]
         update_sql = ", ".join(f'"{c}" = EXCLUDED."{c}"' for c in update_columns)
         col_sql = ", ".join(f'"{c}"' for c in cols)
-        values_sql = ", ".join(
-            f"%s::{'jsonb' if c in jsonb_columns else 'text'}"
-            if c in jsonb_columns
-            else "%s"
-            for c in cols
-        )
-        # execute_values uses a single template for the row tuple.
         template_parts = []
         for col in cols:
             if col in jsonb_columns:
