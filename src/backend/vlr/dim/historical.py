@@ -180,7 +180,7 @@ def _fetch_one_event(
     skip_existing: bool,
 ) -> dict[str, Any]:
     """Fetch one event detail and land JSON so a failed worker does not drop the catalog row."""
-    event_id = str(listing.get("id") or "")
+    event_id = str(listing.get("event_id") or listing.get("id") or "")
     path = event_json_path(repo_root, event_id)
     if skip_existing and path.exists():
         payload = json.loads(path.read_text())
