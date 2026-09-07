@@ -1,26 +1,33 @@
-"""Historical (one-shot) VLR event extract → JSON files → vlr.dim_events."""
+"""Historical (one-shot) VLR event extract → events.jsonl → vlr.dim_events."""
 
 from __future__ import annotations
 
 import json
 import logging
 import os
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from backend.api_connectors.ip_rotator_gateway import VlrIpRotator, ip_rotator_enabled
 from backend.api_connectors.vlr_v2_connector import VlrV2Connector
+from backend.config.env import load_project_env
 from backend.database_connectors.supabase_connectors import SupabaseConnector
-
 from backend.vlr.dim.util import (
+    append_event_row,
     event_id_from_url,
+    event_ids_in_jsonl,
     event_json_path,
+    events_jsonl_path,
     infer_event_tier,
     json_dumps,
     parse_event_dates,
     parse_prize_pool,
+    read_event_rows_jsonl,
     slug_from_url,
     utc_now,
-    write_event_json,
     year_from_text,
 )
 from backend.vlr.regions import infer_vct_region_from_text, split_event_region
@@ -30,6 +37,7 @@ logger = logging.getLogger(__name__)
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 EVENT_STATUSES = ("completed", "upcoming", "live")
+VLR_SITE = "https://www.vlr.gg"
 DIM_EVENT_COLUMNS = (
     "vlr_event_id",
     "parent_vlr_event_id",
@@ -59,11 +67,112 @@ DIM_EVENT_COLUMNS = (
     "insert_date",
     "update_date",
 )
+DIM_EVENT_COLUMN_TYPES = {
+    "row_number": "BIGINT",
+    "vlr_event_id": "TEXT",
+    "parent_vlr_event_id": "TEXT",
+    "vct_region_code": "TEXT",
+    "region_code": "TEXT",
+    "event_name": "TEXT",
+    "series": "TEXT",
+    "subtitle": "TEXT",
+    "short_name": "TEXT",
+    "slug": "TEXT",
+    "event_tier": "TEXT",
+    "status": "TEXT",
+    "dates_text": "TEXT",
+    "start_date": "TEXT",
+    "end_date": "TEXT",
+    "prize_pool": "NUMERIC",
+    "prize_pool_currency": "TEXT",
+    "prize_pool_text": "TEXT",
+    "location": "TEXT",
+    "logo_url": "TEXT",
+    "url": "TEXT",
+    "participating_team_count": "INTEGER",
+    "prize_placement_count": "INTEGER",
+    "prizes_json": "JSONB",
+    "teams_json": "JSONB",
+    "standings_json": "JSONB",
+    "insert_date": "TIMESTAMPTZ",
+    "update_date": "TIMESTAMPTZ",
+}
+_DATE_TO_PROJECT_TEXT = (
+    "CASE WHEN \"{col}\" IS NULL THEN NULL "
+    "ELSE (EXTRACT(YEAR FROM \"{col}\")::int)::text || '/' || "
+    "(EXTRACT(MONTH FROM \"{col}\")::int)::text || '/' || "
+    "(EXTRACT(DAY FROM \"{col}\")::int)::text END"
+)
 
 
 def _repo_root(repo_root: Path | None) -> Path:
-    """Resolve the git root so JSON landings stay under data/vlr/events."""
+    """Resolve the git root so JSON landings stay under data/vlr."""
     return Path(repo_root or REPO_ROOT)
+
+
+def _aws_keys_present() -> bool:
+    """True when rotator can start; do not log key values."""
+    return bool(
+        os.getenv("VLR_AWS_ACCESS_KEY_ID")
+        or os.getenv("AWS_ACCESS_KEY_ID")
+    ) and bool(
+        os.getenv("VLR_AWS_SECRET_ACCESS_KEY")
+        or os.getenv("AWS_SECRET_ACCESS_KEY")
+    )
+
+
+@dataclass
+class EventProgress:
+    """Thread-safe N/total + event name so Dagster logs show which event just finished."""
+
+    total: int
+    done: int = 0
+    lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
+
+    def mark(self, name: str | None, start_date: str | None, end_date: str | None, *, skipped: bool = False) -> None:
+        label = (name or "(unnamed)").strip() or "(unnamed)"
+        dates = f"{start_date or '?'}–{end_date or '?'}"
+        suffix = " skip" if skipped else ""
+        with self.lock:
+            self.done += 1
+            logger.info(
+                "[events_historical] %s/%s %s (%s)%s",
+                self.done,
+                self.total,
+                label,
+                dates,
+                suffix,
+            )
+
+
+@dataclass
+class EventLanding:
+    """Append-only jsonl of insert rows; tracks ids so workers do not duplicate."""
+
+    repo_root: Path
+    ids: set[str]
+    lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
+
+    @classmethod
+    def open(cls, repo_root: Path) -> EventLanding:
+        """Load existing ids so a resume appends only new events."""
+        return cls(repo_root=repo_root, ids=event_ids_in_jsonl(repo_root))
+
+    def has(self, event_id: str) -> bool:
+        with self.lock:
+            return event_id in self.ids
+
+    def write(self, row: dict[str, Any]) -> bool:
+        """Append one insert row. Returns False if the id was already landed."""
+        event_id = str(row.get("vlr_event_id") or "")
+        if not event_id:
+            return False
+        with self.lock:
+            if event_id in self.ids:
+                return False
+            append_event_row(self.repo_root, row)
+            self.ids.add(event_id)
+            return True
 
 
 def list_event_catalog(connector: VlrV2Connector) -> list[dict[str, Any]]:
@@ -121,7 +230,9 @@ def format_dim_event_row(listing: dict[str, Any], detail: dict[str, Any]) -> dic
     name = event.get("name") or listing.get("title") or listing.get("name")
     series = event.get("series")
     dates_text = event.get("dates") or listing.get("dates")
-    start_date, end_date = parse_event_dates(dates_text, fallback_year=year_from_text(name, series, dates_text))
+    start_date, end_date = parse_event_dates(
+        dates_text, fallback_year=year_from_text(name, series, dates_text)
+    )
     prize_text = event.get("prize") or listing.get("prize") or listing.get("prizepool")
     prize_pool, currency, prize_raw = parse_prize_pool(prize_text)
     tier = infer_event_tier(name, series)
@@ -169,38 +280,83 @@ def format_dim_event_row(listing: dict[str, Any], detail: dict[str, Any]) -> dic
     }
 
 
+def _legacy_detail(repo_root: Path, event_id: str) -> dict[str, Any] | None:
+    """Reuse an older per-id JSON file so we do not re-hit the API after the landing change."""
+    path = event_json_path(repo_root, event_id)
+    if not path.exists():
+        return None
+    try:
+        payload = json.loads(path.read_text())
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    detail = payload.get("detail")
+    return detail if isinstance(detail, dict) else {}
+
+
 def _fetch_one_event(
     connector: VlrV2Connector,
     repo_root: Path,
     listing: dict[str, Any],
+    landing: EventLanding,
+    progress: EventProgress,
     *,
     skip_existing: bool,
-) -> dict[str, Any]:
-    """Fetch one event detail and land JSON so a failed worker does not drop the catalog row."""
+) -> dict[str, Any] | None:
+    """Fetch one event, append the insert row, log name + N/total."""
     event_id = str(listing.get("event_id") or listing.get("id") or "")
-    path = event_json_path(repo_root, event_id)
-    if skip_existing and path.exists():
-        payload = json.loads(path.read_text())
-        detail = payload.get("detail") if isinstance(payload, dict) else {}
-        return format_dim_event_row(listing, detail if isinstance(detail, dict) else {})
-    try:
-        detail = connector.get_event_detail(event_id)
-    except Exception:
-        logger.exception("[events_historical] Detail failed event_id=%s; landing list row only", event_id)
-        detail = {}
-    payload = {
-        "event_id": event_id,
-        "listing": listing,
-        "detail": detail,
-        "source_url": f"https://www.vlr.gg/event/{event_id}",
-    }
-    write_event_json(repo_root, event_id, payload)
-    return format_dim_event_row(listing, detail)
+    if skip_existing and landing.has(event_id):
+        name = listing.get("title") or listing.get("name")
+        start_date, end_date = parse_event_dates(
+            listing.get("dates"), fallback_year=year_from_text(name, listing.get("dates"))
+        )
+        progress.mark(name, start_date, end_date, skipped=True)
+        return None
+    detail: dict[str, Any] = {}
+    if skip_existing:
+        legacy = _legacy_detail(repo_root, event_id)
+        if legacy is not None:
+            detail = legacy
+        else:
+            try:
+                detail = connector.get_event_detail(event_id)
+            except Exception:
+                logger.exception(
+                    "[events_historical] Detail failed event_id=%s; landing list row only",
+                    event_id,
+                )
+                detail = {}
+    else:
+        try:
+            detail = connector.get_event_detail(event_id)
+        except Exception:
+            logger.exception(
+                "[events_historical] Detail failed event_id=%s; landing list row only",
+                event_id,
+            )
+            detail = {}
+    row = format_dim_event_row(listing, detail)
+    landing.write(row)
+    progress.mark(row.get("event_name"), row.get("start_date"), row.get("end_date"))
+    return row
 
 
 def extract_historical_events(repo_root: Path | None = None) -> list[dict[str, Any]]:
-    """Pull every VLR event once, write data/vlr/events/<id>.json, return dim rows."""
+    """Pull every VLR event once, append data/vlr/events.jsonl, return dim rows."""
+    load_project_env(repo_root)
     repo_root = _repo_root(repo_root)
+    if ip_rotator_enabled():
+        logger.info(
+            "[events_historical] IP rotator on aws_keys_present=%s (www.vlr.gg HTML / vlr.gg API host)",
+            _aws_keys_present(),
+        )
+        VlrIpRotator.get_gateway(VLR_SITE)
+    else:
+        logger.info(
+            "[events_historical] IP rotator off aws_keys_present=%s",
+            _aws_keys_present(),
+        )
     connector = VlrV2Connector()
     logger.info("[events_historical] Health check base=%s", connector.base_url)
     connector.health()
@@ -212,18 +368,33 @@ def extract_historical_events(repo_root: Path | None = None) -> list[dict[str, A
     skip_existing = os.getenv("VLR_EVENT_SKIP_EXISTING", "1") == "1"
     detail_workers = int(os.getenv("VLR_EVENT_DETAIL_WORKERS", "4"))
     detail_connector = VlrV2Connector(max_workers=detail_workers)
+    landing = EventLanding.open(repo_root)
+    progress = EventProgress(total=len(listings))
     logger.info(
-        "[events_historical] Fetching details events=%s skip_existing=%s workers=%s",
+        "[events_historical] Fetching details events=%s already_landed=%s skip_existing=%s workers=%s jsonl=%s",
         len(listings),
+        len(landing.ids),
         skip_existing,
         detail_workers,
+        events_jsonl_path(repo_root),
     )
-    rows = detail_connector.map_parallel(
-        listings,
-        lambda listing: _fetch_one_event(detail_connector, repo_root, listing, skip_existing=skip_existing),
-        desc="event details",
-    )
-    rows = [row for row in rows if row.get("vlr_event_id")]
+    # Serial comment: workers share landing + progress locks; items themselves are independent.
+    with ThreadPoolExecutor(max_workers=detail_workers) as pool:
+        futures = [
+            pool.submit(
+                _fetch_one_event,
+                detail_connector,
+                repo_root,
+                listing,
+                landing,
+                progress,
+                skip_existing=skip_existing,
+            )
+            for listing in listings
+        ]
+        for future in as_completed(futures):
+            future.result()
+    rows = rows_from_events_landing(repo_root)
     upsert_watermarks_batch(
         repo_root,
         [
@@ -231,24 +402,40 @@ def extract_historical_events(repo_root: Path | None = None) -> list[dict[str, A
                 "entity_type": "events",
                 "entity_id": str(row["vlr_event_id"]),
                 "source_url": row.get("url") or f"https://www.vlr.gg/event/{row['vlr_event_id']}",
-                "json_path": str(event_json_path(repo_root, str(row["vlr_event_id"]))),
+                "json_path": str(events_jsonl_path(repo_root)),
             }
             for row in rows
         ],
     )
-    logger.info("[events_historical] Done dim_rows=%s json_dir=%s", len(rows), repo_root / "data" / "vlr" / "events")
+    logger.info(
+        "[events_historical] Done dim_rows=%s processed=%s/%s jsonl=%s",
+        len(rows),
+        progress.done,
+        progress.total,
+        events_jsonl_path(repo_root),
+    )
     return rows
 
 
+def rows_from_events_landing(repo_root: Path | None = None) -> list[dict[str, Any]]:
+    """Read insert rows from events.jsonl (or rebuild from legacy per-id files)."""
+    repo_root = _repo_root(repo_root)
+    jsonl_rows = read_event_rows_jsonl(repo_root)
+    if jsonl_rows:
+        logger.info("[events_historical] Reading landing JSONL rows=%s", len(jsonl_rows))
+        return jsonl_rows
+    return rows_from_event_json_dir(repo_root)
+
+
 def rows_from_event_json_dir(repo_root: Path | None = None) -> list[dict[str, Any]]:
-    """Rebuild dim rows from landed JSON so load does not hit the API again."""
+    """Rebuild dim rows from older data/vlr/events/<id>.json files."""
     repo_root = _repo_root(repo_root)
     folder = repo_root / "data" / "vlr" / "events"
     rows: list[dict[str, Any]] = []
     if not folder.exists():
         return rows
     paths = sorted(folder.glob("*.json"))
-    logger.info("[events_historical] Reading landed JSON files=%s", len(paths))
+    logger.info("[events_historical] Reading legacy JSON files=%s", len(paths))
     for path in paths:
         payload = json.loads(path.read_text())
         if not isinstance(payload, dict):
@@ -258,7 +445,7 @@ def rows_from_event_json_dir(repo_root: Path | None = None) -> list[dict[str, An
         if not listing.get("id"):
             listing = {**listing, "id": payload.get("event_id") or path.stem}
         rows.append(format_dim_event_row(listing, detail))
-    logger.info("[events_historical] JSON dim rows=%s", len(rows))
+    logger.info("[events_historical] Legacy JSON dim rows=%s", len(rows))
     return rows
 
 
@@ -279,19 +466,32 @@ def load_dim_events(rows: list[dict[str, Any]]) -> int:
 
 
 def run_historical_events(repo_root: Path | None = None) -> dict[str, int]:
-    """End-to-end historical events: extract JSON then upsert dim_events."""
+    """End-to-end historical events: ensure table, extract JSONL, upsert dim_events."""
+    apply_dim_events_schema(repo_root)
     rows = extract_historical_events(repo_root)
     loaded = load_dim_events(rows)
     return {"extracted": len(rows), "loaded": loaded}
 
 
 def apply_dim_events_schema(repo_root: Path | None = None) -> Path:
-    """Create/replace vlr.dim_events before the historical load."""
+    """Create vlr.dim_events if missing; ADD / ALTER columns if the shape drifted."""
+    load_project_env(repo_root)
     repo_root = _repo_root(repo_root)
     sql_path = repo_root / "src" / "backend" / "sql" / "ddl" / "vlr_dim_events.sql"
-    logger.info("[events_historical] Applying schema %s", sql_path)
-    SupabaseConnector().execute_sql_file(sql_path)
-    logger.info("[events_historical] Schema ready")
+    logger.info("[events_historical] Ensuring schema %s", sql_path)
+    connector = SupabaseConnector()
+    connector.execute_sql_file(sql_path)
+    type_using = {
+        "start_date": _DATE_TO_PROJECT_TEXT.format(col="start_date"),
+        "end_date": _DATE_TO_PROJECT_TEXT.format(col="end_date"),
+    }
+    connector.ensure_table_columns(
+        "vlr",
+        "dim_events",
+        DIM_EVENT_COLUMN_TYPES,
+        type_using=type_using,
+    )
+    logger.info("[events_historical] Schema ready (create-if-missing + alter, no drop)")
     return sql_path
 
 
