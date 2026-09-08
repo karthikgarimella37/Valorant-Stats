@@ -178,12 +178,12 @@ class EventLanding:
 
 def list_event_catalog(connector: VlrV2Connector) -> list[dict[str, Any]]:
     """Page every /v2/events status until empty so the historical load is complete."""
-    logger.info("[events_historical] Starting catalog statuses=%s", EVENT_STATUSES)
+    logger.info("[events] Starting catalog statuses=%s", EVENT_STATUSES)
     by_id: dict[str, dict[str, Any]] = {}
     page_size = int(os.getenv("VLR_EVENT_PAGE_WORKERS", "8"))
     page_delay = float(os.getenv("VLR_EVENT_PAGE_DELAY_SEC", "0.2"))
     max_pages = int(os.getenv("VLR_EVENT_MAX_PAGES", "500"))
-    logger.info("[events_historical] Catalog workers=%s page_delay=%s", page_size, page_delay)
+    logger.info("[events] Catalog workers=%s page_delay=%s", page_size, page_delay)
     for status in EVENT_STATUSES:
         page = 1
         while page <= max_pages:
@@ -219,7 +219,7 @@ def list_event_catalog(connector: VlrV2Connector) -> list[dict[str, Any]]:
                     row["status"] = row.get("status") or status
                     by_id[event_id] = row
             logger.info(
-                "[events_historical] Catalog %s pages=%s new=%s total=%s",
+                "[events] Catalog %s pages=%s new=%s total=%s",
                 status,
                 batch_pages,
                 new_ids,
@@ -231,8 +231,8 @@ def list_event_catalog(connector: VlrV2Connector) -> list[dict[str, Any]]:
             if page_delay > 0:
                 time.sleep(page_delay)
             page += page_size
-        logger.info("[events_historical] Status %s done catalog_size=%s", status, len(by_id))
-    logger.info("[events_historical] Catalog done unique_events=%s", len(by_id))
+        logger.info("[events] Status %s done catalog_size=%s", status, len(by_id))
+    logger.info("[events] Catalog done unique_events=%s", len(by_id))
     return list(by_id.values())
 
 
@@ -332,7 +332,7 @@ def _fetch_one_event(
             detail = connector.get_event_detail(event_id)
         except Exception:
             logger.exception(
-                "[events_historical] Detail failed event_id=%s; landing list row only",
+                "[events] Detail failed event_id=%s; landing list row only",
                 event_id,
             )
             detail = {}
@@ -350,18 +350,18 @@ def extract_historical_events(repo_root: Path | None = None) -> list[dict[str, A
     # Rotator only applies when /v2 is on vlr.gg. Local vlrggapi is not rotated.
     if connector._rotate_api:
         logger.info(
-            "[events_historical] IP rotator on aws_keys_present=%s base=%s",
+            "[events] IP rotator on aws_keys_present=%s base=%s",
             _aws_keys_present(),
             connector.base_url,
         )
         VlrIpRotator.get_gateway(VLR_SITE)
     else:
         logger.info(
-            "[events_historical] IP rotator skipped (API host is not vlr.gg) base=%s aws_keys_present=%s",
+            "[events] IP rotator skipped (API host is not vlr.gg) base=%s aws_keys_present=%s",
             connector.base_url,
             _aws_keys_present(),
         )
-    logger.info("[events_historical] Health check base=%s", connector.base_url)
+    logger.info("[events] Health check base=%s", connector.base_url)
     try:
         connector.health()
     except Exception as exc:
@@ -373,14 +373,14 @@ def extract_historical_events(repo_root: Path | None = None) -> list[dict[str, A
     max_events = os.getenv("VLR_MAX_EVENTS")
     if max_events:
         listings = listings[: int(max_events)]
-        logger.info("[events_historical] Capped listings=%s", len(listings))
+        logger.info("[events] Capped listings=%s", len(listings))
     skip_existing = os.getenv("VLR_EVENT_SKIP_EXISTING", "1") == "1"
     detail_workers = int(os.getenv("VLR_EVENT_DETAIL_WORKERS", "12"))
     detail_connector = VlrV2Connector(max_workers=detail_workers)
     landing = EventLanding.open(repo_root)
     progress = EventProgress(total=len(listings))
     logger.info(
-        "[events_historical] Fetching details events=%s already_landed=%s skip_existing=%s workers=%s jsonl=%s",
+        "[events] Fetching details events=%s already_landed=%s skip_existing=%s workers=%s jsonl=%s",
         len(listings),
         len(landing.ids),
         skip_existing,
@@ -417,7 +417,7 @@ def extract_historical_events(repo_root: Path | None = None) -> list[dict[str, A
         ],
     )
     logger.info(
-        "[events_historical] Done dim_rows=%s processed=%s/%s jsonl=%s",
+        "[events] Done dim_rows=%s processed=%s/%s jsonl=%s",
         len(rows),
         progress.done,
         progress.total,
@@ -431,7 +431,7 @@ def rows_from_events_landing(repo_root: Path | None = None) -> list[dict[str, An
     repo_root = _repo_root(repo_root)
     jsonl_rows = read_event_rows_jsonl(repo_root)
     if jsonl_rows:
-        logger.info("[events_historical] Reading landing JSONL rows=%s", len(jsonl_rows))
+        logger.info("[events] Reading landing JSONL rows=%s", len(jsonl_rows))
         return jsonl_rows
     return rows_from_event_json_dir(repo_root)
 
@@ -444,7 +444,7 @@ def rows_from_event_json_dir(repo_root: Path | None = None) -> list[dict[str, An
     if not folder.exists():
         return rows
     paths = sorted(folder.glob("*.json"))
-    logger.info("[events_historical] Reading legacy JSON files=%s", len(paths))
+    logger.info("[events] Reading legacy JSON files=%s", len(paths))
     for path in paths:
         payload = json.loads(path.read_text())
         if not isinstance(payload, dict):
@@ -454,13 +454,13 @@ def rows_from_event_json_dir(repo_root: Path | None = None) -> list[dict[str, An
         if not listing.get("id"):
             listing = {**listing, "id": payload.get("event_id") or path.stem}
         rows.append(format_dim_event_row(listing, detail))
-    logger.info("[events_historical] Legacy JSON dim rows=%s", len(rows))
+    logger.info("[events] Legacy JSON dim rows=%s", len(rows))
     return rows
 
 
 def load_dim_events(rows: list[dict[str, Any]]) -> int:
     """Upsert formatted rows into vlr.dim_events without dropping row_number on re-run."""
-    logger.info("[events_historical] Load start rows=%s", len(rows))
+    logger.info("[events] Load start rows=%s", len(rows))
     connector = SupabaseConnector()
     count = connector.upsert_rows(
         rows,
@@ -470,7 +470,7 @@ def load_dim_events(rows: list[dict[str, Any]]) -> int:
         conflict_column="vlr_event_id",
         update_columns=[c for c in DIM_EVENT_COLUMNS if c not in {"vlr_event_id", "insert_date"}],
     )
-    logger.info("[events_historical] Load done upserted=%s", count)
+    logger.info("[events] Load done upserted=%s", count)
     return count
 
 
@@ -487,7 +487,7 @@ def apply_dim_events_schema(repo_root: Path | None = None) -> Path:
     load_project_env(repo_root)
     repo_root = _repo_root(repo_root)
     sql_path = repo_root / "src" / "backend" / "sql" / "ddl" / "vlr_dim_events.sql"
-    logger.info("[events_historical] Ensuring schema %s", sql_path)
+    logger.info("[events] Ensuring schema %s", sql_path)
     connector = SupabaseConnector()
     connector.execute_sql_file(sql_path)
     type_using = {
@@ -509,7 +509,7 @@ def apply_dim_events_schema(repo_root: Path | None = None) -> Path:
         "CREATE INDEX IF NOT EXISTS idx_vlr_dim_events_region ON vlr.dim_events (region_code)",
     ):
         connector.execute(stmt)
-    logger.info("[events_historical] Schema ready (create-if-missing + alter, no drop)")
+    logger.info("[events] Schema ready (create-if-missing + alter, no drop)")
     return sql_path
 
 

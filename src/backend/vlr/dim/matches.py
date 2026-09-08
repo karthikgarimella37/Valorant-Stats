@@ -455,8 +455,6 @@ def iter_dim_rows(repo_root: Path | None = None):
 
 def json_loads_obj(line: str) -> dict[str, Any] | None:
     """Parse one JSONL line; skip corrupt rows so a huge file can still load."""
-    import json
-
     try:
         obj = json.loads(line)
     except json.JSONDecodeError:
