@@ -408,46 +408,84 @@ def rib_load_valorant_tables(context: AssetExecutionContext) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# VLR historical (one-shot) — all events → data/vlr/events + vlr.dim_events
+# VLR historical — events then matches (full match JSON reused by later facts)
 # ---------------------------------------------------------------------------
 
 
-@asset(group_name="vlr_historical")
-def vlr_historical_events_schema(context: AssetExecutionContext) -> str:
+@asset(group_name="vlr_hist")
+def evt_schema(context: AssetExecutionContext) -> str:
     """Create or alter vlr.dim_events so extract rows match warehouse columns."""
-    context.log.info("=== STEP vlr_historical_events_schema: ensure vlr.dim_events ===")
-    path = apply_dim_events_schema(REPO_ROOT)
+    context.log.info("=== STEP evt_schema: ensure vlr.dim_events ===")
+    path = apply_events_schema(REPO_ROOT)
     context.add_output_metadata({"sql_path": MetadataValue.path(str(path))})
     return str(path)
 
 
-@asset(group_name="vlr_historical", deps=[vlr_historical_events_schema])
-def vlr_historical_extract_events(context: AssetExecutionContext) -> int:
+@asset(group_name="vlr_hist", deps=[evt_schema])
+def evt_extract(context: AssetExecutionContext) -> int:
     """Page every VLR event, append insert rows to data/vlr/events.jsonl."""
     context.log.info(
-        "=== STEP vlr_historical_extract_events: workers=%s max_events=%s ===",
+        "=== STEP evt_extract: workers=%s max_events=%s ===",
         os.getenv("VLR_EVENT_DETAIL_WORKERS", "12"),
         os.getenv("VLR_MAX_EVENTS", "unlimited"),
     )
-    rows = extract_historical_events(REPO_ROOT)
+    rows = extract_events(REPO_ROOT)
     context.add_output_metadata(
         {
             "event_count": len(rows),
             "json_path": MetadataValue.path(str(REPO_ROOT / "data" / "vlr" / "events.jsonl")),
         }
     )
-    context.log.info("Historical events extracted: %s", len(rows))
+    context.log.info("Events extracted: %s", len(rows))
     return len(rows)
 
 
-@asset(group_name="vlr_historical", deps=[vlr_historical_extract_events])
-def vlr_historical_load_dim_events(context: AssetExecutionContext) -> int:
+@asset(group_name="vlr_hist", deps=[evt_extract])
+def evt_load(context: AssetExecutionContext) -> int:
     """Upsert insert-ready rows from events.jsonl into vlr.dim_events."""
-    context.log.info("=== STEP vlr_historical_load_dim_events: upsert vlr.dim_events ===")
+    context.log.info("=== STEP evt_load: upsert vlr.dim_events ===")
     rows = rows_from_events_landing(REPO_ROOT)
-    loaded = load_dim_events(rows)
+    loaded = load_events(rows)
     context.add_output_metadata({"upserted": loaded})
     context.log.info("dim_events upserted=%s", loaded)
+    return loaded
+
+
+@asset(group_name="vlr_hist", deps=[evt_load])
+def match_schema(context: AssetExecutionContext) -> str:
+    """Create or alter vlr.dim_matches so extract rows match warehouse columns."""
+    context.log.info("=== STEP match_schema: ensure vlr.dim_matches ===")
+    path = apply_matches_schema(REPO_ROOT)
+    context.add_output_metadata({"sql_path": MetadataValue.path(str(path))})
+    return str(path)
+
+
+@asset(group_name="vlr_hist", deps=[match_schema])
+def match_extract(context: AssetExecutionContext) -> int:
+    """List matches for every event, land full /v2/match/details into matches.jsonl."""
+    context.log.info(
+        "=== STEP match_extract: event_workers=%s match_workers=%s ===",
+        os.getenv("VLR_MATCH_EVENT_WORKERS", "8"),
+        os.getenv("VLR_MATCH_WORKERS", "8"),
+    )
+    count = extract_matches(REPO_ROOT)
+    context.add_output_metadata(
+        {
+            "match_count": count,
+            "json_path": MetadataValue.path(str(REPO_ROOT / "data" / "vlr" / "matches.jsonl")),
+        }
+    )
+    context.log.info("Matches extracted: %s", count)
+    return count
+
+
+@asset(group_name="vlr_hist", deps=[match_extract])
+def match_load(context: AssetExecutionContext) -> int:
+    """Upsert dim columns from matches.jsonl into vlr.dim_matches."""
+    context.log.info("=== STEP match_load: upsert vlr.dim_matches ===")
+    loaded = load_matches(REPO_ROOT)
+    context.add_output_metadata({"upserted": loaded})
+    context.log.info("dim_matches upserted=%s", loaded)
     return loaded
 
 
