@@ -2,7 +2,7 @@
 
 > Always-on reference for this repo. Every Cursor chat must follow this file when writing or changing code. Prefer simple technical English. Keep chat replies short.
 
-**Last updated:** 2026-09-07
+**Last updated:** 2026-09-08
 
 **Pipeline goal:** Fast, scalable extract → transform → load → dbt into **Supabase**, so analytics read from the warehouse. Prefer **parallel work** and **optimized functions** everywhere they help.
 
