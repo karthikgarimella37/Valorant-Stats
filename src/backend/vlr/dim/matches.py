@@ -382,8 +382,6 @@ def extract_matches(repo_root: Path | None = None) -> int:
                 event_id,
                 len(matches),
             )
-            if delay > 0:
-                time.sleep(delay)
     by_event = read_event_match_lists(repo_root)
     jobs: list[tuple[str, dict[str, Any]]] = []
     seen: set[str] = set()
