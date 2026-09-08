@@ -675,13 +675,14 @@ vlr_star_schema_job = define_asset_job(
     ],
 )
 
-vlr_historical_events_job = define_asset_job(
-    "vlr_historical_events_job",
-    selection=[
-        vlr_historical_events_schema,
-        vlr_historical_extract_events,
-        vlr_historical_load_dim_events,
-    ],
+vlr_events = define_asset_job(
+    "vlr_events",
+    selection=[evt_schema, evt_extract, evt_load],
+)
+
+vlr_matches = define_asset_job(
+    "vlr_matches",
+    selection=[match_schema, match_extract, match_load],
 )
 
 defs = Definitions(
@@ -695,9 +696,12 @@ defs = Definitions(
         rib_extract_series,
         rib_normalize_star,
         rib_load_valorant_tables,
-        vlr_historical_events_schema,
-        vlr_historical_extract_events,
-        vlr_historical_load_dim_events,
+        evt_schema,
+        evt_extract,
+        evt_load,
+        match_schema,
+        match_extract,
+        match_load,
         vlr_extract_regions,
         vlr_extract_events,
         vlr_extract_teams,
@@ -711,6 +715,7 @@ defs = Definitions(
         dbt_star_schema_job,
         rib_gg_star_schema_job,
         vlr_star_schema_job,
-        vlr_historical_events_job,
+        vlr_events,
+        vlr_matches,
     ],
 )
