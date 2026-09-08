@@ -137,7 +137,7 @@ class EventProgress:
         with self.lock:
             self.done += 1
             logger.info(
-                "[events_historical] %s/%s %s (%s)%s",
+                "[events] %s/%s %s (%s)%s",
                 self.done,
                 self.total,
                 label,
