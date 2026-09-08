@@ -58,7 +58,7 @@ def landing_dir_for(repo_root, entity, run_date=None):
 | Constants | `UPPER_SNAKE` | `BASE_URL`, `JSON_SCALAR_KEYS` |
 | Env vars | `UPPER_SNAKE` | `SUPABASE_DB_HOST`, `RIB_RUN_DATE` |
 | dbt models | `snake_case` with layer prefix | `dim_teams`, `fact_match_economy`, `stg_rib_series` |
-| Dagster assets / jobs | `snake_case` | `rib_gg_extract_teams`, `rib_gg_star_schema_job` |
+| Dagster assets / jobs | `snake_case`, short | `evt_schema`, `vlr_events`, `match_extract` |
 
 ### Function creation
 - One clear job per function. If it needs “and”, split it.
