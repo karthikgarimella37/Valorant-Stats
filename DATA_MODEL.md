@@ -237,8 +237,9 @@ One row per series (the “match” on vlr.gg).
 | `insert_date` | `TIMESTAMPTZ` | |
 | `update_date` | `TIMESTAMPTZ` | |
 
-**Insert from:** VLR `/events/{id}/matches` then `/matches/{id}`.  
-**Dagster:** daily upsert on `vlr_match_id`. Set `rib_match_id` when overlay job matches.
+**Landing now:** job `vlr_matches` writes `data/vlr/matches.jsonl` (dim fields + `listing` + full `/v2/match/details`). Later facts/dims parse that file — do not re-hit the API.  
+**Warehouse now:** codes (`vlr_event_id`, `vlr_team_1_id`, `vlr_team_2_id`) and `match_date` TEXT `YYYY/M/D`. Resolve FKs after `dim_teams` / `dim_date` exist.  
+**Dagster:** upsert on `vlr_match_id`. Set `rib_match_id` when overlay job matches.
 
 ---
 
