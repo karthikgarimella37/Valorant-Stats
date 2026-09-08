@@ -85,12 +85,13 @@ def start_gateway() -> list[str]:
     _gateway = ApiGateway(VLR_SITE, **kwargs)
     _endpoints = list(_gateway.start() or [])
     atexit.register(_shutdown)
+    print(f"[vlrggapi_rotator] Ready endpoints={len(_endpoints)}", flush=True)
     logger.info("[vlrggapi_rotator] Ready endpoints=%s", len(_endpoints))
     if not _endpoints:
-        logger.error(
-            "[vlrggapi_rotator] 0 endpoints. IAM needs AmazonAPIGatewayAdministrator "
-            "(or CreateRestApi/GetRestApis). Enable the region in AWS. "
-            "Try VLR_IP_ROTATOR_REGIONS=us-east-1. Falling back to container IP."
+        raise RuntimeError(
+            "vlrggapi rotator created 0 AWS endpoints. "
+            "IAM needs CreateRestApi/GetRestApis. Set VLR_IP_ROTATOR_REGIONS=us-east-1. "
+            "Refusing to scrape vlr.gg from the container IP."
         )
     return _endpoints
 
