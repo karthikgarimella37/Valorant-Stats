@@ -188,6 +188,7 @@ data/vlr/watermarks.json                # incremental fetch cursor
 - Idempotent landings where practical (same run date overwrites or replaces cleanly).
 - Do not commit large parquet/ndjson dumps (already gitignored under `data/`).
 - Rate limits / politeness: use existing gateway/retry helpers; do not hammer APIs.
+- All www.vlr.gg scrapes go through the vlrggapi AWS rotator (`Ready endpoints=` > 0). Host/Dagster only call `127.0.0.1:3001`.
 - Every public extract/connector function: docstring with **why** + process logs when the function runs a real pipeline step.
 - Large multi-record fetches **must** use a worker pool unless a written comment explains why serial is required.
 
