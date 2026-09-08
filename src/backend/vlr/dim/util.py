@@ -16,7 +16,10 @@ logger = logging.getLogger(__name__)
 PROJECT_DATE_EXAMPLE = "2026/7/8"
 
 _EVENT_ID_RE = re.compile(r"/event/(\d+)")
+_MATCH_ID_RE = re.compile(r"vlr\.gg/(\d+)")
 _PROJECT_DATE_RE = re.compile(r"^(\d{4})/(\d{1,2})/(\d{1,2})$")
+_TODAY_YESTERDAY_RE = re.compile(r"(Today|Yesterday)$", re.I)
+_PATCH_RE = re.compile(r"Patch\s+([\d.]+)", re.I)
 _JSONL_LOCK = threading.Lock()
 _MONTHS = {
     "jan": 1,
