@@ -518,6 +518,13 @@ def apply_events_schema(repo_root: Path | None = None) -> Path:
     return sql_path
 
 
+# Old names — keep imports from earlier chats working.
+extract_historical_events = extract_events
+load_dim_events = load_events
+run_historical_events = run_events
+apply_dim_events_schema = apply_events_schema
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
-    print(run_historical_events())
+    print(run_events())
