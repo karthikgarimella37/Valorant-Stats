@@ -2,7 +2,7 @@
 
 > Always-on reference for this repo. Every Cursor chat must follow this file when writing or changing code. Prefer simple technical English. Keep chat replies short.
 
-**Last updated:** 2026-08-17
+**Last updated:** 2026-09-08
 
 **Pipeline goal:** Fast, scalable extract → transform → load → dbt into **Supabase**, so analytics read from the warehouse. Prefer **parallel work** and **optimized functions** everywhere they help.
 
@@ -58,7 +58,7 @@ def landing_dir_for(repo_root, entity, run_date=None):
 | Constants | `UPPER_SNAKE` | `BASE_URL`, `JSON_SCALAR_KEYS` |
 | Env vars | `UPPER_SNAKE` | `SUPABASE_DB_HOST`, `RIB_RUN_DATE` |
 | dbt models | `snake_case` with layer prefix | `dim_teams`, `fact_match_economy`, `stg_rib_series` |
-| Dagster assets / jobs | `snake_case` | `rib_gg_extract_teams`, `rib_gg_star_schema_job` |
+| Dagster assets / jobs | `snake_case`, short | `evt_schema`, `vlr_events`, `match_extract` |
 
 ### Function creation
 - One clear job per function. If it needs “and”, split it.
@@ -115,6 +115,14 @@ Parallel work is a **default**, not an optional nicety. Build for a fast, scalab
 - When adding a loop over many independent items, ask: “Can this use a thread pool?” If yes, do it.
 - Document why a step stays serial (ordering, single connection, API rule).
 
+### Calendar dates (project-wide)
+
+All event / match **calendar** dates in logs, JSON landings, and warehouse text columns use **`YYYY/M/D` with no zero-padding** (example: `2026/7/8`).
+
+- Helpers: `format_project_date` and `parse_event_dates` in `src/backend/vlr/dim/util.py`.
+- Partition folders stay ISO `dt=YYYY-MM-DD` (filesystem only).
+- Do not use `2026-07-08` or `7/8/2026` in event start/end fields.
+
 ### Optimization (fast path to Supabase analytics)
 
 - Batch I/O: paginate with sensible page size; bulk load parquet → Supabase (avoid per-row inserts when bulk exists).
@@ -131,10 +139,16 @@ src/backend/
   database_connectors/     # Supabase / DB clients
   rib_gg/                  # rib.gg normalize + land parquet/ndjson
   vlr/                     # vlr extract / scrape transforms
+  vlr/dim/                 # dim extract (historical.py, matches.py, util.py)
+  vlr/fact/                # fact extract (later: parse matches.jsonl)
   sql/                     # dbt project (own .venv)
+  config/env.py            # discover and load every repo .env
 dagster_orchestration/     # Dagster defs, assets, jobs only
 data/<source>/<entity>/dt=YYYY-MM-DD/   # parquet landing (gitignored)
 data/vlr/json/<entity>/<id>.json        # raw /v2 snapshots
+data/vlr/events.jsonl                   # historical dim_events insert rows
+data/vlr/event_matches.jsonl            # per-event match list cache
+data/vlr/matches.jsonl                  # dim_matches row + listing + full match detail
 data/vlr/watermarks.json                # incremental fetch cursor
 ```
 - Do not put extract logic inside Dagster modules beyond orchestration glue.
@@ -144,7 +158,7 @@ data/vlr/watermarks.json                # incremental fetch cursor
 ### Code style (Python)
 - `from __future__ import annotations` in new modules when useful.
 - Module logger: `logger = logging.getLogger(__name__)`.
-- No secrets in code or markdown. Use `.env` / `src/config/.env`.
+- No secrets in code or markdown. Load **every** `.env` under the repo (`backend.config.env.load_project_env`); skip `.venv` / `node_modules`.
 - Prefer `pathlib.Path` over string paths.
 - Prefer Polars for tabular landings in extract code (match existing `rib_gg/extract.py`).
 - Keep imports ordered: stdlib → third party → local.
@@ -174,6 +188,7 @@ data/vlr/watermarks.json                # incremental fetch cursor
 - Idempotent landings where practical (same run date overwrites or replaces cleanly).
 - Do not commit large parquet/ndjson dumps (already gitignored under `data/`).
 - Rate limits / politeness: use existing gateway/retry helpers; do not hammer APIs.
+- All www.vlr.gg scrapes go through the vlrggapi AWS rotator (`Ready endpoints=` > 0). Host/Dagster only call `127.0.0.1:3001`.
 - Every public extract/connector function: docstring with **why** + process logs when the function runs a real pipeline step.
 - Large multi-record fetches **must** use a worker pool unless a written comment explains why serial is required.
 
@@ -197,7 +212,7 @@ data/vlr/watermarks.json                # incremental fetch cursor
 ### Standards
 - Assets do one stage: probe, extract entity, load table, run dbt select, etc.
 - Heavy logic lives in `src/backend/...`. Assets call into those modules.
-- Name assets/jobs after pipeline + stage: `rib_gg_extract_teams`, `rib_gg_star_schema_job`.
+- Name assets/jobs short: `evt_schema`, `vlr_events`, `match_extract`, `vlr_matches`.
 - At asset entry: log `=== STEP <asset_name>: <short what> ===` so run timelines are scannable.
 - Log via `context.log`; on failure use `context.log.exception`. Surface `MetadataValue` (row counts, paths, run date, workers).
 - Fail loud on missing required env vars (`_get_required_env_var` pattern).

@@ -6,27 +6,14 @@ from typing import Any, Iterable, Optional
 
 import polars as pl
 import psycopg2 as psy
-from dotenv import load_dotenv
 from psycopg2 import sql
+
+from backend.config.env import load_project_env
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
-def _find_project_root(start_path: Path) -> Path:
-    """Walk upward until we find the repository's Python project root."""
-    for path in (start_path, *start_path.parents):
-        if (path / "pyproject.toml").exists():
-            return path
-    return start_path
-
-
-PROJECT_ROOT = _find_project_root(Path(__file__).resolve().parent)
-ENV_PATHS = [PROJECT_ROOT / ".env", PROJECT_ROOT / "src" / "config" / ".env"]
-for env_path in ENV_PATHS:
-    if env_path.exists():
-        logger.info("Loading environment variables from %s", env_path)
-        load_dotenv(env_path, override=False)
+load_project_env()
 
 
 _POLARS_TO_PG = {
@@ -62,6 +49,48 @@ def _safe_ident(name: str) -> str:
     if not name.replace("_", "").isalnum():
         raise RuntimeError(f"Invalid SQL identifier: {name!r}")
     return name
+
+
+def _split_sql_statements(script: str) -> list[str]:
+    """Split a DDL file so psycopg2 can run one statement at a time."""
+    statements: list[str] = []
+    buf: list[str] = []
+    for raw_line in script.splitlines():
+        stripped = raw_line.strip()
+        if stripped.startswith("--"):
+            continue
+        buf.append(raw_line)
+        if stripped.endswith(";"):
+            stmt = "\n".join(buf).strip()
+            if stmt:
+                statements.append(stmt)
+            buf = []
+    tail = "\n".join(buf).strip()
+    if tail:
+        statements.append(tail)
+    return statements
+
+
+def _normalize_pg_type(raw: str) -> str:
+    """Compare information_schema types to our contract names."""
+    key = raw.lower().replace(" ", "").replace("_", "")
+    aliases = {
+        "timestampwithtimezone": "timestamptz",
+        "timestampwithouttimezone": "timestamp",
+        "charactervarying": "text",
+        "varchar": "text",
+        "character": "text",
+        "int": "integer",
+        "int4": "integer",
+        "int8": "bigint",
+        "int2": "smallint",
+        "bool": "boolean",
+        "float8": "doubleprecision",
+        "numeric": "numeric",
+        "decimal": "numeric",
+        "json": "jsonb",
+    }
+    return aliases.get(key, key)
 
 
 class SupabaseConnector:
@@ -237,6 +266,143 @@ class SupabaseConnector:
             )
         logger.info("[load] Finished. Row counts: %s", counts)
         return counts
+
+    def execute_sql_file(self, path: Path) -> None:
+        """Run a DDL file one statement at a time so CREATE IF NOT EXISTS is safe."""
+        sql_path = Path(path)
+        logger.info("[sql] Starting file=%s", sql_path)
+        statements = _split_sql_statements(sql_path.read_text())
+        with self._connect() as conn:
+            with conn.cursor() as cur:
+                for stmt in statements:
+                    cur.execute(stmt)
+            conn.commit()
+        logger.info("[sql] Done file=%s statements=%s", sql_path, len(statements))
+
+    def table_exists(self, schema: str, table: str) -> bool:
+        """Check information_schema so ensure can create vs alter."""
+        schema = _safe_ident(schema)
+        table = _safe_ident(table)
+        row = self.fetch_one(
+            """
+            SELECT 1
+            FROM information_schema.tables
+            WHERE table_schema = %s AND table_name = %s
+            """,
+            (schema, table),
+        )
+        return row is not None
+
+    def list_columns(self, schema: str, table: str) -> dict[str, str]:
+        """Return {column: data_type} so we can ADD / ALTER missing or mismatched types."""
+        schema = _safe_ident(schema)
+        table = _safe_ident(table)
+        rows = self.fetch_all(
+            """
+            SELECT column_name, data_type
+            FROM information_schema.columns
+            WHERE table_schema = %s AND table_name = %s
+            """,
+            (schema, table),
+        )
+        return {str(row[0]): str(row[1]) for row in rows}
+
+    def ensure_table_columns(
+        self,
+        schema: str,
+        table: str,
+        columns: dict[str, str],
+        *,
+        type_using: dict[str, str] | None = None,
+    ) -> dict[str, str]:
+        """ADD missing columns and ALTER type when the live table does not match the contract."""
+        schema_s = _safe_ident(schema)
+        table_s = _safe_ident(table)
+        type_using = type_using or {}
+        existing = self.list_columns(schema_s, table_s)
+        if not existing:
+            raise RuntimeError(f"{schema_s}.{table_s} does not exist after CREATE")
+        logger.info("[sql] Ensure %s.%s live_columns=%s", schema_s, table_s, len(existing))
+        with self._connect() as conn:
+            with conn.cursor() as cur:
+                for name, pg_type in columns.items():
+                    col = _safe_ident(name)
+                    live = existing.get(name)
+                    if live is None:
+                        logger.info("[sql] ADD COLUMN %s.%s.%s %s", schema_s, table_s, col, pg_type)
+                        cur.execute(
+                            f'ALTER TABLE "{schema_s}"."{table_s}" ADD COLUMN "{col}" {pg_type}'
+                        )
+                        continue
+                    if _normalize_pg_type(live) == _normalize_pg_type(pg_type):
+                        continue
+                    using = type_using.get(name)
+                    logger.info(
+                        "[sql] ALTER COLUMN %s.%s.%s %s -> %s",
+                        schema_s,
+                        table_s,
+                        col,
+                        live,
+                        pg_type,
+                    )
+                    if using:
+                        cur.execute(
+                            f'ALTER TABLE "{schema_s}"."{table_s}" '
+                            f'ALTER COLUMN "{col}" TYPE {pg_type} USING {using}'
+                        )
+                    else:
+                        cur.execute(
+                            f'ALTER TABLE "{schema_s}"."{table_s}" '
+                            f'ALTER COLUMN "{col}" TYPE {pg_type} USING "{col}"::{pg_type}'
+                        )
+            conn.commit()
+        updated = self.list_columns(schema_s, table_s)
+        logger.info("[sql] Ensure done %s.%s columns=%s", schema_s, table_s, len(updated))
+        return updated
+
+    def upsert_rows(
+        self,
+        rows: list[dict[str, Any]],
+        *,
+        schema: str,
+        table: str,
+        columns: tuple[str, ...] | list[str],
+        conflict_column: str,
+        update_columns: list[str] | None = None,
+        jsonb_columns: tuple[str, ...] = ("prizes_json", "teams_json", "standings_json"),
+    ) -> int:
+        """Insert/update dim rows in batches; keep existing row_number on conflict."""
+        from psycopg2.extras import execute_values
+
+        if not rows:
+            return 0
+        schema = _safe_ident(schema)
+        table = _safe_ident(table)
+        conflict_column = _safe_ident(conflict_column)
+        cols = [_safe_ident(c) for c in columns]
+        update_columns = update_columns or [c for c in cols if c != conflict_column]
+        update_sql = ", ".join(f'"{c}" = EXCLUDED."{c}"' for c in update_columns)
+        col_sql = ", ".join(f'"{c}"' for c in cols)
+        template_parts = []
+        for col in cols:
+            if col in jsonb_columns:
+                template_parts.append("%s::jsonb")
+            else:
+                template_parts.append("%s")
+        template = "(" + ", ".join(template_parts) + ")"
+        insert_sql = f'''
+            INSERT INTO "{schema}"."{table}" ({col_sql})
+            VALUES %s
+            ON CONFLICT ("{conflict_column}") DO UPDATE SET {update_sql}
+        '''
+        tuples = [tuple(row.get(col) for col in columns) for row in rows]
+        logger.info("[upsert] Start %s.%s rows=%s", schema, table, len(tuples))
+        with self._connect() as conn:
+            with conn.cursor() as cur:
+                execute_values(cur, insert_sql, tuples, template=template, page_size=500)
+            conn.commit()
+        logger.info("[upsert] Done %s.%s rows=%s", schema, table, len(tuples))
+        return len(tuples)
 
 
 def main() -> None:

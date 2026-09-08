@@ -4,7 +4,10 @@
 
 services:
   vlrggapi:
-    image: ghcr.io/axsddlr/vlrggapi:latest
+    build:
+      context: .
+      dockerfile: docker/vlrggapi/Dockerfile
+    image: valorant-stats-vlrggapi:local
     container_name: vlrggapi
     ports:
       - "3001:3001"
@@ -12,6 +15,16 @@ services:
     read_only: true
     tmpfs:
       - /tmp
+    env_file:
+      - path: src/config/.env
+        required: false
+      - path: .env
+        required: false
+    environment:
+      HOME: /tmp
+      VLR_USE_IP_ROTATOR: "1"
+      # us-east-1 is usually enabled; override with VLR_IP_ROTATOR_REGIONS if needed.
+      VLR_IP_ROTATOR_REGIONS: ${VLR_IP_ROTATOR_REGIONS:-us-east-1}
     healthcheck:
       test:
         [
@@ -22,8 +35,8 @@ services:
         ]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 15s
+      retries: 5
+      start_period: 120s
 
   dagster-webserver:
     build:

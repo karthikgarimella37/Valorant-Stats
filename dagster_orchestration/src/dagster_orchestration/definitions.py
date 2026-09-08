@@ -6,7 +6,6 @@ from pathlib import Path
 
 import psycopg2
 from dagster import AssetExecutionContext, Definitions, MetadataValue, asset, define_asset_job
-from dotenv import load_dotenv
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SRC_ROOT = REPO_ROOT / "src"
@@ -14,17 +13,17 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 from backend.api_connectors.ribs_connector import RibsConnector
+from backend.config.env import load_project_env
 from backend.database_connectors.supabase_connectors import SupabaseConnector
 from backend.rib_gg.extract import RibExtractPipeline, landing_dir_for, read_ndjson
+from backend.vlr.dim.historical import apply_events_schema, extract_events, load_events, rows_from_events_landing
+from backend.vlr.dim.matches import apply_matches_schema, extract_matches, load_matches
 from backend.vlr.extract import VlrExtractPipeline
+
+load_project_env(REPO_ROOT)
 
 DBT_PROJECT_DIR = REPO_ROOT / "src" / "backend" / "sql"
 DBT_BIN = DBT_PROJECT_DIR / ".venv" / "bin" / "dbt"
-ENV_PATHS = [REPO_ROOT / ".env", REPO_ROOT / "src" / "config" / ".env"]
-
-for env_path in ENV_PATHS:
-    if env_path.exists():
-        load_dotenv(env_path, override=False)
 
 
 def _run_command(context: AssetExecutionContext, command: list[str], cwd: Path) -> None:
@@ -409,13 +408,95 @@ def rib_load_valorant_tables(context: AssetExecutionContext) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# VLR historical — events then matches (full match JSON reused by later facts)
+# ---------------------------------------------------------------------------
+
+
+@asset(group_name="vlr_hist")
+def evt_schema(context: AssetExecutionContext) -> str:
+    """Create or alter vlr.dim_events so extract rows match warehouse columns."""
+    context.log.info("=== STEP evt_schema: ensure vlr.dim_events ===")
+    path = apply_events_schema(REPO_ROOT)
+    context.add_output_metadata({"sql_path": MetadataValue.path(str(path))})
+    return str(path)
+
+
+@asset(group_name="vlr_hist", deps=[evt_schema])
+def evt_extract(context: AssetExecutionContext) -> int:
+    """Page every VLR event, append insert rows to data/vlr/events.jsonl."""
+    context.log.info(
+        "=== STEP evt_extract: workers=%s max_events=%s ===",
+        os.getenv("VLR_EVENT_DETAIL_WORKERS", "12"),
+        os.getenv("VLR_MAX_EVENTS", "unlimited"),
+    )
+    rows = extract_events(REPO_ROOT)
+    context.add_output_metadata(
+        {
+            "event_count": len(rows),
+            "json_path": MetadataValue.path(str(REPO_ROOT / "data" / "vlr" / "events.jsonl")),
+        }
+    )
+    context.log.info("Events extracted: %s", len(rows))
+    return len(rows)
+
+
+@asset(group_name="vlr_hist", deps=[evt_extract])
+def evt_load(context: AssetExecutionContext) -> int:
+    """Upsert insert-ready rows from events.jsonl into vlr.dim_events."""
+    context.log.info("=== STEP evt_load: upsert vlr.dim_events ===")
+    rows = rows_from_events_landing(REPO_ROOT)
+    loaded = load_events(rows)
+    context.add_output_metadata({"upserted": loaded})
+    context.log.info("dim_events upserted=%s", loaded)
+    return loaded
+
+
+@asset(group_name="vlr_hist")
+def match_schema(context: AssetExecutionContext) -> str:
+    """Create or alter vlr.dim_matches so extract rows match warehouse columns."""
+    context.log.info("=== STEP match_schema: ensure vlr.dim_matches ===")
+    path = apply_matches_schema(REPO_ROOT)
+    context.add_output_metadata({"sql_path": MetadataValue.path(str(path))})
+    return str(path)
+
+
+@asset(group_name="vlr_hist", deps=[match_schema])
+def match_extract(context: AssetExecutionContext) -> int:
+    """List matches for every event, land full /v2/match/details into matches.jsonl."""
+    context.log.info(
+        "=== STEP match_extract: event_workers=%s match_workers=%s ===",
+        os.getenv("VLR_MATCH_EVENT_WORKERS", "8"),
+        os.getenv("VLR_MATCH_WORKERS", "8"),
+    )
+    count = extract_matches(REPO_ROOT)
+    context.add_output_metadata(
+        {
+            "match_count": count,
+            "json_path": MetadataValue.path(str(REPO_ROOT / "data" / "vlr" / "matches.jsonl")),
+        }
+    )
+    context.log.info("Matches extracted: %s", count)
+    return count
+
+
+@asset(group_name="vlr_hist", deps=[match_extract])
+def match_load(context: AssetExecutionContext) -> int:
+    """Upsert dim columns from matches.jsonl into vlr.dim_matches."""
+    context.log.info("=== STEP match_load: upsert vlr.dim_matches ===")
+    loaded = load_matches(REPO_ROOT)
+    context.add_output_metadata({"upserted": loaded})
+    context.log.info("dim_matches upserted=%s", loaded)
+    return loaded
+
+
+# ---------------------------------------------------------------------------
 # VLR.gg extract → parquet → vlr.*  (self-hosted vlrggapi via VLR_API_BASE)
 # ---------------------------------------------------------------------------
 
 
 @asset(group_name="vlr")
 def vlr_extract_regions(context: AssetExecutionContext) -> str:
-    """Seed dim_regions so teams and events can join a stable region_code."""
+    """Seed dim_regions (local) and dim_vct_regions (circuit). Never mixed in one table."""
     context.log.info(
         "=== STEP vlr_extract_regions: VLR_API_BASE=%s ===",
         os.getenv("VLR_API_BASE", "http://127.0.0.1:3001"),
@@ -496,6 +577,7 @@ def vlr_load_supabase(context: AssetExecutionContext) -> dict:
     entity_paths = pipeline.entity_paths_for_load()
     schema = "vlr"
     primary_keys = {
+        "dim_vct_regions": "id",
         "dim_regions": "id",
         "dim_country": "id",
         "dim_events": "id",
@@ -593,6 +675,16 @@ vlr_star_schema_job = define_asset_job(
     ],
 )
 
+vlr_events = define_asset_job(
+    "vlr_events",
+    selection=[evt_schema, evt_extract, evt_load],
+)
+
+vlr_matches = define_asset_job(
+    "vlr_matches",
+    selection=[match_schema, match_extract, match_load],
+)
+
 defs = Definitions(
     assets=[
         dbt_build_select_one_plus_ten,
@@ -604,6 +696,12 @@ defs = Definitions(
         rib_extract_series,
         rib_normalize_star,
         rib_load_valorant_tables,
+        evt_schema,
+        evt_extract,
+        evt_load,
+        match_schema,
+        match_extract,
+        match_load,
         vlr_extract_regions,
         vlr_extract_events,
         vlr_extract_teams,
@@ -612,5 +710,12 @@ defs = Definitions(
         vlr_load_supabase,
         vlr_dbt_half_round_view,
     ],
-    jobs=[dbt_job, dbt_star_schema_job, rib_gg_star_schema_job, vlr_star_schema_job],
+    jobs=[
+        dbt_job,
+        dbt_star_schema_job,
+        rib_gg_star_schema_job,
+        vlr_star_schema_job,
+        vlr_events,
+        vlr_matches,
+    ],
 )

@@ -21,6 +21,9 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 from backend.api_connectors.ip_rotator_gateway import VlrIpRotator, ip_rotator_enabled
+from backend.config.env import load_project_env
+
+load_project_env()
 
 API_BASE = "https://vlr.orlandomm.net/api/v1"
 SITE_BASE = "https://www.vlr.gg"

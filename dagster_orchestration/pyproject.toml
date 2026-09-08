@@ -15,7 +15,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "dagster-dg-cli",
+    "dagster-dg-cli==1.13.9",
     "dagster-webserver",
 ]
 
@@ -31,7 +31,7 @@ directory_type = "project"
 
 [tool.dg.project]
 root_module = "dagster_orchestration"
-code_location_load_target_module = "dagster_orchestration.definitions"
+code_location_target_module = "dagster_orchestration.definitions"
 registry_modules = [
     "dagster_orchestration.components.*",
 ]

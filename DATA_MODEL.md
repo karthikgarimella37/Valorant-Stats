@@ -4,7 +4,7 @@
 > Use this file to track **what is done**, **what is still required**, and **which API feeds which table**.  
 > Dagster runs daily: upsert dims first, then facts. dbt models live in `src/backend/sql/models/marts/`.
 
-**Last updated:** 2026-08-29
+**Last updated:** 2026-09-07
 
 ---
 
@@ -73,7 +73,8 @@ CREATE SEQUENCE valorant.seq_<table>_row_number
 
 | Table | Kind | Status | Daily Dagster? | Source |
 |-------|------|--------|----------------|--------|
-| `dim_regions` | dim | Required (static) | Rare | Seed from VLR region codes (`na`, `eu`, `ap`, …) |
+| `dim_vct_regions` | dim | Required (static) | Rare | VCT circuits only: `americas`, `emea`, `pacific`, `china` |
+| `dim_regions` | dim | Required (static) | Rare | Local ranking codes only: `na`, `eu`, `br`, `ap`, `kr`, `ch`, `jp`, `lan`, `las`, `oce`, `mn`, `gc` |
 | `dim_country` | dim | Required | Yes | Distinct `country` on VLR teams/players |
 | `dim_matches` | dim | Required | Yes | `/v2/events/matches` + `/v2/match/details` |
 | `dim_events` | dim | Required | Yes | `/v2/events`, `/v2/event/{id}` |
@@ -91,7 +92,7 @@ CREATE SEQUENCE valorant.seq_<table>_row_number
 | `fact_player_match_performance` | fact | Landed (parquet) | Yes | Scoreboard kast/hs/fk + series `advanced_stats` on map 1 |
 | `fact_player_vs_player_kills` | fact | Not started | Yes (rib only) | rib.gg replay-data; empty for historical VLR-only matches |
 | `fact_match_economy` | fact | Landed (parquet) | Yes | VLR team pistol/eco/full **win %** (not player spend) |
-| `fact_round_economy_detail` | fact | Not started | Yes | Round bank/loadout not on vlrggapi payload |
+| `fact_round_economy_detail` | fact | JSON landing | Yes | VLR economy tab `.bank` + `.rnd-sq` via `scrape_economy` (not /v2) |
 
 VLR does **not** have replay (kills/positions). It **does** have round winners + attack/defense side on the match page. That is enough for the half-round **view**.
 
@@ -103,8 +104,11 @@ Facts sit in the middle. Dims can point at other dims (snowflake), not only at f
 
 ```mermaid
 flowchart LR
+  dim_vct_regions --> dim_regions
+  dim_vct_regions --> dim_events
   dim_regions --> dim_events
   dim_regions --> dim_teams
+  dim_regions --> dim_country
   dim_country --> dim_teams
   dim_country --> dim_players
   dim_date --> dim_matches
@@ -140,23 +144,46 @@ Add these on **every dim**, in this order at the ends of the column list:
 
 ## Dimensions
 
+### `dim_vct_regions` — Required (static)
+
+One row per **VCT international circuit**. Do not put `na` / `eu` / `kr` here.  
+**PK:** `row_number`  
+**Business key:** `vct_region_code`  
+**Sequence:** `seq_dim_vct_regions_row_number`
+
+| Column | Type | Notes |
+|--------|------|--------|
+| `vct_region_code` | `TEXT` | `americas`, `emea`, `pacific`, `china` |
+| `vct_region_name` | `TEXT` | |
+| `row_number` | `BIGINT` PK | |
+| `insert_date` | `TIMESTAMPTZ` | |
+| `update_date` | `TIMESTAMPTZ` | |
+
+**Insert from:** seed in `src/backend/vlr/regions.py` (`VCT_REGIONS`).  
+**Dagster:** load once with `dim_regions`.
+
+---
+
 ### `dim_regions` — Required (static)
 
-One row per VLR region code.  
+One row per **local VLR ranking code**. Do not put `americas` / `emea` / `pacific` / `china` here.  
 **PK:** `row_number`  
 **Business key:** `region_code`  
 **Sequence:** `seq_dim_regions_row_number`
 
 | Column | Type | Notes |
 |--------|------|--------|
-| `region_code` | `TEXT` | `na`, `eu`, `br`, `ap`, `kr`, `ch`, `jp`, `lan`, `las`, `oce`, `mn`, `gc`, `americas`, `emea`, `pacific`, `china` |
+| `region_code` | `TEXT` | `na`, `eu`, `br`, `ap`, `kr`, `ch`, `jp`, `lan`, `las`, `oce`, `mn`, `gc` |
 | `region_name` | `TEXT` | |
+| `vct_region_code` | `TEXT` | FK business key → `dim_vct_regions` (null for `gc`) |
 | `row_number` | `BIGINT` PK | |
 | `insert_date` | `TIMESTAMPTZ` | |
 | `update_date` | `TIMESTAMPTZ` | |
 
-**Insert from:** seed SQL matching VLR `region` query params.  
+**Insert from:** seed in `src/backend/vlr/regions.py` (`LOCAL_REGIONS`). API aliases: `cn`→`ch`, `la-n`→`lan`, `la-s`→`las`.  
 **Dagster:** load once.
+
+Rule: a row is **either** a VCT circuit **or** a local code. Events store at most one of `vct_region_id` / `region_id`. Teams and countries always use local `region_id`; circuit is via `dim_regions.vct_region_code`.
 
 ---
 
@@ -170,7 +197,7 @@ One row per country string VLR uses.
 | Column | Type | Notes |
 |--------|------|--------|
 | `country_name` | `TEXT` | As returned by VLR (`United States`, …) |
-| `region_id` | `BIGINT` FK | → `dim_regions.row_number` (nullable) |
+| `region_id` | `BIGINT` FK | → `dim_regions.row_number` (local only, nullable) |
 | `row_number` | `BIGINT` PK | |
 | `insert_date` | `TIMESTAMPTZ` | |
 | `update_date` | `TIMESTAMPTZ` | |
@@ -210,8 +237,9 @@ One row per series (the “match” on vlr.gg).
 | `insert_date` | `TIMESTAMPTZ` | |
 | `update_date` | `TIMESTAMPTZ` | |
 
-**Insert from:** VLR `/events/{id}/matches` then `/matches/{id}`.  
-**Dagster:** daily upsert on `vlr_match_id`. Set `rib_match_id` when overlay job matches.
+**Landing now:** job `vlr_matches` writes `data/vlr/matches.jsonl` (dim fields + `listing` + full `/v2/match/details`). Later facts/dims parse that file — do not re-hit the API.  
+**Warehouse now:** codes (`vlr_event_id`, `vlr_team_1_id`, `vlr_team_2_id`) and `match_date` TEXT `YYYY/M/D`. Resolve FKs after `dim_teams` / `dim_date` exist.  
+**Dagster:** upsert on `vlr_match_id`. Set `rib_match_id` when overlay job matches.
 
 ---
 
@@ -226,23 +254,35 @@ One row per tournament / event.
 |--------|------|--------|
 | `vlr_event_id` | `TEXT` | |
 | `parent_event_id` | `BIGINT` FK | → `dim_events.row_number` (nullable) |
-| `region_id` | `BIGINT` FK | → `dim_regions.row_number` |
+| `vct_region_id` | `BIGINT` FK | → `dim_vct_regions` when the event is a VCT circuit (Pacific Stage, Americas, …) |
+| `region_id` | `BIGINT` FK | → `dim_regions` when the event is local/challengers (`na`, `kr`, …) |
 | `event_name` | `TEXT` | |
 | `short_name` | `TEXT` | |
 | `slug` | `TEXT` | |
 | `event_tier` | `TEXT` | vct / vcl / t3 / game-changers / … |
 | `status` | `TEXT` | upcoming / ongoing / completed |
-| `start_date_id` | `BIGINT` FK | → `dim_date.row_number` |
-| `end_date_id` | `BIGINT` FK | → `dim_date.row_number` |
+| `start_date_id` | `BIGINT` FK | → `dim_date.row_number` (later; landing uses `start_date` TEXT `YYYY/M/D` e.g. `2026/7/8`) |
+| `end_date_id` | `BIGINT` FK | → `dim_date.row_number` (later; landing uses `end_date` TEXT `YYYY/M/D`) |
 | `prize_pool` | `NUMERIC` | |
 | `prize_pool_currency` | `TEXT` | |
 | `logo_url` | `TEXT` | |
+| `url` | `TEXT` | vlr.gg event page |
+| `series` | `TEXT` | Circuit line (`Valorant Champions Tour 2026`) |
+| `subtitle` | `TEXT` | |
+| `location` | `TEXT` | Venue / city |
+| `dates_text` | `TEXT` | Raw VLR date string |
+| `prize_pool_text` | `TEXT` | Raw prize string |
+| `participating_team_count` | `INT` | |
+| `prize_placement_count` | `INT` | |
+| `prizes_json` | `JSONB` | Place / amount / team |
+| `teams_json` | `JSONB` | Participating rosters |
+| `standings_json` | `JSONB` | Empty on many live events |
 | `row_number` | `BIGINT` PK | |
 | `insert_date` | `TIMESTAMPTZ` | |
 | `update_date` | `TIMESTAMPTZ` | |
 
-**Insert from:** VLR `/events` + `/events/{id}`.  
-**Dagster:** daily upsert on `vlr_event_id`.
+**Insert from:** job `vlr_events` (`/v2/events` + `/v2/event/{id}`). Classify `region` with `split_event_region`: VCT circuit **or** local code, never both. Landing: `data/vlr/events.jsonl`.  
+**Dagster:** one-shot historical, then later incremental upsert on `vlr_event_id`.
 
 ---
 
@@ -329,7 +369,7 @@ One row per org / team.
 |--------|------|--------|
 | `vlr_team_id` | `TEXT` | |
 | `rib_team_id` | `BIGINT` | Overlay; nullable |
-| `region_id` | `BIGINT` FK | → `dim_regions.row_number` |
+| `region_id` | `BIGINT` FK | → `dim_regions.row_number` (local only; circuit via `vct_region_code`) |
 | `country_id` | `BIGINT` FK | → `dim_country.row_number` |
 | `team_name` | `TEXT` | |
 | `team_code` | `TEXT` | Short name |
@@ -619,7 +659,7 @@ Grain: **one team on one series** (VLR publishes buy-type **win %**, not player 
 
 ---
 
-### `fact_round_economy_detail` — Not started
+### `fact_round_economy_detail` — JSON landing (`maps[].round_economy`)
 
 Grain: **one team on one round of one map game**.  
 **Sequence:** `seq_fact_round_economy_detail_row_number`  
@@ -643,7 +683,7 @@ Grain: **one team on one round of one map game**.
 | `insert_date` | `TIMESTAMPTZ` | |
 | `update_date` | `TIMESTAMPTZ` | |
 
-**Insert from:** VLR economy rounds if present; else rib `roundEconomy`. Historical years may only have VLR.  
+**Insert from:** `src/backend/vlr/scrape_economy.py` on `/?game=all&tab=economy` (`round_economy[].team1/team2.bank_credits` + `loadout_credits`). Not in vlrggapi `/v2`.  
 **Dagster:** daily, completed maps.
 
 ---
@@ -653,7 +693,7 @@ Grain: **one team on one round of one map game**.
 Run extract + dbt from the **Dockerfile / compose**, not a laptop venv. Order:
 
 ```text
-1. dim_date, dim_regions, dim_economy     (seed / extend)
+1. dim_date, dim_vct_regions, dim_regions, dim_economy     (seed / extend)
 2. Parallel VLR catalog:  dim_country (from teams/players), dim_teams, dim_events
 3. dim_players           (needs teams + country)
 4. dim_matches           (needs events + teams + date)
@@ -711,7 +751,7 @@ These read from the warehouse. Frontend not started.
 - `src/backend/vlr/extract.py` lands catalog + overall/round/performance/economy parquet.
 - rib overlay join is **fuzzy**: event name + team names + date.
 - `fact_player_vs_player_kills` is empty for historical VLR-only matches (no replay).
-- `fact_round_economy_detail` waits on round bank/loadout (not in vlrggapi JSON).
+- `fact_round_economy_detail` is scraped from the VLR economy tab (`scrape_economy.py`); `/v2` still only has the buy-win table.
 - `/v2/match/details` omits `event_id` (resolve via `/v2/search` or events/matches) and Attack/Defend player splits (`.side.mod-both` only).
 - Performance 2K–1v5 / ECON / PL / DE and economy buy columns arrive as keys `"1"`…`"13"` / `"0"`…`"5"` — remap in `src/backend/vlr/field_maps.py`.
 - Incremental extract cursor: `vlr_watermarks` (`entity_type`, `entity_id`, `last_fetched_at`, `source_url`). JSON first; load to Supabase when Dagster runs.

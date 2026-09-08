@@ -13,29 +13,18 @@ from typing import Any
 import polars as pl
 
 from backend.api_connectors.vlr_v2_connector import RANKING_REGIONS, VlrV2Connector, vlr_api_base
+from backend.vlr.regions import (
+    LOCAL_REGIONS,
+    LOCAL_TO_VCT,
+    VCT_REGIONS,
+    normalize_region_code,
+    split_event_region,
+)
 
 logger = logging.getLogger(__name__)
 
-REGION_SEED: tuple[tuple[str, str], ...] = (
-    ("na", "North America"),
-    ("eu", "Europe"),
-    ("ap", "Asia Pacific"),
-    ("la", "Latin America"),
-    ("la-s", "Latin America South"),
-    ("la-n", "Latin America North"),
-    ("oce", "Oceania"),
-    ("kr", "Korea"),
-    ("mn", "MENA"),
-    ("gc", "Game Changers"),
-    ("br", "Brazil"),
-    ("cn", "China"),
-    ("jp", "Japan"),
-    ("col", "Collegiate"),
-    ("americas", "Americas"),
-    ("emea", "EMEA"),
-    ("pacific", "Pacific"),
-    ("china", "China (VCT)"),
-)
+# Back-compat alias: local ranking codes only (not VCT circuits).
+REGION_SEED = LOCAL_REGIONS
 
 _EVENT_ID_RE = re.compile(r"/event/(\d+)")
 _MATCH_ID_RE = re.compile(r"vlr\.gg/(\d+)")
@@ -163,14 +152,28 @@ class VlrExtractPipeline:
         return landing_dir_for(self.repo_root, entity, self.run_date) / "data.parquet"
 
     def extract_regions(self) -> Path:
-        """Seed dim_regions so teams/events can FK a stable region_code."""
-        logger.info("[extract_regions] Seeding %s VLR region codes...", len(REGION_SEED))
-        rows = [
-            {"id": code, "region_code": code, "region_name": name}
-            for code, name in REGION_SEED
+        """Seed local dim_regions and VCT dim_vct_regions as two grains (never mixed)."""
+        logger.info(
+            "[extract_regions] Seeding local=%s vct=%s",
+            len(LOCAL_REGIONS),
+            len(VCT_REGIONS),
+        )
+        local_rows = [
+            {
+                "id": code,
+                "region_code": code,
+                "region_name": name,
+                "vct_region_code": LOCAL_TO_VCT.get(code),
+            }
+            for code, name in LOCAL_REGIONS
         ]
-        path = write_parquet(pl.DataFrame(rows), self._entity_path("dim_regions"))
-        logger.info("[extract_regions] Done path=%s", path)
+        vct_rows = [
+            {"id": code, "vct_region_code": code, "vct_region_name": name}
+            for code, name in VCT_REGIONS
+        ]
+        path = write_parquet(pl.DataFrame(local_rows), self._entity_path("dim_regions"))
+        vct_path = write_parquet(pl.DataFrame(vct_rows), self._entity_path("dim_vct_regions"))
+        logger.info("[extract_regions] Done local=%s vct=%s", path, vct_path)
         return path
 
     def extract_events(self) -> Path:
@@ -204,6 +207,7 @@ class VlrExtractPipeline:
                 event_id = segment.get("id") or _event_id_from_url(str(url_path))
                 if not event_id:
                     continue
+                vct_code, local_code = split_event_region(segment.get("region"))
                 rows.append(
                     {
                         "id": str(event_id),
@@ -212,7 +216,8 @@ class VlrExtractPipeline:
                         "status": segment.get("status"),
                         "prize_pool_text": segment.get("prize"),
                         "dates_text": segment.get("dates"),
-                        "region_code": segment.get("region"),
+                        "vct_region_code": vct_code,
+                        "region_code": local_code,
                         "url_path": url_path,
                     }
                 )
@@ -224,6 +229,7 @@ class VlrExtractPipeline:
                 "status": pl.String,
                 "prize_pool_text": pl.String,
                 "dates_text": pl.String,
+                "vct_region_code": pl.String,
                 "region_code": pl.String,
                 "url_path": pl.String,
             }
@@ -287,6 +293,8 @@ class VlrExtractPipeline:
         )
         ranking_rows: list[dict[str, Any]] = []
         for region, segments in ranking_batches:
+            parsed = normalize_region_code(region)
+            local_code = parsed[1] if parsed and parsed[0] == "local" else None
             for segment in segments:
                 country = segment.get("country")
                 if country:
@@ -295,7 +303,7 @@ class VlrExtractPipeline:
                     {
                         "team_name": segment.get("team"),
                         "country_name": country,
-                        "region_code": region,
+                        "region_code": local_code,
                         "rank": segment.get("rank"),
                         "logo_url": segment.get("logo"),
                     }
@@ -703,6 +711,7 @@ class VlrExtractPipeline:
     def entity_paths_for_load(self) -> dict[str, Path]:
         """Map warehouse table names to parquet landings for Supabase load."""
         names = (
+            "dim_vct_regions",
             "dim_regions",
             "dim_country",
             "dim_teams",

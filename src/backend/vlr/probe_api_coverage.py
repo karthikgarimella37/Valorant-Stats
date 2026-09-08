@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from backend.api_connectors.vlr_v2_connector import VlrV2Connector
+from backend.vlr.scrape_economy import attach_round_economy
 from backend.vlr.snapshot_json import write_entity_json
 
 logger = logging.getLogger(__name__)
@@ -51,7 +52,8 @@ def cover_match(match: dict[str, Any]) -> list[dict[str, Any]]:
     )
     rounds = (maps[0].get("rounds") or []) if maps else []
     has_round_method = any(r.get("method") for r in rounds)
-    has_round_bank = any("bank" in r or "loadout" in r for r in rounds)
+    bank_rounds = (maps[0].get("round_economy") or []) if maps else []
+    has_round_bank = bool(bank_rounds) and bool((bank_rounds[0].get("team1") or {}).get("bank"))
     return [
         _check("event.name", _present(event.get("name")), str(event.get("name"))),
         _check("event.series / stage", _present(event.get("series")), str(event.get("series"))),
@@ -77,7 +79,11 @@ def cover_match(match: dict[str, Any]) -> list[dict[str, Any]]:
         _check("round win method", has_round_method, "not in payload"),
         _check("performance 2K..1v5/ECON/PL/DE labeled", labeled_adv, f"keys={list(adv0.keys())}"),
         _check("economy team buy-win table labeled", labeled_eco, f"eco0={eco0}"),
-        _check("economy per round bank/loadout", has_round_bank, "not scraped from economy tab"),
+        _check(
+            "economy per round bank/loadout",
+            has_round_bank,
+            f"n={len(bank_rounds)} r1={bank_rounds[0] if bank_rounds else None}",
+        ),
     ]
 
 
@@ -136,7 +142,7 @@ def run_probe(repo_root: Path | None = None) -> dict[str, Any]:
     connector = VlrV2Connector()
     connector.health()
 
-    match = connector.get_match_details(EXAMPLE_MATCH_ID)
+    match = attach_round_economy(connector.get_match_details(EXAMPLE_MATCH_ID))
     write_entity_json(
         repo_root,
         entity_type="matches",

@@ -5,31 +5,38 @@ from __future__ import annotations
 import logging
 import os
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
+from urllib.parse import urlparse
 
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
+from backend.api_connectors.ip_rotator_gateway import VlrIpRotator, ip_rotator_enabled
+from backend.config.env import load_project_env
+
 logger = logging.getLogger(__name__)
 
+load_project_env()
+SITE_BASE = "https://www.vlr.gg"
+
 DEFAULT_API_BASE = "http://127.0.0.1:3001"
+# VLR /v2/rankings query params only (local grain). Aliases cn/la-n/la-s normalize in extract.
 RANKING_REGIONS = (
     "na",
     "eu",
-    "ap",
-    "la",
-    "la-s",
-    "la-n",
-    "oce",
-    "kr",
-    "mn",
-    "gc",
     "br",
+    "ap",
+    "kr",
     "cn",
     "jp",
-    "col",
+    "la-n",
+    "la-s",
+    "oce",
+    "mn",
+    "gc",
 )
 
 
@@ -51,36 +58,84 @@ class VlrV2Connector:
         self.timeout = timeout
         self.max_workers = max_workers or int(os.getenv("VLR_API_MAX_WORKERS", "8"))
         self._lock = threading.Lock()
+        self._session_obj: requests.Session | None = None
+        host = (urlparse(self.base_url).hostname or "").lower()
+        self._rotate_api = ip_rotator_enabled() and host.endswith("vlr.gg")
         logger.info(
-            "[vlr_v2] Connector ready base=%s workers=%s",
+            "[vlr_v2] Connector ready base=%s workers=%s ip_rotator=%s (vlr.gg host only)",
             self.base_url,
             self.max_workers,
+            self._rotate_api,
         )
 
     def _session(self) -> requests.Session:
-        session = requests.Session()
-        retry = Retry(
-            total=4,
-            backoff_factor=1.0,
-            status_forcelist=[429, 500, 502, 503, 504],
-            allowed_methods=["GET"],
-        )
-        adapter = HTTPAdapter(max_retries=retry, pool_maxsize=max(self.max_workers, 4))
-        session.mount("https://", adapter)
-        session.mount("http://", adapter)
-        session.headers.update({"Accept": "application/json", "User-Agent": "valorant-stats-extract/1.0"})
-        return session
+        """Reuse one session so the AWS gateway mounts once when the API host is vlr.gg."""
+        with self._lock:
+            if self._session_obj is not None:
+                return self._session_obj
+            session = requests.Session()
+            # 502/503 are handled in get_json with a long sleep (vlrggapi circuit breaker).
+            retry = Retry(
+                total=2,
+                backoff_factor=1.5,
+                status_forcelist=[429, 500],
+                allowed_methods=["GET"],
+            )
+            adapter = HTTPAdapter(max_retries=retry, pool_maxsize=max(self.max_workers, 4))
+            session.mount("https://", adapter)
+            session.mount("http://", adapter)
+            session.headers.update({"Accept": "application/json", "User-Agent": "valorant-stats-extract/1.0"})
+            if self._rotate_api:
+                mounted = VlrIpRotator.mount(session, SITE_BASE)
+                logger.info("[vlr_v2] IP rotator mounted=%s site=%s", mounted, SITE_BASE)
+            self._session_obj = session
+            return session
 
     def get_json(self, path: str, params: dict[str, Any] | None = None) -> Any:
         """GET one /v2 path and unwrap `{status, data}` so callers see the payload only."""
         url = f"{self.base_url}/{path.lstrip('/')}"
-        logger.debug("[vlr_v2] GET %s params=%s", url, params)
-        response = self._session().get(url, params=params, timeout=self.timeout)
-        response.raise_for_status()
-        payload = response.json()
-        if isinstance(payload, dict) and "data" in payload:
-            return payload["data"]
-        return payload
+        attempts = int(os.getenv("VLR_API_ATTEMPTS", "8"))
+        last_error: Exception | None = None
+        for attempt in range(1, attempts + 1):
+            logger.debug("[vlr_v2] GET %s params=%s attempt=%s", url, params, attempt)
+            try:
+                response = self._session().get(url, params=params, timeout=self.timeout)
+            except (requests.ConnectionError, requests.Timeout) as exc:
+                last_error = exc
+                wait = min(5.0 * attempt, 45.0)
+                logger.warning(
+                    "[vlr_v2] Connection failed %s attempt=%s/%s; sleep=%.0fs",
+                    url,
+                    attempt,
+                    attempts,
+                    wait,
+                )
+                time.sleep(wait)
+                continue
+            if response.status_code in {429, 502, 503, 504}:
+                wait = min(10.0 * attempt, 90.0)
+                logger.warning(
+                    "[vlr_v2] status=%s %s attempt=%s/%s; sleep=%.0fs (vlrggapi/VLR backoff)",
+                    response.status_code,
+                    url,
+                    attempt,
+                    attempts,
+                    wait,
+                )
+                time.sleep(wait)
+                last_error = requests.HTTPError(
+                    f"{response.status_code} for {url}", response=response
+                )
+                continue
+            if response.status_code == 422:
+                response.raise_for_status()
+            response.raise_for_status()
+            payload = response.json()
+            if isinstance(payload, dict) and "data" in payload:
+                return payload["data"]
+            return payload
+        assert last_error is not None
+        raise last_error
 
     def _first_segment(self, data: Any) -> dict[str, Any]:
         """Unwrap vlrggapi `{status, segments:[...]}` so callers get one entity dict."""
@@ -94,8 +149,15 @@ class VlrV2Connector:
         return self.get_json("v2/health")
 
     def get_events_page(self, page: int, query: str) -> list[dict[str, Any]]:
-        """One events list page (`q=completed|upcoming|live`)."""
-        data = self.get_json("v2/events", params={"q": query, "page": page})
+        """One events list page (`q=completed|upcoming|live`). Empty list past the last page."""
+        try:
+            data = self.get_json("v2/events", params={"q": query, "page": page})
+        except requests.HTTPError as exc:
+            # vlrggapi returns 422 when page is past the last catalog page.
+            if exc.response is not None and exc.response.status_code == 422:
+                logger.info("[vlr_v2] Events page past end q=%s page=%s", query, page)
+                return []
+            raise
         if isinstance(data, dict):
             return list(data.get("segments") or [])
         return []
