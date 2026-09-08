@@ -348,15 +348,13 @@ def extract_matches(repo_root: Path | None = None) -> int:
     skip_existing = os.getenv("VLR_MATCH_SKIP_EXISTING", "1") == "1"
     list_workers = int(os.getenv("VLR_MATCH_EVENT_WORKERS", "8"))
     detail_workers = int(os.getenv("VLR_MATCH_WORKERS", "8"))
-    delay = float(os.getenv("VLR_MATCH_DELAY_SEC", "0.2"))
     cached = event_ids_with_match_lists(repo_root)
     cache_lock = threading.Lock()
     logger.info(
-        "[matches] Listing events=%s cached_lists=%s workers=%s delay=%s",
+        "[matches] Listing events=%s cached_lists=%s workers=%s",
         len(event_ids),
         len(cached),
         list_workers,
-        delay,
     )
     list_connector = VlrV2Connector(max_workers=list_workers)
     # Independent event match lists — parallel; 429/502 retries live in the connector.
