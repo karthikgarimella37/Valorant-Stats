@@ -281,7 +281,7 @@ One row per tournament / event.
 | `insert_date` | `TIMESTAMPTZ` | |
 | `update_date` | `TIMESTAMPTZ` | |
 
-**Insert from:** historical job `vlr_historical_events_job` (`/v2/events` + `/v2/event/{id}`). Classify `region` with `split_event_region`: VCT circuit **or** local code, never both. JSON landings: `data/vlr/events/<id>.json`.  
+**Insert from:** job `vlr_events` (`/v2/events` + `/v2/event/{id}`). Classify `region` with `split_event_region`: VCT circuit **or** local code, never both. Landing: `data/vlr/events.jsonl`.  
 **Dagster:** one-shot historical, then later incremental upsert on `vlr_event_id`.
 
 ---
