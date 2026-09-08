@@ -275,3 +275,156 @@ def json_dumps(value: Any) -> str | None:
     if value is None:
         return None
     return json.dumps(value, ensure_ascii=False)
+
+
+def matches_jsonl_path(repo_root: Path) -> Path:
+    """Single append file: dim_matches row + listing + full /v2/match/details."""
+    path = Path(repo_root) / "data" / "vlr" / "matches.jsonl"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def event_matches_jsonl_path(repo_root: Path) -> Path:
+    """Per-event match list cache so resume does not re-hit /v2/events/matches."""
+    path = Path(repo_root) / "data" / "vlr" / "event_matches.jsonl"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def match_id_from_url(url: str | None) -> str | None:
+    """Parse vlr match id from a match page URL when the payload omits match_id."""
+    if not url:
+        return None
+    match = _MATCH_ID_RE.search(str(url))
+    return match.group(1) if match else None
+
+
+def parse_match_patch(raw: str | None) -> str | None:
+    """Pull `13.04` from `... Patch 13.04` so dim_matches.match_patch is stable."""
+    if not raw:
+        return None
+    match = _PATCH_RE.search(str(raw))
+    return match.group(1) if match else None
+
+
+def parse_match_date(raw: str | None, fallback_year: int | None = None) -> str | None:
+    """Parse VLR match date strings into project dates (`2026/8/29`)."""
+    if not raw:
+        return None
+    text = _TODAY_YESTERDAY_RE.sub("", str(raw)).strip()
+    text = re.sub(r"\d{1,2}:\d{2}\s*(AM|PM).*$", "", text, flags=re.I)
+    text = _PATCH_RE.sub("", text)
+    text = re.sub(r"\s+", " ", text).strip(" ,")
+    start, _ = parse_event_dates(text, fallback_year=fallback_year)
+    return start
+
+
+def serialize_match_row(row: dict[str, Any]) -> dict[str, Any]:
+    """JSON-safe copy of a match landing line (datetimes as ISO)."""
+    out = dict(row)
+    for key in ("insert_date", "update_date"):
+        value = out.get(key)
+        if isinstance(value, datetime):
+            out[key] = value.isoformat()
+        elif isinstance(value, date):
+            out[key] = format_project_date(value)
+    value = out.get("match_date")
+    if isinstance(value, (date, datetime)):
+        out["match_date"] = format_project_date(value)
+    return out
+
+
+def append_match_row(repo_root: Path, row: dict[str, Any]) -> Path:
+    """Append one match landing line (dim fields + listing + detail)."""
+    path = matches_jsonl_path(repo_root)
+    payload = json.dumps(serialize_match_row(row), ensure_ascii=False, default=str)
+    with _JSONL_LOCK:
+        with path.open("a", encoding="utf-8") as handle:
+            handle.write(payload + "\n")
+    return path
+
+
+def append_event_match_list(repo_root: Path, event_id: str, matches: list[dict[str, Any]]) -> Path:
+    """Cache one event's match list so a resume skips that /v2/events/matches call."""
+    path = event_matches_jsonl_path(repo_root)
+    payload = json.dumps({"vlr_event_id": str(event_id), "matches": matches}, ensure_ascii=False)
+    with _JSONL_LOCK:
+        with path.open("a", encoding="utf-8") as handle:
+            handle.write(payload + "\n")
+    return path
+
+
+def match_ids_in_jsonl(repo_root: Path) -> set[str]:
+    """Ids already appended so a resume does not duplicate match lines."""
+    path = matches_jsonl_path(repo_root)
+    ids: set[str] = set()
+    if not path.exists():
+        return ids
+    with path.open(encoding="utf-8") as handle:
+        for line in handle:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+            except json.JSONDecodeError:
+                logger.warning("[matches] Skip bad JSONL line in %s", path)
+                continue
+            match_id = obj.get("vlr_match_id") if isinstance(obj, dict) else None
+            if match_id:
+                ids.add(str(match_id))
+    return ids
+
+
+def event_ids_with_match_lists(repo_root: Path) -> set[str]:
+    """Event ids already listed in event_matches.jsonl."""
+    path = event_matches_jsonl_path(repo_root)
+    ids: set[str] = set()
+    if not path.exists():
+        return ids
+    with path.open(encoding="utf-8") as handle:
+        for line in handle:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            event_id = obj.get("vlr_event_id") if isinstance(obj, dict) else None
+            if event_id:
+                ids.add(str(event_id))
+    return ids
+
+
+def read_event_match_lists(repo_root: Path) -> dict[str, list[dict[str, Any]]]:
+    """Load cached /v2/events/matches listings keyed by vlr_event_id."""
+    path = event_matches_jsonl_path(repo_root)
+    by_event: dict[str, list[dict[str, Any]]] = {}
+    if not path.exists():
+        return by_event
+    with path.open(encoding="utf-8") as handle:
+        for line in handle:
+            line = line.strip()
+            if not line:
+                continue
+            obj = json.loads(line)
+            if not isinstance(obj, dict):
+                continue
+            event_id = str(obj.get("vlr_event_id") or "")
+            matches = obj.get("matches")
+            if event_id and isinstance(matches, list):
+                by_event[event_id] = [row for row in matches if isinstance(row, dict)]
+    return by_event
+
+
+def event_ids_from_jsonl(repo_root: Path) -> list[str]:
+    """Event ids from events.jsonl so matches extract does not re-page /v2/events."""
+    ids: list[str] = []
+    seen: set[str] = set()
+    for row in read_event_rows_jsonl(repo_root):
+        event_id = str(row.get("vlr_event_id") or "")
+        if event_id and event_id not in seen:
+            seen.add(event_id)
+            ids.append(event_id)
+    return ids
