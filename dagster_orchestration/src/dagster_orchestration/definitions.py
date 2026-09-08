@@ -451,7 +451,7 @@ def evt_load(context: AssetExecutionContext) -> int:
     return loaded
 
 
-@asset(group_name="vlr_hist", deps=[evt_load])
+@asset(group_name="vlr_hist")
 def match_schema(context: AssetExecutionContext) -> str:
     """Create or alter vlr.dim_matches so extract rows match warehouse columns."""
     context.log.info("=== STEP match_schema: ensure vlr.dim_matches ===")
