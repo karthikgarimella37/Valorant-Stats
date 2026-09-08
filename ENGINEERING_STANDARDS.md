@@ -139,14 +139,16 @@ src/backend/
   database_connectors/     # Supabase / DB clients
   rib_gg/                  # rib.gg normalize + land parquet/ndjson
   vlr/                     # vlr extract / scrape transforms
-  vlr/dim/                 # dim extract (historical.py, util.py)
-  vlr/fact/                # fact extract (later historical facts)
+  vlr/dim/                 # dim extract (historical.py, matches.py, util.py)
+  vlr/fact/                # fact extract (later: parse matches.jsonl)
   sql/                     # dbt project (own .venv)
   config/env.py            # discover and load every repo .env
 dagster_orchestration/     # Dagster defs, assets, jobs only
 data/<source>/<entity>/dt=YYYY-MM-DD/   # parquet landing (gitignored)
 data/vlr/json/<entity>/<id>.json        # raw /v2 snapshots
-data/vlr/events.jsonl                   # historical dim_events insert rows (append one event per line)
+data/vlr/events.jsonl                   # historical dim_events insert rows
+data/vlr/event_matches.jsonl            # per-event match list cache
+data/vlr/matches.jsonl                  # dim_matches row + listing + full match detail
 data/vlr/watermarks.json                # incremental fetch cursor
 ```
 - Do not put extract logic inside Dagster modules beyond orchestration glue.
