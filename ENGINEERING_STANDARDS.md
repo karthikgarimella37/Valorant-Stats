@@ -211,7 +211,7 @@ data/vlr/watermarks.json                # incremental fetch cursor
 ### Standards
 - Assets do one stage: probe, extract entity, load table, run dbt select, etc.
 - Heavy logic lives in `src/backend/...`. Assets call into those modules.
-- Name assets/jobs after pipeline + stage: `rib_gg_extract_teams`, `rib_gg_star_schema_job`.
+- Name assets/jobs short: `evt_schema`, `vlr_events`, `match_extract`, `vlr_matches`.
 - At asset entry: log `=== STEP <asset_name>: <short what> ===` so run timelines are scannable.
 - Log via `context.log`; on failure use `context.log.exception`. Surface `MetadataValue` (row counts, paths, run date, workers).
 - Fail loud on missing required env vars (`_get_required_env_var` pattern).
