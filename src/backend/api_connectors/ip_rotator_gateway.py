@@ -30,6 +30,48 @@ def ip_rotator_enabled() -> bool:
     return flag in ("1", "true", "yes", "on")
 
 
+def assert_container_rotator() -> int:
+    """Fail the extract if vlrggapi is not sending www.vlr.gg through AWS IPs."""
+    flag = os.getenv("VLR_REQUIRE_ROTATOR", "1").strip().lower()
+    if flag not in ("1", "true", "yes", "on"):
+        logger.warning("[rotator] Check skipped (VLR_REQUIRE_ROTATOR=%s)", flag)
+        return 0
+    import re
+    import subprocess
+
+    try:
+        proc = subprocess.run(
+            ["docker", "logs", "vlrggapi"],
+            capture_output=True,
+            text=True,
+            timeout=20,
+            check=False,
+        )
+    except FileNotFoundError as exc:
+        raise RuntimeError(
+            "docker is not available. Start the rotator overlay with: "
+            "docker compose up -d --build vlrggapi"
+        ) from exc
+    text = f"{proc.stdout or ''}{proc.stderr or ''}"
+    found = re.findall(r"Ready endpoints=(\d+)", text)
+    if not found:
+        raise RuntimeError(
+            "vlrggapi AWS rotator is not running. Rebuild the overlay image: "
+            "docker compose up -d --build vlrggapi. "
+            "Logs must show [vlrggapi_rotator] Ready endpoints=N with N>0. "
+            "Do not scrape vlr.gg from the host IP."
+        )
+    count = int(found[-1])
+    if count < 1:
+        raise RuntimeError(
+            "vlrggapi rotator created 0 AWS endpoints. Check IAM "
+            "(CreateRestApi/GetRestApis) and set VLR_IP_ROTATOR_REGIONS=us-east-1. "
+            "Do not scrape vlr.gg from the host IP."
+        )
+    logger.info("[rotator] vlrggapi AWS endpoints=%s", count)
+    return count
+
+
 def _access_key_id() -> str | None:
     return os.getenv("VLR_AWS_ACCESS_KEY_ID") or os.getenv("AWS_ACCESS_KEY_ID") or None
 
