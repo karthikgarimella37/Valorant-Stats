@@ -346,10 +346,11 @@ def _fetch_one_event(
     return row
 
 
-def extract_historical_events(repo_root: Path | None = None) -> list[dict[str, Any]]:
+def extract_events(repo_root: Path | None = None) -> list[dict[str, Any]]:
     """Pull every VLR event once, append data/vlr/events.jsonl, return dim rows."""
     load_project_env(repo_root)
     repo_root = _repo_root(repo_root)
+    assert_container_rotator()
     connector = VlrV2Connector()
     # Rotator only applies when /v2 is on vlr.gg. Local vlrggapi is not rotated.
     if connector._rotate_api:
