@@ -16,12 +16,8 @@ from backend.api_connectors.ribs_connector import RibsConnector
 from backend.config.env import load_project_env
 from backend.database_connectors.supabase_connectors import SupabaseConnector
 from backend.rib_gg.extract import RibExtractPipeline, landing_dir_for, read_ndjson
-from backend.vlr.dim.historical import (
-    apply_dim_events_schema,
-    extract_historical_events,
-    load_dim_events,
-    rows_from_events_landing,
-)
+from backend.vlr.dim.historical import apply_events_schema, extract_events, load_events, rows_from_events_landing
+from backend.vlr.dim.matches import apply_matches_schema, extract_matches, load_matches
 from backend.vlr.extract import VlrExtractPipeline
 
 load_project_env(REPO_ROOT)
