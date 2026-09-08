@@ -23,6 +23,8 @@ services:
     environment:
       HOME: /tmp
       VLR_USE_IP_ROTATOR: "1"
+      # us-east-1 is usually enabled; override with VLR_IP_ROTATOR_REGIONS if needed.
+      VLR_IP_ROTATOR_REGIONS: ${VLR_IP_ROTATOR_REGIONS:-us-east-1}
     healthcheck:
       test:
         [
