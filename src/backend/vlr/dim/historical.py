@@ -479,15 +479,15 @@ def load_events(rows: list[dict[str, Any]]) -> int:
     return count
 
 
-def run_historical_events(repo_root: Path | None = None) -> dict[str, int]:
+def run_events(repo_root: Path | None = None) -> dict[str, int]:
     """End-to-end historical events: ensure table, extract JSONL, upsert dim_events."""
-    apply_dim_events_schema(repo_root)
-    rows = extract_historical_events(repo_root)
-    loaded = load_dim_events(rows)
+    apply_events_schema(repo_root)
+    rows = extract_events(repo_root)
+    loaded = load_events(rows)
     return {"extracted": len(rows), "loaded": loaded}
 
 
-def apply_dim_events_schema(repo_root: Path | None = None) -> Path:
+def apply_events_schema(repo_root: Path | None = None) -> Path:
     """Create vlr.dim_events if missing; ADD / ALTER columns if the shape drifted."""
     load_project_env(repo_root)
     repo_root = _repo_root(repo_root)
