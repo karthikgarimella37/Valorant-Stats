@@ -12,11 +12,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from backend.api_connectors.ip_rotator_gateway import (
-    VlrIpRotator,
-    assert_container_rotator,
-    ip_rotator_enabled,
-)
+from backend.api_connectors.ip_rotator_gateway import VlrIpRotator, assert_container_rotator
 from backend.api_connectors.vlr_v2_connector import VlrV2Connector
 from backend.config.env import load_project_env
 from backend.database_connectors.supabase_connectors import SupabaseConnector
