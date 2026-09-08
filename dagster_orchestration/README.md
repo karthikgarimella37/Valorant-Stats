@@ -48,45 +48,47 @@ Optional env vars:
 - `RIB_MAX_TEAM_DETAILS=200` — cap for API player enrichment
 - `DBT_SUPABASE_SCHEMA=valorant` — target Postgres schema
 
-## Run the historical VLR events job (Dagster)
+## Historical VLR jobs (Dagster)
 
-Job: `vlr_historical_events_job`
+Jobs: `vlr_events` then `vlr_matches`.
 
-This is the production path. Launch it from the Dagster UI or the CLI — do not run `python -m backend.vlr.dim.historical` for warehouse loads.
-
-Flow: ensure `vlr.dim_events` → append `data/vlr/events.jsonl` → upsert `vlr.dim_events`.
+Launch from the UI or CLI. Extracts refuse to start unless `docker logs vlrggapi` shows `Ready endpoints=` > 0 (AWS IPs). Do not scrape vlr.gg from the host IP.
 
 ```bash
+# from repo root — rotator overlay
+docker compose up -d --build vlrggapi
+docker logs vlrggapi | grep vlrggapi_rotator
+# expect: Ready endpoints=1 (or more)
+
 cd dagster_orchestration
 ./dev.sh
-# then Jobs → vlr_historical_events_job → Materialize
+# Jobs → vlr_events → Materialize
+# Jobs → vlr_matches → Materialize
 ```
 
 CLI:
 
 ```bash
 cd dagster_orchestration
-uv run dagster job execute -m dagster_orchestration.definitions -j vlr_historical_events_job
+uv run dagster job execute -m dagster_orchestration.definitions -j vlr_events
+uv run dagster job execute -m dagster_orchestration.definitions -j vlr_matches
 ```
 
-Needs: vlrggapi on `http://127.0.0.1:3001` and working Supabase env.
+`vlr_events`: ensure `vlr.dim_events` → `data/vlr/events.jsonl` → upsert.  
+`vlr_matches`: ensure `vlr.dim_matches` → `data/vlr/matches.jsonl` (dim + full match JSON) → upsert.
 
-To use AWS IPs for vlr.gg scrapes, put keys in `src/config/.env` then:
-
-```bash
-# from repo root
-docker compose up -d --build vlrggapi
-docker logs vlrggapi | grep vlrggapi_rotator
-# expect: Ready endpoints=1 (or more). 0 means IAM/region/keys are wrong.
-```
+Needs: vlrggapi on `http://127.0.0.1:3001` with AWS rotator, and working Supabase env.
 
 Optional env vars:
 
 - `VLR_EVENT_DETAIL_WORKERS` (default `12`)
 - `VLR_EVENT_PAGE_WORKERS` (default `8`)
-- `VLR_EVENT_PAGE_DELAY_SEC` (default `0.2`) — pause between catalog page batches
-- `VLR_MAX_EVENTS` — cap for a smoke run
+- `VLR_EVENT_PAGE_DELAY_SEC` (default `0.2`)
+- `VLR_MAX_EVENTS` / `VLR_MAX_MATCHES` — cap for a smoke run
 - `VLR_EVENT_SKIP_EXISTING=1` — skip ids already in `events.jsonl`
+- `VLR_MATCH_EVENT_WORKERS` / `VLR_MATCH_WORKERS` (default `8`)
+- `VLR_MATCH_SKIP_EXISTING=1` — skip ids already in `matches.jsonl`
+- `VLR_REQUIRE_ROTATOR=0` — only for local debug; do not use for a full scrape
 
 ## Run the VLR.gg extract → parquet → Supabase job
 
