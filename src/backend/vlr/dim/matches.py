@@ -157,49 +157,139 @@ def _has_stats(detail: dict[str, Any]) -> bool:
     return False
 
 
+def _needs_detail(listing: dict[str, Any]) -> bool:
+    """Skip /v2/match/details for upcoming/TBD series that have no scoreboard yet."""
+    status = str(listing.get("status") or "").strip().lower()
+    if status == "upcoming":
+        return False
+    team_1 = listing.get("team1") if isinstance(listing.get("team1"), dict) else {}
+    if str(team_1.get("name") or "").strip().upper() == "TBD":
+        return False
+    return True
+
+
+def _listing_id(listing: dict[str, Any]) -> str:
+    """Match id from a list row without fetching detail."""
+    return str(listing.get("match_id") or match_id_from_url(str(listing.get("url") or "")) or "")
+
+
+def _run_pool(items: list[Any], fn: Callable[[Any], None], workers: int) -> None:
+    """Bounded queue of in-flight work so we do not create 100k Future objects."""
+    if not items:
+        return
+    work: queue.Queue = queue.Queue(maxsize=max(workers * 4, 32))
+    errors: list[BaseException] = []
+    stop = threading.Event()
+
+    def consume() -> None:
+        while True:
+            item = work.get()
+            try:
+                if item is None:
+                    return
+                if stop.is_set():
+                    return
+                fn(item)
+            except Exception as exc:
+                errors.append(exc)
+                stop.set()
+            finally:
+                work.task_done()
+
+    threads = [
+        threading.Thread(target=consume, name=f"match-w{i}", daemon=True)
+        for i in range(workers)
+    ]
+    for thread in threads:
+        thread.start()
+    for item in items:
+        if stop.is_set():
+            break
+        work.put(item)
+    for _ in threads:
+        work.put(None)
+    for thread in threads:
+        thread.join()
+    if errors:
+        raise errors[0]
+
+
 @dataclass
 class Progress:
-    """Thread-safe N/total so Dagster logs show which match just finished."""
+    """Thread-safe N/total + rate; log every 50 so Dagster is not the bottleneck."""
 
     total: int
     done: int = 0
+    failed: int = 0
+    t0: float = field(default_factory=time.monotonic)
     lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
-    def mark(self, label: str, *, skipped: bool = False) -> None:
-        suffix = " skip" if skipped else ""
+    def mark(self, label: str, *, failed: bool = False) -> None:
         with self.lock:
             self.done += 1
-            logger.info("[matches] %s/%s %s%s", self.done, self.total, label, suffix)
+            if failed:
+                self.failed += 1
+            if self.done % 50 == 0 or self.done == self.total or failed:
+                elapsed = max(time.monotonic() - self.t0, 0.001)
+                rate = self.done / elapsed
+                logger.info(
+                    "[matches] %s/%s %.1f/s fail=%s %s",
+                    self.done,
+                    self.total,
+                    rate,
+                    self.failed,
+                    label,
+                )
 
 
 @dataclass
 class Landing:
-    """Append-only matches.jsonl; tracks ids so workers do not duplicate."""
+    """Append-only matches.jsonl with one open handle so writes stay cheap."""
 
     repo_root: Path
     ids: set[str]
+    handle: Any
     lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
+    written: int = 0
 
     @classmethod
     def open(cls, repo_root: Path) -> Landing:
         """Load existing ids so a resume appends only new matches."""
-        return cls(repo_root=repo_root, ids=match_ids_in_jsonl(repo_root))
+        path = matches_jsonl_path(repo_root)
+        logger.info("[matches] Scanning landed ids path=%s", path)
+        ids = match_ids_in_jsonl(repo_root)
+        logger.info("[matches] Already landed=%s", len(ids))
+        handle = path.open("a", encoding="utf-8")
+        return cls(repo_root=repo_root, ids=ids, handle=handle)
 
     def has(self, match_id: str) -> bool:
         with self.lock:
             return match_id in self.ids
 
     def write(self, row: dict[str, Any]) -> bool:
-        """Append one landing line. Returns False if the id was already landed."""
+        """Append one landing line. Serialize off the lock; write under the lock."""
         match_id = str(row.get("vlr_match_id") or "")
         if not match_id:
             return False
+        payload = json.dumps(
+            serialize_match_row({k: v for k, v in row.items() if k != "_label"}),
+            ensure_ascii=False,
+            default=str,
+        )
         with self.lock:
             if match_id in self.ids:
                 return False
-            append_match_row(self.repo_root, row)
+            self.handle.write(payload + "\n")
             self.ids.add(match_id)
+            self.written += 1
+            if self.written % 16 == 0:
+                self.handle.flush()
             return True
+
+    def close(self) -> None:
+        with self.lock:
+            self.handle.flush()
+            self.handle.close()
 
 
 def format_row(
