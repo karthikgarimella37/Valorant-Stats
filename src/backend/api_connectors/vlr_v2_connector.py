@@ -204,7 +204,13 @@ class VlrV2Connector:
                             except ValueError:
                                 retry_after = None
                         if response.status_code == 429:
-                            _GATE.trip_429(retry_after, label=label)
+                            _GATE.trip_429(
+                                retry_after,
+                                label=label,
+                                attempt=attempt,
+                                attempts=attempts,
+                                elapsed=elapsed,
+                            )
                         else:
                             pause = min(5.0 * attempt, 30.0)
                             logger.warning(
