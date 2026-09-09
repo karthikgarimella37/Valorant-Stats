@@ -45,6 +45,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 - [x] `data/vlr/matches.jsonl` stores dim row + listing + full match detail for later facts
 - [x] Extracts fail unless vlrggapi rotator `Ready endpoints=` > 0
 - [x] Project calendar dates: `YYYY/M/D` no pad (example `2026/7/8`)
+- [x] `vlr.dim_date` generated calendar (2020–2030) + job `vlr_date`
 
 ## Next up
 
