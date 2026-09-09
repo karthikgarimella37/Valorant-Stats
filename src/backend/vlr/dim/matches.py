@@ -399,6 +399,7 @@ def _fetch_one(
     if not match_id:
         progress.mark("(missing id)", failed=True)
         return
+    logger.info("[matches] Query %s event_id=%s", label, event_id)
     detail: dict[str, Any] = {}
     if _needs_detail(listing):
         try:

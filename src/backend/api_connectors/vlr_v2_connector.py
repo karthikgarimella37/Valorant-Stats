@@ -25,6 +25,19 @@ SITE_BASE = "https://www.vlr.gg"
 DEFAULT_API_BASE = "http://127.0.0.1:3001"
 
 
+def _req_label(path: str, params: dict[str, Any] | None) -> str:
+    """Human label so Dagster 429/wait logs show which match or event was in flight."""
+    params = params or {}
+    if params.get("match_id"):
+        return f"match_id={params['match_id']}"
+    if params.get("event_id"):
+        return f"event_id={params['event_id']}"
+    if params.get("id"):
+        extra = params.get("q")
+        return f"id={params['id']}" + (f" q={extra}" if extra else "")
+    return path.lstrip("/")
+
+
 class RateGate:
     """Pace /v2 calls so we stay under VLR's limit instead of bursting then cooling 100s."""
 
@@ -36,7 +49,7 @@ class RateGate:
         self._min_interval = float(os.getenv("VLR_API_INTERVAL_SEC", "0.8"))
         self._last_cool_log = 0.0
 
-    def acquire(self) -> None:
+    def acquire(self, label: str = "") -> None:
         """Wait for cooldown + min gap between starts, then take one in-flight slot."""
         while True:
             with self._lock:
@@ -48,7 +61,11 @@ class RateGate:
                 with self._lock:
                     if now - self._last_cool_log >= 15.0:
                         self._last_cool_log = now
-                        logger.warning("[vlr_v2] waiting %.0fs (pace or 429 cooldown)", wait)
+                        logger.warning(
+                            "[vlr_v2] waiting %.0fs %s (pace or 429 cooldown)",
+                            wait,
+                            label or "(unknown)",
+                        )
             time.sleep(min(wait, 2.0))
         with self._lock:
             self._next_start = time.monotonic() + self._min_interval
@@ -61,13 +78,17 @@ class RateGate:
         """Keep the current pace after a success (do not reset to a burst)."""
         return
 
-    def trip_429(self, retry_after: float | None = None) -> float:
+    def trip_429(self, retry_after: float | None = None, *, label: str = "") -> float:
         """Pause everyone once; cap at 45s so one 429 does not become a 100s stall."""
         with self._lock:
             wait = retry_after if retry_after and retry_after > 0 else 30.0
             wait = min(wait, 45.0)
             self._cool_until = max(self._cool_until, time.monotonic() + wait)
-            logger.warning("[vlr_v2] 429; pause %.0fs then resume paced calls", wait)
+            logger.warning(
+                "[vlr_v2] 429 %s pause=%.0fs then resume paced calls",
+                label or "(unknown)",
+                wait,
+            )
             return wait
 
 
