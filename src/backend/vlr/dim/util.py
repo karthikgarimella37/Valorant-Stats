@@ -355,20 +355,26 @@ def append_event_match_list(repo_root: Path, event_id: str, matches: list[dict[s
 
 
 def match_ids_in_jsonl(repo_root: Path) -> set[str]:
-    """Ids already appended so a resume does not parse full match JSON."""
+    """Ids that already have usable detail so 429 stubs are refetched on resume."""
     path = matches_jsonl_path(repo_root)
     ids: set[str] = set()
     if not path.exists():
         return ids
-    # vlr_match_id is the first key; only scan the line prefix.
     key_re = re.compile(r'"vlr_match_id"\s*:\s*"([^"]+)"')
     with path.open(encoding="utf-8") as handle:
         for line in handle:
             if not line.strip():
                 continue
-            match = key_re.search(line, endpos=min(len(line), 160))
-            if match:
-                ids.add(match.group(1))
+            head = line[:1200]
+            match = key_re.search(head)
+            if not match:
+                continue
+            match_id = match.group(1)
+            has_detail = '"has_detail": true' in head or '"has_stats": true' in head
+            completed = '"is_completed": true' in head
+            # Old full payloads are large; 429 stubs are tiny list-only rows.
+            if has_detail or len(line) > 8000 or not completed:
+                ids.add(match_id)
     return ids
 
 
