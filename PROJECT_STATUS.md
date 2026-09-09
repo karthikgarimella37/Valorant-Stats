@@ -21,11 +21,11 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 
 | Area | State | Notes |
 |------|--------|-------|
-| Overall | In progress | Events landed (2980). Matches extract is next warehouse load |
+| Overall | In progress | Events done. Match lists done. Match details still scraping |
 | Data sources | Validated | Self-hosted vlrggapi `/v2` via AWS IP rotator overlay |
-| Orchestration | In progress | Jobs `vlr_events`, `vlr_matches` (old long names removed) |
-| Dim tables | In progress | `vlr.dim_events` loaded path exists; `vlr.dim_matches` schema + extract ready |
-| Fact tables | Partial | Later parse `matches.jsonl` — do not re-hit the API |
+| Orchestration | In progress | Jobs `vlr_events`, `vlr_matches` |
+| Dim tables | In progress | Events landed; matches landing; static seeds not in `vlr.*` yet |
+| Fact tables | Blocked on matches | Parse `matches.jsonl` after details finish |
 | Frontend / viz | Not started | Graphs and dashboards listed in `Valorant API.md` |
 | Session process | Done | Status + standards markdown; always-on Cursor rules/skills; auto-commit hook |
 
