@@ -13,8 +13,8 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 
 ## Current focus
 
-- Rebuild `vlrggapi` (`VLR_RL_DISABLE=1`) then rematerialize `match_extract`
-- Keep 2 in-flight / 0.8s gap so AWS rotator + vlr.gg are not flooded
+- Rebuild `vlrggapi` so 4 AWS regions load (`Ready endpoints=` > 1), then rematerialize `match_extract`
+- Pace is 6 in-flight / 0.4s via `src/config/.env` (not Dagster YAML)
 - Seed `vlr.dim_date` via job `vlr_date` (no vlr.gg)
 - Next static seeds: `dim_vct_regions`, `dim_regions`, `dim_economy`, agents/maps/weapons
 
