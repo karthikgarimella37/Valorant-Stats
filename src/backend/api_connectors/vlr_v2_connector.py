@@ -78,15 +78,26 @@ class RateGate:
         """Keep the current pace after a success (do not reset to a burst)."""
         return
 
-    def trip_429(self, retry_after: float | None = None, *, label: str = "") -> float:
+    def trip_429(
+        self,
+        retry_after: float | None = None,
+        *,
+        label: str = "",
+        attempt: int = 0,
+        attempts: int = 0,
+        elapsed: float = 0.0,
+    ) -> float:
         """Pause everyone once; cap at 45s so one 429 does not become a 100s stall."""
         with self._lock:
             wait = retry_after if retry_after and retry_after > 0 else 30.0
             wait = min(wait, 45.0)
             self._cool_until = max(self._cool_until, time.monotonic() + wait)
             logger.warning(
-                "[vlr_v2] 429 %s pause=%.0fs then resume paced calls",
+                "[vlr_v2] 429 %s attempt=%s/%s elapsed=%.1fs pause=%.0fs then resume paced calls",
                 label or "(unknown)",
+                attempt,
+                attempts,
+                elapsed,
                 wait,
             )
             return wait
