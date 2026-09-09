@@ -343,6 +343,7 @@ def format_row(
         "n_maps": n_maps,
         "is_completed": _done(status),
         "has_stats": _has_stats(detail),
+        "has_detail": bool(detail),
         "has_vod": bool(vods),
         "has_rib_replay": False,
         "rib_match_id": None,
@@ -353,7 +354,6 @@ def format_row(
         "update_date": now,
         "listing": listing,
         "detail": detail,
-        "has_detail": bool(detail),
         "_label": f"{match_id} {name_1} vs {name_2} ({match_date or '?'})",
     }
 
