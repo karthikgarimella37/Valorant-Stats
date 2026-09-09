@@ -25,16 +25,3 @@ __all__ = [
     "run_matches",
     "seed_dates",
 ]
-
-__all__ = [
-    "apply_events_schema",
-    "apply_matches_schema",
-    "extract_events",
-    "extract_matches",
-    "load_events",
-    "load_matches",
-    "rows_from_event_json_dir",
-    "rows_from_events_landing",
-    "run_events",
-    "run_matches",
-]
