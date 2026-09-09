@@ -13,9 +13,9 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 
 ## Current focus
 
-- Run `vlr_matches` in Dagster (after `vlr_events` landing exists)
-- Flow: ensure `vlr.dim_matches` → append `data/vlr/matches.jsonl` (dim + full `/v2/match/details`) → upsert
-- vlrggapi must show `Ready endpoints=` > 0 so VLR scrapes leave via AWS IPs
+- Let `vlr_matches` keep running (list phase done; details ~3.5% of 107,429)
+- Parallel (no vlr.gg): seed static dims `dim_date`, `dim_vct_regions`, `dim_regions`, `dim_economy`, plus agent/map/weapon name lists
+- Do **not** start another `/v2` scrape while matches is hitting 429s
 
 ## Status
 
