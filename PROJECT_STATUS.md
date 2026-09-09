@@ -3,7 +3,7 @@
 > Session-agnostic source of truth. Updated by agents via the `session-continuity` skill. Commit and push this file so every new Cursor chat starts with current context.
 
 **Last updated:** 2026-09-08  
-**Updated by:** Historical matches → `vlr.dim_matches`; short job names; require AWS rotator
+**Updated by:** Added `vlr.dim_date` seed job (`vlr_date`); matches extract still running
 
 ---
 
@@ -13,19 +13,19 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 
 ## Current focus
 
-- Run `vlr_matches` in Dagster (after `vlr_events` landing exists)
-- Flow: ensure `vlr.dim_matches` → append `data/vlr/matches.jsonl` (dim + full `/v2/match/details`) → upsert
-- vlrggapi must show `Ready endpoints=` > 0 so VLR scrapes leave via AWS IPs
+- Let `vlr_matches` keep running
+- Seed `vlr.dim_date` via job `vlr_date` (no vlr.gg)
+- Next static seeds: `dim_vct_regions`, `dim_regions`, `dim_economy`, agents/maps/weapons
 
 ## Status
 
 | Area | State | Notes |
 |------|--------|-------|
-| Overall | In progress | Events landed (2980). Matches extract is next warehouse load |
+| Overall | In progress | Events done. Match lists done. Match details still scraping |
 | Data sources | Validated | Self-hosted vlrggapi `/v2` via AWS IP rotator overlay |
-| Orchestration | In progress | Jobs `vlr_events`, `vlr_matches` (old long names removed) |
-| Dim tables | In progress | `vlr.dim_events` loaded path exists; `vlr.dim_matches` schema + extract ready |
-| Fact tables | Partial | Later parse `matches.jsonl` — do not re-hit the API |
+| Orchestration | In progress | Jobs `vlr_events`, `vlr_matches` |
+| Dim tables | In progress | Events landed; matches landing; `vlr.dim_date` loaded (4018 days) |
+| Fact tables | Blocked on matches | Parse `matches.jsonl` after details finish |
 | Frontend / viz | Not started | Graphs and dashboards listed in `Valorant API.md` |
 | Session process | Done | Status + standards markdown; always-on Cursor rules/skills; auto-commit hook |
 
@@ -45,14 +45,16 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 - [x] `data/vlr/matches.jsonl` stores dim row + listing + full match detail for later facts
 - [x] Extracts fail unless vlrggapi rotator `Ready endpoints=` > 0
 - [x] Project calendar dates: `YYYY/M/D` no pad (example `2026/7/8`)
+- [x] `vlr.dim_date` generated calendar (2020–2030) + job `vlr_date`
 
 ## Next up
 
-- [ ] Rebuild vlrggapi overlay; confirm `Ready endpoints=` > 0
-- [ ] Materialize `vlr_matches` in Dagster (schema → extract → load)
-- [ ] Confirm `vlr.dim_matches` row count in Supabase
-- [ ] Historical teams pipeline (`vlr/dim` + `dim_teams`)
+- [x] Seed `vlr.dim_date` (job `vlr_date`, 2020–2030, range-filter columns)
+- [ ] Seed remaining static tables: `dim_vct_regions`, `dim_regions`, `dim_economy`, `dim_agents`, `dim_maps`, `dim_weapons`
+- [ ] Optional no-API parse: unique teams/players from `events.jsonl` `teams_json` (28k team rows, player flags)
+- [ ] Let `vlr_matches` finish; then upsert `vlr.dim_matches` and refetch empty-detail 429 rows
 - [ ] Parse facts from `matches.jsonl` (overall / rounds / performance / economy)
+- [ ] `/v2/team` + `/v2/rankings` enrich after matches is done (do not compete for 429 budget now)
 - [ ] Incremental extract via `vlr_watermarks` after historical
 - [ ] Fork/patch vlrggapi: Attack/Defend, event_id on match, labeled performance
 - [ ] rib overlay: replay kills when `vlr_match_id` can join
@@ -61,7 +63,8 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 ## Open questions / blockers
 
 - Keep `docker compose up -d --build vlrggapi` running before `vlr_events` / `vlr_matches`
-- Matches extract reads event ids from `data/vlr/events.jsonl` (must exist)
+- Matches list phase: **2980/2980** events in `event_matches.jsonl` (**107,429** series)
+- Match details (~21:34): **~3,800 / 107,429** in `matches.jsonl` (~3.5%); ~164 list-only after 429
 - Matches defaults: 8 event-list workers, 8 detail workers (env-tunable)
 - Rotator: `VLR_USE_IP_ROTATOR=1` + keys in `src/config/.env`. Compose defaults `VLR_IP_ROTATOR_REGIONS=us-east-1`
 - **API gaps:** Attack/Defend player stats; labeled 2K/1vX/ECON; prize points/note; match `event_id` on detail
@@ -84,3 +87,5 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 | 2026-09-07 | Catalog 503: serial pages + long backoff on 502/503 |
 | 2026-09-07 | Dropped AWS IP rotator; official vlrggapi + serial scrape (free) |
 | 2026-09-08 | Matches pipeline + short names (`vlr_events`, `vlr_matches`); require AWS rotator |
+| 2026-09-08 | Match lists complete; details ~3.5% + 429s. Next parallel: static seed dims |
+| 2026-09-08 | `vlr.dim_date` seed job `vlr_date` with year/quarter/month/week range columns |

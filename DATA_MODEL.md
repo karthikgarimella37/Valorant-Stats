@@ -4,7 +4,7 @@
 > Use this file to track **what is done**, **what is still required**, and **which API feeds which table**.  
 > Dagster runs daily: upsert dims first, then facts. dbt models live in `src/backend/sql/models/marts/`.
 
-**Last updated:** 2026-09-07
+**Last updated:** 2026-09-08
 
 ---
 
@@ -84,7 +84,7 @@ CREATE SEQUENCE valorant.seq_<table>_row_number
 | `dim_maps` | dim | Required (static) | Rare | Distinct map names from VLR matches |
 | `dim_economy` | dim | Required (static) | Rare | Seed buy types; map from VLR economy tab |
 | `dim_weapons` | dim | Required (static) | Rare | Names seen on rib replay kills (nullable on facts) |
-| `dim_date` | dim | Required (static) | Rare (extend range) | Generated calendar |
+| `dim_date` | dim | Seed job `vlr_date` | Rare (extend range) | Generated calendar 2020–2030 |
 | `fact_match_overall_stats` | fact | Landed (parquet) | Yes | VLR `/v2/match/details` map `players[]` |
 | `fact_round_results` | fact | Landed (parquet) | Yes | VLR map `rounds[]` (winner, side t/ct; **no win method**) |
 | `vlr_watermarks` | ops | JSON landing | Yes | Last successful fetch per match/event/team/player (`data/vlr/watermarks.json`) |
@@ -430,29 +430,57 @@ No fire-rate / accuracy without valorant-api.com.
 
 ### `dim_date` — Required (static)
 
-One row per calendar day.  
+One row per calendar day. Join events/matches on `project_date` (`YYYY/M/D`) or `full_date`.  
 **PK:** `row_number`  
 **Business key:** `date_key` (`YYYYMMDD` int)  
 **Sequence:** `seq_dim_date_row_number`
 
 | Column | Type | Notes |
 |--------|------|--------|
-| `date_key` | `INT` | `20260818` |
-| `full_date` | `DATE` | |
+| `date_key` | `INT` | `20260708` — numeric BETWEEN |
+| `full_date` | `DATE` | Native date BETWEEN |
+| `project_date` | `TEXT` | `2026/7/8` — join event/match text dates |
 | `year` | `INT` | |
-| `quarter` | `INT` | |
-| `month` | `INT` | |
-| `month_name` | `TEXT` | |
-| `day` | `INT` | |
-| `day_of_week` | `INT` | 1=Mon … 7=Sun |
-| `day_name` | `TEXT` | |
-| `is_weekend` | `BOOLEAN` | |
+| `quarter` | `INT` | 1–4 |
+| `month` | `INT` | 1–12 |
+| `day` | `INT` | 1–31 |
+| `day_of_year` | `INT` | 1–366 |
+| `day_of_week` | `INT` | ISO 1=Mon … 7=Sun |
+| `week_of_year` | `INT` | ISO week 1–53 |
+| `iso_year` | `INT` | ISO week-year (Jan 1 can be prior year) |
+| `week_of_month` | `INT` | 1–5 |
+| `month_name` | `TEXT` | July |
+| `month_short` | `TEXT` | Jul |
+| `day_name` | `TEXT` | Wednesday |
+| `day_short` | `TEXT` | Wed |
+| `year_month` | `INT` | `202607` — BETWEEN months |
+| `year_month_text` | `TEXT` | `2026/7` |
+| `year_quarter` | `INT` | `20263` — BETWEEN quarters |
+| `year_quarter_text` | `TEXT` | `2026-Q3` |
+| `year_half` | `INT` | 1=Jan–Jun, 2=Jul–Dec |
+| `year_half_text` | `TEXT` | `2026-H2` |
+| `iso_week_num` | `INT` | `202628` — BETWEEN ISO weeks |
+| `iso_week_key` | `TEXT` | `2026-W28` |
+| `decade` | `INT` | `2020` |
+| `days_in_month` | `INT` | |
+| `week_start` / `week_end` | `DATE` | ISO Mon–Sun window |
+| `month_start` / `month_end` | `DATE` | |
+| `quarter_start` / `quarter_end` | `DATE` | |
+| `half_start` / `half_end` | `DATE` | |
+| `year_start` / `year_end` | `DATE` | |
+| `is_weekend` | `BOOLEAN` | Sat/Sun |
+| `is_week_start` / `is_week_end` | `BOOLEAN` | Mon / Sun |
+| `is_month_start` / `is_month_end` | `BOOLEAN` | |
+| `is_quarter_start` / `is_quarter_end` | `BOOLEAN` | |
+| `is_half_start` / `is_half_end` | `BOOLEAN` | |
+| `is_year_start` / `is_year_end` | `BOOLEAN` | |
 | `row_number` | `BIGINT` PK | |
 | `insert_date` | `TIMESTAMPTZ` | |
 | `update_date` | `TIMESTAMPTZ` | |
 
-**Insert from:** generated (e.g. 2020-01-01 through 2030-12-31).  
-**Dagster:** extend once a year, or when `max(full_date)` is near.
+**Insert from:** generated 2020-01-01 through 2030-12-31 (`VLR_DATE_START` / `VLR_DATE_END`). Job `vlr_date`.  
+**Range filters:** `year` / `year_quarter` / `year_month` / `iso_week_num` equality or BETWEEN; or `full_date BETWEEN month_start AND month_end` after joining one day.  
+**Dagster:** load once; extend the end date when needed.
 
 ---
 
