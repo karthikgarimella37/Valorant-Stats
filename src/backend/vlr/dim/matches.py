@@ -400,7 +400,6 @@ def _fetch_one(
         progress.mark("(missing id)", failed=True)
         return
     detail: dict[str, Any] = {}
-    failed = False
     if _needs_detail(listing):
         try:
             detail = connector.get_match_details(match_id)
