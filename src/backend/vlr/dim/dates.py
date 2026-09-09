@@ -282,9 +282,6 @@ def apply_dates_schema(repo_root: Path | None = None) -> Path:
     connector.execute_sql_file(sql_path)
     connector.ensure_table_columns("vlr", "dim_date", DIM_TYPES)
     for stmt in (
-        "CREATE UNIQUE INDEX IF NOT EXISTS uq_vlr_dim_date_date_key ON vlr.dim_date (date_key)",
-        "CREATE UNIQUE INDEX IF NOT EXISTS uq_vlr_dim_date_full_date ON vlr.dim_date (full_date)",
-        "CREATE UNIQUE INDEX IF NOT EXISTS uq_vlr_dim_date_project_date ON vlr.dim_date (project_date)",
         "CREATE INDEX IF NOT EXISTS idx_vlr_dim_date_year ON vlr.dim_date (year)",
         "CREATE INDEX IF NOT EXISTS idx_vlr_dim_date_year_month ON vlr.dim_date (year_month)",
         "CREATE INDEX IF NOT EXISTS idx_vlr_dim_date_year_quarter ON vlr.dim_date (year_quarter)",

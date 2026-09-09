@@ -84,7 +84,7 @@ CREATE SEQUENCE valorant.seq_<table>_row_number
 | `dim_maps` | dim | Required (static) | Rare | Distinct map names from VLR matches |
 | `dim_economy` | dim | Required (static) | Rare | Seed buy types; map from VLR economy tab |
 | `dim_weapons` | dim | Required (static) | Rare | Names seen on rib replay kills (nullable on facts) |
-| `dim_date` | dim | Required (static) | Rare (extend range) | Generated calendar |
+| `dim_date` | dim | Seed job `vlr_date` | Rare (extend range) | Generated calendar 2020–2030 |
 | `fact_match_overall_stats` | fact | Landed (parquet) | Yes | VLR `/v2/match/details` map `players[]` |
 | `fact_round_results` | fact | Landed (parquet) | Yes | VLR map `rounds[]` (winner, side t/ct; **no win method**) |
 | `vlr_watermarks` | ops | JSON landing | Yes | Last successful fetch per match/event/team/player (`data/vlr/watermarks.json`) |
