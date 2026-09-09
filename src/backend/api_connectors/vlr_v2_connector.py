@@ -159,14 +159,16 @@ class VlrV2Connector:
     def get_json(self, path: str, params: dict[str, Any] | None = None) -> Any:
         """GET one /v2 path and unwrap `{status, data}` so callers see the payload only."""
         url = f"{self.base_url}/{path.lstrip('/')}"
+        label = _req_label(path, params)
         attempts = int(os.getenv("VLR_API_ATTEMPTS", "10"))
         last_error: Exception | None = None
         for attempt in range(1, attempts + 1):
             pause = 0.0
             retry = False
-            _GATE.acquire()
+            _GATE.acquire(label)
+            started = time.monotonic()
             try:
-                logger.debug("[vlr_v2] GET %s params=%s attempt=%s", url, params, attempt)
+                logger.info("[vlr_v2] GET %s attempt=%s/%s", label, attempt, attempts)
                 try:
                     response = self._session().get(url, params=params, timeout=self.timeout)
                 except (requests.ConnectionError, requests.Timeout) as exc:
@@ -174,13 +176,14 @@ class VlrV2Connector:
                     pause = min(2.0 * attempt, 20.0)
                     retry = True
                     logger.warning(
-                        "[vlr_v2] Connection failed %s attempt=%s/%s; sleep=%.0fs",
-                        url,
+                        "[vlr_v2] connection failed %s attempt=%s/%s sleep=%.0fs",
+                        label,
                         attempt,
                         attempts,
                         pause,
                     )
                 else:
+                    elapsed = time.monotonic() - started
                     if response.status_code in {429, 502, 503, 504}:
                         retry_after = None
                         raw = response.headers.get("Retry-After")
@@ -190,26 +193,34 @@ class VlrV2Connector:
                             except ValueError:
                                 retry_after = None
                         if response.status_code == 429:
-                            _GATE.trip_429(retry_after)
+                            _GATE.trip_429(retry_after, label=label)
                         else:
                             pause = min(5.0 * attempt, 30.0)
                             logger.warning(
-                                "[vlr_v2] status=%s %s attempt=%s/%s; sleep=%.0fs",
+                                "[vlr_v2] status=%s %s attempt=%s/%s elapsed=%.1fs sleep=%.0fs",
                                 response.status_code,
-                                url,
+                                label,
                                 attempt,
                                 attempts,
+                                elapsed,
                                 pause,
                             )
                         last_error = requests.HTTPError(
-                            f"{response.status_code} for {url}", response=response
+                            f"{response.status_code} for {label}", response=response
                         )
                         retry = True
                     elif response.status_code == 422:
+                        logger.info("[vlr_v2] 422 %s elapsed=%.1fs", label, elapsed)
                         response.raise_for_status()
                     else:
                         response.raise_for_status()
                         _GATE.ok()
+                        logger.info(
+                            "[vlr_v2] OK %s attempt=%s elapsed=%.1fs",
+                            label,
+                            attempt,
+                            elapsed,
+                        )
                         payload = response.json()
                         if isinstance(payload, dict) and "data" in payload:
                             return payload["data"]
