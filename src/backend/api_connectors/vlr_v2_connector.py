@@ -74,14 +74,9 @@ class VlrV2Connector:
             if self._session_obj is not None:
                 return self._session_obj
             session = requests.Session()
-            # 502/503 are handled in get_json with a long sleep (vlrggapi circuit breaker).
-            retry = Retry(
-                total=2,
-                backoff_factor=1.5,
-                status_forcelist=[429, 500],
-                allowed_methods=["GET"],
-            )
-            adapter = HTTPAdapter(max_retries=retry, pool_maxsize=max(self.max_workers, 4))
+            # Status retries live in get_json (short cap). urllib3 429 retries stacked and stalled workers.
+            retry = Retry(total=0, connect=2, read=0, status=0, allowed_methods=["GET"])
+            adapter = HTTPAdapter(max_retries=retry, pool_maxsize=max(self.max_workers, 64))
             session.mount("https://", adapter)
             session.mount("http://", adapter)
             session.headers.update({"Accept": "application/json", "User-Agent": "valorant-stats-extract/1.0"})
