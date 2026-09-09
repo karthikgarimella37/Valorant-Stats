@@ -504,10 +504,11 @@ def extract_matches(repo_root: Path | None = None) -> int:
         pending = jobs
     progress = Progress(total=len(pending))
     logger.info(
-        "[matches] Details pending=%s already=%s workers=%s jsonl=%s",
+        "[matches] Details pending=%s already=%s workers=%s concurrency=%s jsonl=%s",
         len(pending),
         len(landing.ids),
         detail_workers,
+        os.getenv("VLR_API_CONCURRENCY", "3"),
         matches_jsonl_path(repo_root),
     )
     detail_connector = VlrV2Connector(max_workers=detail_workers, timeout=60)
