@@ -134,6 +134,7 @@ class VlrV2Connector:
         last_error: Exception | None = None
         for attempt in range(1, attempts + 1):
             pause = 0.0
+            retry = False
             _GATE.acquire()
             try:
                 logger.debug("[vlr_v2] GET %s params=%s attempt=%s", url, params, attempt)
@@ -142,6 +143,7 @@ class VlrV2Connector:
                 except (requests.ConnectionError, requests.Timeout) as exc:
                     last_error = exc
                     pause = min(2.0 * attempt, 20.0)
+                    retry = True
                     logger.warning(
                         "[vlr_v2] Connection failed %s attempt=%s/%s; sleep=%.0fs",
                         url,
@@ -149,42 +151,43 @@ class VlrV2Connector:
                         attempts,
                         pause,
                     )
-                    continue
-                if response.status_code in {429, 502, 503, 504}:
-                    retry_after = None
-                    raw = response.headers.get("Retry-After")
-                    if raw:
-                        try:
-                            retry_after = float(raw)
-                        except ValueError:
-                            retry_after = None
-                    if response.status_code == 429:
-                        _GATE.trip_429(retry_after)
-                    else:
-                        pause = min(5.0 * attempt, 30.0)
-                        logger.warning(
-                            "[vlr_v2] status=%s %s attempt=%s/%s; sleep=%.0fs",
-                            response.status_code,
-                            url,
-                            attempt,
-                            attempts,
-                            pause,
+                else:
+                    if response.status_code in {429, 502, 503, 504}:
+                        retry_after = None
+                        raw = response.headers.get("Retry-After")
+                        if raw:
+                            try:
+                                retry_after = float(raw)
+                            except ValueError:
+                                retry_after = None
+                        if response.status_code == 429:
+                            _GATE.trip_429(retry_after)
+                        else:
+                            pause = min(5.0 * attempt, 30.0)
+                            logger.warning(
+                                "[vlr_v2] status=%s %s attempt=%s/%s; sleep=%.0fs",
+                                response.status_code,
+                                url,
+                                attempt,
+                                attempts,
+                                pause,
+                            )
+                        last_error = requests.HTTPError(
+                            f"{response.status_code} for {url}", response=response
                         )
-                    last_error = requests.HTTPError(
-                        f"{response.status_code} for {url}", response=response
-                    )
-                    continue
-                if response.status_code == 422:
-                    response.raise_for_status()
-                response.raise_for_status()
-                _GATE.ok()
-                payload = response.json()
-                if isinstance(payload, dict) and "data" in payload:
-                    return payload["data"]
-                return payload
+                        retry = True
+                    elif response.status_code == 422:
+                        response.raise_for_status()
+                    else:
+                        response.raise_for_status()
+                        _GATE.ok()
+                        payload = response.json()
+                        if isinstance(payload, dict) and "data" in payload:
+                            return payload["data"]
+                        return payload
             finally:
                 _GATE.release()
-            if pause:
+            if retry and pause:
                 time.sleep(pause)
         assert last_error is not None
         raise last_error
