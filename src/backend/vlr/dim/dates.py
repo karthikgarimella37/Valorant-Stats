@@ -244,6 +244,17 @@ def seed_dates(repo_root: Path | None = None) -> list[dict[str, Any]]:
     return rows
 
 
+def rows_from_dates_landing(repo_root: Path | None = None) -> list[dict[str, Any]]:
+    """Read generated parquet so load does not rebuild the calendar."""
+    import polars as pl
+
+    path = date_parquet_path(_root(repo_root))
+    if not path.exists():
+        raise FileNotFoundError(f"dim_date parquet missing at {path}. Run seed_dates first.")
+    logger.info("[dates] Reading landing parquet path=%s", path)
+    return pl.read_parquet(path).to_dicts()
+
+
 def load_dates(rows: list[dict[str, Any]]) -> int:
     """Upsert calendar rows on date_key so a re-seed keeps row_number."""
     logger.info("[dates] Load start rows=%s", len(rows))
