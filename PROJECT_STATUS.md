@@ -13,7 +13,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 
 ## Current focus
 
-- Let `vlr_matches` resume with faster extract (skip already-landed ids)
+- Resume `vlr_matches` after 429 throttle (3 in-flight `/v2` calls; cooldown on 429)
 - Seed `vlr.dim_date` via job `vlr_date` (no vlr.gg)
 - Next static seeds: `dim_vct_regions`, `dim_regions`, `dim_economy`, agents/maps/weapons
 
