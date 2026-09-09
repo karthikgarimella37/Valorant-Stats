@@ -91,3 +91,4 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 | 2026-09-08 | Match lists complete; details ~3.5% + 429s. Next parallel: static seed dims |
 | 2026-09-08 | `vlr.dim_date` seed job `vlr_date` with year/quarter/month/week range columns |
 | 2026-09-09 | Match extract speed: 32 workers, 256 vlrggapi conns, short retries, skip queued futures |
+| 2026-09-09 | 429 flood: cap 3 in-flight calls, global cooldown, do not land empty detail |
