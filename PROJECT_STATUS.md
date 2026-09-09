@@ -65,7 +65,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 - Keep `docker compose up -d --build vlrggapi` running before `vlr_events` / `vlr_matches`
 - Matches list phase: **2980/2980** events in `event_matches.jsonl` (**107,429** series)
 - Match details (~21:34): **~3,800 / 107,429** in `matches.jsonl` (~3.5%); ~164 list-only after 429
-- Matches defaults: 8 event-list workers, 8 detail workers (env-tunable)
+- Matches defaults: 16 event-list workers, 32 detail workers; vlrggapi httpx max_connections=256
 - Rotator: `VLR_USE_IP_ROTATOR=1` + keys in `src/config/.env`. Compose defaults `VLR_IP_ROTATOR_REGIONS=us-east-1`
 - **API gaps:** Attack/Defend player stats; labeled 2K/1vX/ECON; prize points/note; match `event_id` on detail
 - rib overlay join: fuzzy (event name + team names + date)
