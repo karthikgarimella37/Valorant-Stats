@@ -102,7 +102,8 @@ Optional env vars:
 - `VLR_MAX_EVENTS` / `VLR_MAX_MATCHES` — cap for a smoke run
 - `VLR_EVENT_SKIP_EXISTING=1` — skip ids already in `events.jsonl`
 - `VLR_MATCH_EVENT_WORKERS` / `VLR_MATCH_WORKERS` (default `8`)
-- `VLR_API_CONCURRENCY` (default `3`) — max in-flight `/v2` calls; keeps VLR 429s down
+- `VLR_API_CONCURRENCY` (default `2`) — max in-flight `/v2` match-detail calls
+- `VLR_API_INTERVAL_SEC` (default `0.8`) — min seconds between starting those calls
 - `VLR_MATCH_SKIP_EXISTING=1` — skip ids already in `matches.jsonl`
 - `VLR_REQUIRE_ROTATOR=0` — only for local debug; do not use for a full scrape
 
