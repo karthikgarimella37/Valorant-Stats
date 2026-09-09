@@ -436,50 +436,54 @@ def extract_matches(repo_root: Path | None = None) -> int:
         logger.info("[matches] Capped events=%s", len(event_ids))
     skip_listed = os.getenv("VLR_MATCH_SKIP_LISTED", "1") == "1"
     skip_existing = os.getenv("VLR_MATCH_SKIP_EXISTING", "1") == "1"
-    list_workers = int(os.getenv("VLR_MATCH_EVENT_WORKERS", "8"))
-    detail_workers = int(os.getenv("VLR_MATCH_WORKERS", "8"))
+    list_workers = int(os.getenv("VLR_MATCH_EVENT_WORKERS", "16"))
+    detail_workers = int(os.getenv("VLR_MATCH_WORKERS", "32"))
     cached = event_ids_with_match_lists(repo_root)
     cache_lock = threading.Lock()
+    to_list = [eid for eid in event_ids if not (skip_listed and eid in cached)]
     logger.info(
-        "[matches] Listing events=%s cached_lists=%s workers=%s",
+        "[matches] Listing events=%s to_fetch=%s cached_lists=%s workers=%s",
         len(event_ids),
+        len(to_list),
         len(cached),
         list_workers,
     )
-    list_connector = VlrV2Connector(max_workers=list_workers)
-    # Independent event match lists — parallel; 429/502 retries live in the connector.
-    with ThreadPoolExecutor(max_workers=list_workers) as pool:
-        futures = [
-            pool.submit(
-                _list_one,
-                list_connector,
-                repo_root,
-                event_id,
-                cached,
-                cache_lock,
-                skip_listed,
-            )
-            for event_id in event_ids
-        ]
-        listed = 0
-        for future in as_completed(futures):
-            event_id, matches = future.result()
-            listed += 1
-            logger.info(
-                "[matches] list %s/%s event %s matches=%s",
-                listed,
-                len(event_ids),
-                event_id,
-                len(matches),
-            )
+    if to_list:
+        list_connector = VlrV2Connector(max_workers=list_workers)
+        # Independent event match lists — parallel; 429/502 retries live in the connector.
+        with ThreadPoolExecutor(max_workers=list_workers) as pool:
+            futures = [
+                pool.submit(
+                    _list_one,
+                    list_connector,
+                    repo_root,
+                    event_id,
+                    cached,
+                    cache_lock,
+                    skip_listed,
+                )
+                for event_id in to_list
+            ]
+            listed = 0
+            for future in as_completed(futures):
+                event_id, matches = future.result()
+                listed += 1
+                if listed % 50 == 0 or listed == len(to_list):
+                    logger.info(
+                        "[matches] list %s/%s event %s matches=%s",
+                        listed,
+                        len(to_list),
+                        event_id,
+                        len(matches),
+                    )
+    else:
+        logger.info("[matches] All event lists cached; skip list phase")
     by_event = read_event_match_lists(repo_root)
     jobs: list[tuple[str, dict[str, Any]]] = []
     seen: set[str] = set()
     for event_id in event_ids:
         for listing in by_event.get(event_id, []):
-            match_id = str(
-                listing.get("match_id") or match_id_from_url(str(listing.get("url") or "")) or ""
-            )
+            match_id = _listing_id(listing)
             if not match_id or match_id in seen:
                 continue
             seen.add(match_id)
@@ -489,32 +493,29 @@ def extract_matches(repo_root: Path | None = None) -> int:
         jobs = jobs[: int(max_matches)]
         logger.info("[matches] Capped matches=%s", len(jobs))
     landing = Landing.open(repo_root)
-    progress = Progress(total=len(jobs))
+    if skip_existing:
+        pending = [(eid, listing) for eid, listing in jobs if not landing.has(_listing_id(listing))]
+    else:
+        pending = jobs
+    progress = Progress(total=len(pending))
     logger.info(
-        "[matches] Details matches=%s already=%s skip_existing=%s workers=%s jsonl=%s",
-        len(jobs),
+        "[matches] Details pending=%s already=%s workers=%s jsonl=%s",
+        len(pending),
         len(landing.ids),
-        skip_existing,
         detail_workers,
         matches_jsonl_path(repo_root),
     )
-    detail_connector = VlrV2Connector(max_workers=detail_workers)
-    # Each match detail is independent I/O; landing/progress use locks.
-    with ThreadPoolExecutor(max_workers=detail_workers) as pool:
-        futures = [
-            pool.submit(
-                _fetch_one,
-                detail_connector,
-                event_id,
-                listing,
-                landing,
-                progress,
-                skip_existing=skip_existing,
-            )
-            for event_id, listing in jobs
-        ]
-        for future in as_completed(futures):
-            future.result()
+    detail_connector = VlrV2Connector(max_workers=detail_workers, timeout=60)
+
+    def _one(item: tuple[str, dict[str, Any]]) -> None:
+        event_id, listing = item
+        _fetch_one(detail_connector, event_id, listing, landing, progress)
+
+    try:
+        # Each match detail is independent I/O; landing/progress use locks.
+        _run_pool(pending, _one, detail_workers)
+    finally:
+        landing.close()
     count = len(landing.ids)
     logger.info(
         "[matches] Done landed=%s processed=%s/%s lists=%s jsonl=%s",
