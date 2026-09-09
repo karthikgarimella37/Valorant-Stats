@@ -441,7 +441,7 @@ def extract_matches(repo_root: Path | None = None) -> int:
         logger.info("[matches] Capped events=%s", len(event_ids))
     skip_listed = os.getenv("VLR_MATCH_SKIP_LISTED", "1") == "1"
     skip_existing = os.getenv("VLR_MATCH_SKIP_EXISTING", "1") == "1"
-    list_workers = int(os.getenv("VLR_MATCH_EVENT_WORKERS", "16"))
+    list_workers = int(os.getenv("VLR_MATCH_EVENT_WORKERS", "8"))
     detail_workers = int(os.getenv("VLR_MATCH_WORKERS", "8"))
     cached = event_ids_with_match_lists(repo_root)
     cache_lock = threading.Lock()
