@@ -3,7 +3,7 @@
 > Session-agnostic source of truth. Updated by agents via the `session-continuity` skill. Commit and push this file so every new Cursor chat starts with current context.
 
 **Last updated:** 2026-09-09  
-**Updated by:** Faster match extract (32 workers, higher vlrggapi conn cap, short 429 backoff)
+**Updated by:** Throttle match extract (3 in-flight, global 429 cooldown); do not land 429 stubs
 
 ---
 
