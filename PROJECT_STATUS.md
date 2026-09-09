@@ -3,7 +3,7 @@
 > Session-agnostic source of truth. Updated by agents via the `session-continuity` skill. Commit and push this file so every new Cursor chat starts with current context.
 
 **Last updated:** 2026-09-09  
-**Updated by:** Match extract logs now include match_id on GET / 429 / wait
+**Updated by:** Explained inbound 20/min expensive cap; overlay disables it for self-host
 
 ---
 
