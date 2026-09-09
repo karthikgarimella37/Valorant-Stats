@@ -237,13 +237,9 @@ def seed_dates(repo_root: Path | None = None) -> list[dict[str, Any]]:
         if len(rows) % 1000 == 0:
             logger.info("[dates] Generated %s/%s", len(rows), (end - start).days + 1)
     path = date_parquet_path(repo_root)
-    try:
-        import polars as pl
+    import polars as pl
 
-        pl.DataFrame(rows).write_parquet(path)
-    except ImportError:
-        logger.warning("[dates] polars missing; skip parquet land jsonl fallback not used")
-        path = repo_root / "data" / "vlr" / "dim_date.parquet"
+    pl.DataFrame(rows).write_parquet(path)
     logger.info("[dates] Seed done rows=%s path=%s", len(rows), path)
     return rows
 
