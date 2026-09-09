@@ -133,6 +133,7 @@ class VlrV2Connector:
         attempts = int(os.getenv("VLR_API_ATTEMPTS", "10"))
         last_error: Exception | None = None
         for attempt in range(1, attempts + 1):
+            pause = 0.0
             _GATE.acquire()
             try:
                 logger.debug("[vlr_v2] GET %s params=%s attempt=%s", url, params, attempt)
@@ -140,15 +141,14 @@ class VlrV2Connector:
                     response = self._session().get(url, params=params, timeout=self.timeout)
                 except (requests.ConnectionError, requests.Timeout) as exc:
                     last_error = exc
-                    wait = min(2.0 * attempt, 20.0)
+                    pause = min(2.0 * attempt, 20.0)
                     logger.warning(
                         "[vlr_v2] Connection failed %s attempt=%s/%s; sleep=%.0fs",
                         url,
                         attempt,
                         attempts,
-                        wait,
+                        pause,
                     )
-                    time.sleep(wait)
                     continue
                 if response.status_code in {429, 502, 503, 504}:
                     retry_after = None
@@ -158,17 +158,18 @@ class VlrV2Connector:
                             retry_after = float(raw)
                         except ValueError:
                             retry_after = None
-                    wait = _GATE.trip_429(retry_after) if response.status_code == 429 else min(5.0 * attempt, 30.0)
-                    if response.status_code != 429:
+                    if response.status_code == 429:
+                        _GATE.trip_429(retry_after)
+                    else:
+                        pause = min(5.0 * attempt, 30.0)
                         logger.warning(
                             "[vlr_v2] status=%s %s attempt=%s/%s; sleep=%.0fs",
                             response.status_code,
                             url,
                             attempt,
                             attempts,
-                            wait,
+                            pause,
                         )
-                        time.sleep(wait)
                     last_error = requests.HTTPError(
                         f"{response.status_code} for {url}", response=response
                     )
@@ -183,6 +184,8 @@ class VlrV2Connector:
                 return payload
             finally:
                 _GATE.release()
+            if pause:
+                time.sleep(pause)
         assert last_error is not None
         raise last_error
 
