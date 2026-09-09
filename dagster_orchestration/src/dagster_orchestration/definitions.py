@@ -715,6 +715,11 @@ vlr_star_schema_job = define_asset_job(
     ],
 )
 
+vlr_date = define_asset_job(
+    "vlr_date",
+    selection=[date_schema, date_seed, date_load],
+)
+
 vlr_events = define_asset_job(
     "vlr_events",
     selection=[evt_schema, evt_extract, evt_load],
