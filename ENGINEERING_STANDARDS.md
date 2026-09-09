@@ -139,7 +139,7 @@ src/backend/
   database_connectors/     # Supabase / DB clients
   rib_gg/                  # rib.gg normalize + land parquet/ndjson
   vlr/                     # vlr extract / scrape transforms
-  vlr/dim/                 # dim extract (historical.py, matches.py, util.py)
+  vlr/dim/                 # dim extract (historical.py, matches.py, dates.py, util.py)
   vlr/fact/                # fact extract (later: parse matches.jsonl)
   sql/                     # dbt project (own .venv)
   config/env.py            # discover and load every repo .env
