@@ -48,11 +48,11 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 
 ## Next up
 
-- [ ] Rebuild vlrggapi overlay; confirm `Ready endpoints=` > 0
-- [ ] Materialize `vlr_matches` in Dagster (schema → extract → load)
-- [ ] Confirm `vlr.dim_matches` row count in Supabase
-- [ ] Historical teams pipeline (`vlr/dim` + `dim_teams`)
+- [ ] Seed static warehouse tables (no API): `dim_date`, `dim_vct_regions`, `dim_regions`, `dim_economy`, `dim_agents`, `dim_maps`, `dim_weapons`
+- [ ] Optional no-API parse: unique teams/players from `events.jsonl` `teams_json` (28k team rows, player flags)
+- [ ] Let `vlr_matches` finish; then upsert `vlr.dim_matches` and refetch empty-detail 429 rows
 - [ ] Parse facts from `matches.jsonl` (overall / rounds / performance / economy)
+- [ ] `/v2/team` + `/v2/rankings` enrich after matches is done (do not compete for 429 budget now)
 - [ ] Incremental extract via `vlr_watermarks` after historical
 - [ ] Fork/patch vlrggapi: Attack/Defend, event_id on match, labeled performance
 - [ ] rib overlay: replay kills when `vlr_match_id` can join
