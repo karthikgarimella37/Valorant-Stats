@@ -13,7 +13,8 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 
 ## Current focus
 
-- Resume `vlr_matches` (2 in-flight, 0.8s gap); rematerialize `match_extract` to pick up match_id logs
+- Rebuild `vlrggapi` (`VLR_RL_DISABLE=1`) then rematerialize `match_extract`
+- Keep 2 in-flight / 0.8s gap so AWS rotator + vlr.gg are not flooded
 - Seed `vlr.dim_date` via job `vlr_date` (no vlr.gg)
 - Next static seeds: `dim_vct_regions`, `dim_regions`, `dim_economy`, agents/maps/weapons
 
