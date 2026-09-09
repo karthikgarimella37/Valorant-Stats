@@ -409,8 +409,47 @@ def rib_load_valorant_tables(context: AssetExecutionContext) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# VLR historical — events then matches (full match JSON reused by later facts)
+# VLR seed — static dims (no vlr.gg scrape)
 # ---------------------------------------------------------------------------
+
+
+@asset(group_name="vlr_seed")
+def date_schema(context: AssetExecutionContext) -> str:
+    """Create or alter vlr.dim_date so calendar rows match warehouse columns."""
+    context.log.info("=== STEP date_schema: ensure vlr.dim_date ===")
+    path = apply_dates_schema(REPO_ROOT)
+    context.add_output_metadata({"sql_path": MetadataValue.path(str(path))})
+    return str(path)
+
+
+@asset(group_name="vlr_seed", deps=[date_schema])
+def date_seed(context: AssetExecutionContext) -> int:
+    """Generate one row per day (default 2020-01-01 through 2030-12-31)."""
+    context.log.info(
+        "=== STEP date_seed: start=%s end=%s ===",
+        os.getenv("VLR_DATE_START", "2020-01-01"),
+        os.getenv("VLR_DATE_END", "2030-12-31"),
+    )
+    rows = seed_dates(REPO_ROOT)
+    context.add_output_metadata(
+        {
+            "row_count": len(rows),
+            "parquet_path": MetadataValue.path(str(REPO_ROOT / "data" / "vlr" / "dim_date.parquet")),
+        }
+    )
+    context.log.info("dim_date generated: %s", len(rows))
+    return len(rows)
+
+
+@asset(group_name="vlr_seed", deps=[date_seed])
+def date_load(context: AssetExecutionContext) -> int:
+    """Upsert generated calendar rows into vlr.dim_date."""
+    context.log.info("=== STEP date_load: upsert vlr.dim_date ===")
+    rows = seed_dates(REPO_ROOT)
+    loaded = load_dates(rows)
+    context.add_output_metadata({"upserted": loaded})
+    context.log.info("dim_date upserted=%s", loaded)
+    return loaded
 
 
 @asset(group_name="vlr_hist")
