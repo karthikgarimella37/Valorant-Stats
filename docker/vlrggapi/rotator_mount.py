@@ -24,10 +24,13 @@ def _enabled() -> bool:
 
 
 def _regions() -> list[str] | None:
-    raw = os.getenv("VLR_IP_ROTATOR_REGIONS", "").strip()
+    """Split VLR_IP_ROTATOR_REGIONS; never treat a comma list as AWS_DEFAULT_REGION."""
+    raw = os.getenv("VLR_IP_ROTATOR_REGIONS", "").strip().strip("\"'")
     if raw:
-        return [part.strip() for part in raw.split(",") if part.strip()]
-    default = os.getenv("AWS_DEFAULT_REGION", "").strip()
+        return [part.strip().strip("\"'") for part in raw.split(",") if part.strip().strip("\"'")]
+    default = os.getenv("AWS_DEFAULT_REGION", "").strip().strip("\"'")
+    if "," in default:
+        return [part.strip().strip("\"'") for part in default.split(",") if part.strip().strip("\"'")]
     return [default] if default else None
 
 
