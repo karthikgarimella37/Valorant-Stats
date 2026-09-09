@@ -26,40 +26,48 @@ DEFAULT_API_BASE = "http://127.0.0.1:3001"
 
 
 class RateGate:
-    """One process-wide limit so parallel match threads cannot stampede vlr.gg."""
+    """Pace /v2 calls so we stay under VLR's limit instead of bursting then cooling 100s."""
 
     def __init__(self) -> None:
-        self._slots = threading.BoundedSemaphore(int(os.getenv("VLR_API_CONCURRENCY", "3")))
+        self._slots = threading.BoundedSemaphore(int(os.getenv("VLR_API_CONCURRENCY", "2")))
         self._lock = threading.Lock()
         self._cool_until = 0.0
-        self._streak = 0
+        self._next_start = 0.0
+        self._min_interval = float(os.getenv("VLR_API_INTERVAL_SEC", "0.8"))
+        self._last_cool_log = 0.0
 
     def acquire(self) -> None:
-        """Wait out a 429 cooldown, then take one in-flight slot."""
+        """Wait for cooldown + min gap between starts, then take one in-flight slot."""
         while True:
             with self._lock:
-                wait = self._cool_until - time.monotonic()
+                now = time.monotonic()
+                wait = max(self._cool_until, self._next_start) - now
             if wait <= 0:
                 break
-            logger.warning("[vlr_v2] cooldown %.0fs (VLR 429)", wait)
-            time.sleep(min(wait, 5.0))
+            if wait >= 5.0:
+                with self._lock:
+                    if now - self._last_cool_log >= 15.0:
+                        self._last_cool_log = now
+                        logger.warning("[vlr_v2] waiting %.0fs (pace or 429 cooldown)", wait)
+            time.sleep(min(wait, 2.0))
+        with self._lock:
+            self._next_start = time.monotonic() + self._min_interval
         self._slots.acquire()
 
     def release(self) -> None:
         self._slots.release()
 
     def ok(self) -> None:
-        """Clear the 429 streak after a successful response."""
-        with self._lock:
-            self._streak = 0
+        """Keep the current pace after a success (do not reset to a burst)."""
+        return
 
     def trip_429(self, retry_after: float | None = None) -> float:
-        """Pause every thread; wait grows while 429s keep coming."""
+        """Pause everyone once; cap at 45s so one 429 does not become a 100s stall."""
         with self._lock:
-            self._streak += 1
-            wait = retry_after if retry_after and retry_after > 0 else min(20.0 * self._streak, 120.0)
+            wait = retry_after if retry_after and retry_after > 0 else 30.0
+            wait = min(wait, 45.0)
             self._cool_until = max(self._cool_until, time.monotonic() + wait)
-            logger.warning("[vlr_v2] 429 streak=%s cool=%.0fs", self._streak, wait)
+            logger.warning("[vlr_v2] 429; pause %.0fs then resume paced calls", wait)
             return wait
 
 
