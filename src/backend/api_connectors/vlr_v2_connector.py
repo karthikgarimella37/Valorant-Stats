@@ -130,46 +130,59 @@ class VlrV2Connector:
     def get_json(self, path: str, params: dict[str, Any] | None = None) -> Any:
         """GET one /v2 path and unwrap `{status, data}` so callers see the payload only."""
         url = f"{self.base_url}/{path.lstrip('/')}"
-        attempts = int(os.getenv("VLR_API_ATTEMPTS", "4"))
+        attempts = int(os.getenv("VLR_API_ATTEMPTS", "10"))
         last_error: Exception | None = None
         for attempt in range(1, attempts + 1):
-            logger.debug("[vlr_v2] GET %s params=%s attempt=%s", url, params, attempt)
+            _GATE.acquire()
             try:
-                response = self._session().get(url, params=params, timeout=self.timeout)
-            except (requests.ConnectionError, requests.Timeout) as exc:
-                last_error = exc
-                wait = min(0.5 * (2 ** (attempt - 1)), 8.0)
-                logger.warning(
-                    "[vlr_v2] Connection failed %s attempt=%s/%s; sleep=%.1fs",
-                    url,
-                    attempt,
-                    attempts,
-                    wait,
-                )
-                time.sleep(wait)
-                continue
-            if response.status_code in {429, 502, 503, 504}:
-                wait = min(0.4 * (2 ** (attempt - 1)), 8.0)
-                logger.warning(
-                    "[vlr_v2] status=%s %s attempt=%s/%s; sleep=%.1fs",
-                    response.status_code,
-                    url,
-                    attempt,
-                    attempts,
-                    wait,
-                )
-                time.sleep(wait)
-                last_error = requests.HTTPError(
-                    f"{response.status_code} for {url}", response=response
-                )
-                continue
-            if response.status_code == 422:
+                logger.debug("[vlr_v2] GET %s params=%s attempt=%s", url, params, attempt)
+                try:
+                    response = self._session().get(url, params=params, timeout=self.timeout)
+                except (requests.ConnectionError, requests.Timeout) as exc:
+                    last_error = exc
+                    wait = min(2.0 * attempt, 20.0)
+                    logger.warning(
+                        "[vlr_v2] Connection failed %s attempt=%s/%s; sleep=%.0fs",
+                        url,
+                        attempt,
+                        attempts,
+                        wait,
+                    )
+                    time.sleep(wait)
+                    continue
+                if response.status_code in {429, 502, 503, 504}:
+                    retry_after = None
+                    raw = response.headers.get("Retry-After")
+                    if raw:
+                        try:
+                            retry_after = float(raw)
+                        except ValueError:
+                            retry_after = None
+                    wait = _GATE.trip_429(retry_after) if response.status_code == 429 else min(5.0 * attempt, 30.0)
+                    if response.status_code != 429:
+                        logger.warning(
+                            "[vlr_v2] status=%s %s attempt=%s/%s; sleep=%.0fs",
+                            response.status_code,
+                            url,
+                            attempt,
+                            attempts,
+                            wait,
+                        )
+                        time.sleep(wait)
+                    last_error = requests.HTTPError(
+                        f"{response.status_code} for {url}", response=response
+                    )
+                    continue
+                if response.status_code == 422:
+                    response.raise_for_status()
                 response.raise_for_status()
-            response.raise_for_status()
-            payload = response.json()
-            if isinstance(payload, dict) and "data" in payload:
-                return payload["data"]
-            return payload
+                _GATE.ok()
+                payload = response.json()
+                if isinstance(payload, dict) and "data" in payload:
+                    return payload["data"]
+                return payload
+            finally:
+                _GATE.release()
         assert last_error is not None
         raise last_error
 
