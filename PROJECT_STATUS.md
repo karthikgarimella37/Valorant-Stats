@@ -85,3 +85,4 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 | 2026-09-07 | Catalog 503: serial pages + long backoff on 502/503 |
 | 2026-09-07 | Dropped AWS IP rotator; official vlrggapi + serial scrape (free) |
 | 2026-09-08 | Matches pipeline + short names (`vlr_events`, `vlr_matches`); require AWS rotator |
+| 2026-09-08 | Match lists complete; details ~3.5% + 429s. Next parallel: static seed dims |
