@@ -763,6 +763,7 @@ defs = Definitions(
         dbt_star_schema_job,
         rib_gg_star_schema_job,
         vlr_star_schema_job,
+        vlr_date,
         vlr_events,
         vlr_matches,
     ],
