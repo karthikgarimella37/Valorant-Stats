@@ -31,10 +31,19 @@ def _regions() -> list[str] | None:
     return [default] if default else None
 
 
+def _http_limits() -> httpx.Limits:
+    """Allow many in-flight scrapes; 20 connections made match details crawl."""
+    return httpx.Limits(
+        max_connections=int(os.getenv("VLR_HTTP_MAX_CONN", "256")),
+        max_keepalive_connections=int(os.getenv("VLR_HTTP_KEEPALIVE", "64")),
+    )
+
+
 class VlrGatewayTransport(httpx.AsyncHTTPTransport):
     """Rewrite www.vlr.gg URLs onto a random API Gateway endpoint."""
 
     def __init__(self, endpoints: list[str], **kwargs):
+        kwargs.setdefault("limits", _http_limits())
         super().__init__(**kwargs)
         self.endpoints = endpoints
 

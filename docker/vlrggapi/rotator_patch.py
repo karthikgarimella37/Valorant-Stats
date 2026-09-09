@@ -12,7 +12,10 @@ def get_http_client() -> httpx.AsyncClient:
             headers=headers,
             timeout=httpx.Timeout(DEFAULT_TIMEOUT),
             follow_redirects=True,
-            limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
+            limits=httpx.Limits(
+                max_connections=int(__import__("os").getenv("VLR_HTTP_MAX_CONN", "256")),
+                max_keepalive_connections=int(__import__("os").getenv("VLR_HTTP_KEEPALIVE", "64")),
+            ),
             mounts=mounts,
         )
     return _client
