@@ -27,6 +27,8 @@ services:
       VLR_IP_ROTATOR_REGIONS: ${VLR_IP_ROTATOR_REGIONS:-us-east-1}
       VLR_HTTP_MAX_CONN: "32"
       VLR_HTTP_KEEPALIVE: "16"
+      # Official image caps /v2/match/details at 20/min per client IP. This host is ours.
+      VLR_RL_DISABLE: "1"
     healthcheck:
       test:
         [
