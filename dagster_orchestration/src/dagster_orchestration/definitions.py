@@ -504,9 +504,11 @@ def match_schema(context: AssetExecutionContext) -> str:
 def match_extract(context: AssetExecutionContext) -> int:
     """List matches for every event, land full /v2/match/details into matches.jsonl."""
     context.log.info(
-        "=== STEP match_extract: event_workers=%s match_workers=%s ===",
+        "=== STEP match_extract: event_workers=%s match_workers=%s concurrency=%s interval=%s ===",
         os.getenv("VLR_MATCH_EVENT_WORKERS", "8"),
-        os.getenv("VLR_MATCH_WORKERS", "8"),
+        os.getenv("VLR_MATCH_WORKERS", "6"),
+        os.getenv("VLR_API_CONCURRENCY", "6"),
+        os.getenv("VLR_API_INTERVAL_SEC", "0.4"),
     )
     count = extract_matches(REPO_ROOT)
     context.add_output_metadata(
