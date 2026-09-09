@@ -42,11 +42,11 @@ class RateGate:
     """Pace /v2 calls so we stay under VLR's limit instead of bursting then cooling 100s."""
 
     def __init__(self) -> None:
-        self._slots = threading.BoundedSemaphore(int(os.getenv("VLR_API_CONCURRENCY", "2")))
+        self._slots = threading.BoundedSemaphore(int(os.getenv("VLR_API_CONCURRENCY", "6")))
         self._lock = threading.Lock()
         self._cool_until = 0.0
         self._next_start = 0.0
-        self._min_interval = float(os.getenv("VLR_API_INTERVAL_SEC", "0.8"))
+        self._min_interval = float(os.getenv("VLR_API_INTERVAL_SEC", "0.4"))
         self._last_cool_log = 0.0
 
     def acquire(self, label: str = "") -> None:
