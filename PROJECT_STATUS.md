@@ -13,9 +13,9 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 
 ## Current focus
 
-- Let `vlr_matches` keep running (list phase done; details ~3.5% of 107,429)
-- Parallel (no vlr.gg): seed static dims `dim_date`, `dim_vct_regions`, `dim_regions`, `dim_economy`, plus agent/map/weapon name lists
-- Do **not** start another `/v2` scrape while matches is hitting 429s
+- Let `vlr_matches` keep running
+- Seed `vlr.dim_date` via job `vlr_date` (no vlr.gg)
+- Next static seeds: `dim_vct_regions`, `dim_regions`, `dim_economy`, agents/maps/weapons
 
 ## Status
 
