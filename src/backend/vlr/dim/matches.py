@@ -19,7 +19,6 @@ from backend.config.env import load_project_env
 from backend.database_connectors.supabase_connectors import SupabaseConnector
 from backend.vlr.dim.util import (
     append_event_match_list,
-    append_match_row,
     event_ids_from_jsonl,
     event_ids_with_match_lists,
     event_matches_jsonl_path,
@@ -29,6 +28,7 @@ from backend.vlr.dim.util import (
     parse_match_date,
     parse_match_patch,
     read_event_match_lists,
+    serialize_match_row,
     utc_now,
     year_from_text,
 )
