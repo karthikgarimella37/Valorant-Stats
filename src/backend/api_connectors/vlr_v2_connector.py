@@ -23,6 +23,47 @@ load_project_env()
 SITE_BASE = "https://www.vlr.gg"
 
 DEFAULT_API_BASE = "http://127.0.0.1:3001"
+
+
+class RateGate:
+    """One process-wide limit so parallel match threads cannot stampede vlr.gg."""
+
+    def __init__(self) -> None:
+        self._slots = threading.BoundedSemaphore(int(os.getenv("VLR_API_CONCURRENCY", "3")))
+        self._lock = threading.Lock()
+        self._cool_until = 0.0
+        self._streak = 0
+
+    def acquire(self) -> None:
+        """Wait out a 429 cooldown, then take one in-flight slot."""
+        while True:
+            with self._lock:
+                wait = self._cool_until - time.monotonic()
+            if wait <= 0:
+                break
+            logger.warning("[vlr_v2] cooldown %.0fs (VLR 429)", wait)
+            time.sleep(min(wait, 5.0))
+        self._slots.acquire()
+
+    def release(self) -> None:
+        self._slots.release()
+
+    def ok(self) -> None:
+        """Clear the 429 streak after a successful response."""
+        with self._lock:
+            self._streak = 0
+
+    def trip_429(self, retry_after: float | None = None) -> float:
+        """Pause every thread; wait grows while 429s keep coming."""
+        with self._lock:
+            self._streak += 1
+            wait = retry_after if retry_after and retry_after > 0 else min(20.0 * self._streak, 120.0)
+            self._cool_until = max(self._cool_until, time.monotonic() + wait)
+            logger.warning("[vlr_v2] 429 streak=%s cool=%.0fs", self._streak, wait)
+            return wait
+
+
+_GATE = RateGate()
 # VLR /v2/rankings query params only (local grain). Aliases cn/la-n/la-s normalize in extract.
 RANKING_REGIONS = (
     "na",
