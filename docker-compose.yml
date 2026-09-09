@@ -23,8 +23,8 @@ services:
     environment:
       HOME: /tmp
       VLR_USE_IP_ROTATOR: "1"
-      # us-east-1 is usually enabled; override with VLR_IP_ROTATOR_REGIONS if needed.
-      VLR_IP_ROTATOR_REGIONS: ${VLR_IP_ROTATOR_REGIONS:-us-east-1}
+      # Host interpolation (env_file does not fill this). Keep in sync with src/config/.env.
+      VLR_IP_ROTATOR_REGIONS: ${VLR_IP_ROTATOR_REGIONS:-us-east-1,us-west-2,us-east-2,eu-west-1}
       VLR_HTTP_MAX_CONN: "32"
       VLR_HTTP_KEEPALIVE: "16"
       # Official image caps /v2/match/details at 20/min per client IP. This host is ours.

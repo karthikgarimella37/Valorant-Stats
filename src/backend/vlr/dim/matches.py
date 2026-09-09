@@ -509,7 +509,7 @@ def extract_matches(repo_root: Path | None = None) -> int:
         len(pending),
         len(landing.ids),
         detail_workers,
-        os.getenv("VLR_API_CONCURRENCY", "2"),
+        os.getenv("VLR_API_CONCURRENCY", "6"),
         matches_jsonl_path(repo_root),
     )
     detail_connector = VlrV2Connector(max_workers=detail_workers, timeout=60)
