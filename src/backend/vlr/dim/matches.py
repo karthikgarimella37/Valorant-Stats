@@ -386,11 +386,9 @@ def _fetch_one(
     listing: dict[str, Any],
     landing: Landing,
     progress: Progress,
-    *,
-    skip_existing: bool,
 ) -> None:
-    """Fetch one match detail, land dim + raw JSON, log N/total."""
-    match_id = str(listing.get("match_id") or match_id_from_url(str(listing.get("url") or "")) or "")
+    """Fetch one match detail (or list-only for upcoming), land JSON, log rate."""
+    match_id = _listing_id(listing)
     team_1 = listing.get("team1") if isinstance(listing.get("team1"), dict) else {}
     team_2 = listing.get("team2") if isinstance(listing.get("team2"), dict) else {}
     label = (
@@ -398,19 +396,19 @@ def _fetch_one(
         f"({parse_match_date(listing.get('date')) or '?'})"
     )
     if not match_id:
-        progress.mark("(missing id)", skipped=True)
+        progress.mark("(missing id)", failed=True)
         return
-    if skip_existing and landing.has(match_id):
-        progress.mark(label, skipped=True)
-        return
-    try:
-        detail = connector.get_match_details(match_id)
-    except Exception:
-        logger.exception("[matches] Detail failed match_id=%s; landing list row only", match_id)
-        detail = {}
+    detail: dict[str, Any] = {}
+    failed = False
+    if _needs_detail(listing):
+        try:
+            detail = connector.get_match_details(match_id)
+        except Exception as exc:
+            logger.warning("[matches] Detail failed match_id=%s err=%s; list row only", match_id, exc)
+            failed = True
     row = format_row(event_id, listing, detail)
     landing.write(row)
-    progress.mark(row.get("_label") or label)
+    progress.mark(row.get("_label") or label, failed=failed)
 
 
 def extract_matches(repo_root: Path | None = None) -> int:
