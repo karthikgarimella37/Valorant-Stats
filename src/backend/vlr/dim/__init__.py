@@ -18,6 +18,7 @@ __all__ = [
     "load_dates",
     "load_events",
     "load_matches",
+    "rows_from_dates_landing",
     "rows_from_event_json_dir",
     "rows_from_events_landing",
     "run_dates",
