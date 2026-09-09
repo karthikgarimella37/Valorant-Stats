@@ -11,7 +11,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Iterable
+from typing import Any, Callable
 
 from backend.api_connectors.ip_rotator_gateway import assert_container_rotator
 from backend.api_connectors.vlr_v2_connector import VlrV2Connector
