@@ -34,8 +34,8 @@ def _regions() -> list[str] | None:
 def _http_limits() -> httpx.Limits:
     """Allow many in-flight scrapes; 20 connections made match details crawl."""
     return httpx.Limits(
-        max_connections=int(os.getenv("VLR_HTTP_MAX_CONN", "256")),
-        max_keepalive_connections=int(os.getenv("VLR_HTTP_KEEPALIVE", "64")),
+        max_connections=int(os.getenv("VLR_HTTP_MAX_CONN", "32")),
+        max_keepalive_connections=int(os.getenv("VLR_HTTP_KEEPALIVE", "16")),
     )
 
 
