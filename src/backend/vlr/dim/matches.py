@@ -353,6 +353,7 @@ def format_row(
         "update_date": now,
         "listing": listing,
         "detail": detail,
+        "has_detail": bool(detail),
         "_label": f"{match_id} {name_1} vs {name_2} ({match_date or '?'})",
     }
 
