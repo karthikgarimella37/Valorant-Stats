@@ -3,7 +3,7 @@
 > Session-agnostic source of truth. Updated by agents via the `session-continuity` skill. Commit and push this file so every new Cursor chat starts with current context.
 
 **Last updated:** 2026-09-09  
-**Updated by:** Explained inbound 20/min expensive cap; overlay disables it for self-host
+**Updated by:** Match pace 6 in-flight / 0.4s; regions in VLR_IP_ROTATOR_REGIONS not AWS_DEFAULT_REGION
 
 ---
 
