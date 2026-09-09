@@ -3,7 +3,7 @@
 > Session-agnostic source of truth. Updated by agents via the `session-continuity` skill. Commit and push this file so every new Cursor chat starts with current context.
 
 **Last updated:** 2026-09-09  
-**Updated by:** Steady match pace (0.8s gap, 2 in-flight) so 429s do not become 100s stalls
+**Updated by:** Match extract logs now include match_id on GET / 429 / wait
 
 ---
 
