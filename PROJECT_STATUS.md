@@ -69,6 +69,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 - Matches: 2 in-flight `/v2` calls, ≥0.8s between starts; 429 pause 30s (not 100s streak)
 - JSONL append is not the bottleneck; each match detail scrapes several vlr.gg pages
 - Rotator: `VLR_USE_IP_ROTATOR=1` + keys in `src/config/.env`. Compose defaults `VLR_IP_ROTATOR_REGIONS=us-east-1`
+- Inbound vlrggapi limiter: official image is **20 match-details/min per client IP**. Compose sets `VLR_RL_DISABLE=1` after rebuild
 - **API gaps:** Attack/Defend player stats; labeled 2K/1vX/ECON; prize points/note; match `event_id` on detail
 - rib overlay join: fuzzy (event name + team names + date)
 
