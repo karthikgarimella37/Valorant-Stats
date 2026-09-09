@@ -442,7 +442,7 @@ def extract_matches(repo_root: Path | None = None) -> int:
     skip_listed = os.getenv("VLR_MATCH_SKIP_LISTED", "1") == "1"
     skip_existing = os.getenv("VLR_MATCH_SKIP_EXISTING", "1") == "1"
     list_workers = int(os.getenv("VLR_MATCH_EVENT_WORKERS", "16"))
-    detail_workers = int(os.getenv("VLR_MATCH_WORKERS", "32"))
+    detail_workers = int(os.getenv("VLR_MATCH_WORKERS", "8"))
     cached = event_ids_with_match_lists(repo_root)
     cache_lock = threading.Lock()
     to_list = [eid for eid in event_ids if not (skip_listed and eid in cached)]
