@@ -405,11 +405,16 @@ def _fetch_one(
         try:
             detail = connector.get_match_details(match_id)
         except Exception as exc:
-            logger.warning("[matches] Detail failed match_id=%s err=%s; list row only", match_id, exc)
-            failed = True
+            logger.warning(
+                "[matches] Detail failed match_id=%s err=%s; not landed (retry on resume)",
+                match_id,
+                exc,
+            )
+            progress.mark(label, failed=True)
+            return
     row = format_row(event_id, listing, detail)
     landing.write(row)
-    progress.mark(row.get("_label") or label, failed=failed)
+    progress.mark(row.get("_label") or label)
 
 
 def extract_matches(repo_root: Path | None = None) -> int:
