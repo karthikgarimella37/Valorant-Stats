@@ -445,7 +445,7 @@ def date_seed(context: AssetExecutionContext) -> int:
 def date_load(context: AssetExecutionContext) -> int:
     """Upsert generated calendar rows into vlr.dim_date."""
     context.log.info("=== STEP date_load: upsert vlr.dim_date ===")
-    rows = seed_dates(REPO_ROOT)
+    rows = rows_from_dates_landing(REPO_ROOT)
     loaded = load_dates(rows)
     context.add_output_metadata({"upserted": loaded})
     context.log.info("dim_date upserted=%s", loaded)
