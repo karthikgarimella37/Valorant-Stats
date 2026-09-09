@@ -48,6 +48,21 @@ Optional env vars:
 - `RIB_MAX_TEAM_DETAILS=200` — cap for API player enrichment
 - `DBT_SUPABASE_SCHEMA=valorant` — target Postgres schema
 
+## Seed dim_date (no VLR scrape)
+
+Job: `vlr_date`
+
+Calendar 2020-01-01 through 2030-12-31 into `vlr.dim_date`. Does not call vlr.gg.
+
+```bash
+cd dagster_orchestration
+uv run dagster job execute -m dagster_orchestration.definitions -j vlr_date
+```
+
+Optional: `VLR_DATE_START=2020-01-01` `VLR_DATE_END=2030-12-31`
+
+Join match/event text dates on `project_date` (`2026/7/8`). Filter ranges with `year`, `year_month`, `year_quarter`, `iso_week_num`, or `full_date BETWEEN …`.
+
 ## Historical VLR jobs (Dagster)
 
 Jobs: `vlr_events` then `vlr_matches`.
