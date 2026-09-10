@@ -561,36 +561,62 @@ def json_loads_obj(line: str) -> dict[str, Any] | None:
     return obj if isinstance(obj, dict) else None
 
 
+def _match_row_rank(row: dict[str, Any]) -> tuple[int, int, int]:
+    """Prefer a stats/detail row over a 429 stub when jsonl has the same match id twice."""
+    return (
+        1 if row.get("has_stats") else 0,
+        1 if row.get("has_detail") else 0,
+        1 if row.get("is_completed") else 0,
+    )
+
+
+def unique_dim_rows(repo_root: Path | None = None) -> list[dict[str, Any]]:
+    """One dim row per match id. Postgres ON CONFLICT cannot update the same key twice in one INSERT."""
+    by_id: dict[str, dict[str, Any]] = {}
+    scanned = 0
+    for row in iter_dim_rows(repo_root):
+        scanned += 1
+        match_id = str(row.get("vlr_match_id") or "")
+        if not match_id:
+            continue
+        prev = by_id.get(match_id)
+        if prev is None or _match_row_rank(row) >= _match_row_rank(prev):
+            by_id[match_id] = row
+        if scanned % 25000 == 0:
+            logger.info("[matches] Load scan lines=%s unique=%s", scanned, len(by_id))
+    logger.info("[matches] Load scan done lines=%s unique=%s", scanned, len(by_id))
+    return list(by_id.values())
+
+
+def _upsert_dim_batch(connector: SupabaseConnector, batch: list[dict[str, Any]]) -> int:
+    """Write one unique-key batch into vlr.dim_matches."""
+    return connector.upsert_rows(
+        batch,
+        schema="vlr",
+        table="dim_matches",
+        columns=DIM_COLS,
+        conflict_column="vlr_match_id",
+        update_columns=[c for c in DIM_COLS if c not in {"vlr_match_id", "insert_date"}],
+    )
+
+
 def load_matches(repo_root: Path | None = None) -> int:
     """Upsert dim columns from matches.jsonl; keep row_number on re-run."""
     load_project_env(repo_root)
     repo_root = _root(repo_root)
     logger.info("[matches] Load start jsonl=%s", matches_jsonl_path(repo_root))
     connector = SupabaseConnector()
+    rows = unique_dim_rows(repo_root)
     total = 0
     batch: list[dict[str, Any]] = []
-    for row in iter_dim_rows(repo_root):
+    for row in rows:
         batch.append(row)
         if len(batch) >= 1000:
-            total += connector.upsert_rows(
-                batch,
-                schema="vlr",
-                table="dim_matches",
-                columns=DIM_COLS,
-                conflict_column="vlr_match_id",
-                update_columns=[c for c in DIM_COLS if c not in {"vlr_match_id", "insert_date"}],
-            )
-            logger.info("[matches] Load progress upserted=%s", total)
+            total += _upsert_dim_batch(connector, batch)
+            logger.info("[matches] Load progress upserted=%s/%s", total, len(rows))
             batch = []
     if batch:
-        total += connector.upsert_rows(
-            batch,
-            schema="vlr",
-            table="dim_matches",
-            columns=DIM_COLS,
-            conflict_column="vlr_match_id",
-            update_columns=[c for c in DIM_COLS if c not in {"vlr_match_id", "insert_date"}],
-        )
+        total += _upsert_dim_batch(connector, batch)
     logger.info("[matches] Load done upserted=%s", total)
     return total
 
