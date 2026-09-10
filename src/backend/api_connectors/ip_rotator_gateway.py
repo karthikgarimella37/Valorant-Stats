@@ -81,11 +81,14 @@ def _access_key_secret() -> str | None:
 
 
 def _regions() -> list[str] | None:
-    raw = os.getenv("VLR_IP_ROTATOR_REGIONS", "").strip()
+    """Split VLR_IP_ROTATOR_REGIONS; a comma list in AWS_DEFAULT_REGION is not one region."""
+    raw = os.getenv("VLR_IP_ROTATOR_REGIONS", "").strip().strip("\"'")
     if raw:
-        return [part.strip() for part in raw.split(",") if part.strip()]
-    default = os.getenv("AWS_DEFAULT_REGION", "").strip()
+        return [part.strip().strip("\"'") for part in raw.split(",") if part.strip().strip("\"'")]
+    default = os.getenv("AWS_DEFAULT_REGION", "").strip().strip("\"'")
     if default:
+        if "," in default:
+            return [part.strip().strip("\"'") for part in default.split(",") if part.strip().strip("\"'")]
         return [default]
     return None
 

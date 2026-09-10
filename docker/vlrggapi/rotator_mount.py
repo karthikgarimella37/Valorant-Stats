@@ -24,17 +24,29 @@ def _enabled() -> bool:
 
 
 def _regions() -> list[str] | None:
-    raw = os.getenv("VLR_IP_ROTATOR_REGIONS", "").strip()
+    """Split VLR_IP_ROTATOR_REGIONS; never treat a comma list as AWS_DEFAULT_REGION."""
+    raw = os.getenv("VLR_IP_ROTATOR_REGIONS", "").strip().strip("\"'")
     if raw:
-        return [part.strip() for part in raw.split(",") if part.strip()]
-    default = os.getenv("AWS_DEFAULT_REGION", "").strip()
+        return [part.strip().strip("\"'") for part in raw.split(",") if part.strip().strip("\"'")]
+    default = os.getenv("AWS_DEFAULT_REGION", "").strip().strip("\"'")
+    if "," in default:
+        return [part.strip().strip("\"'") for part in default.split(",") if part.strip().strip("\"'")]
     return [default] if default else None
+
+
+def _http_limits() -> httpx.Limits:
+    """Allow many in-flight scrapes; 20 connections made match details crawl."""
+    return httpx.Limits(
+        max_connections=int(os.getenv("VLR_HTTP_MAX_CONN", "32")),
+        max_keepalive_connections=int(os.getenv("VLR_HTTP_KEEPALIVE", "16")),
+    )
 
 
 class VlrGatewayTransport(httpx.AsyncHTTPTransport):
     """Rewrite www.vlr.gg URLs onto a random API Gateway endpoint."""
 
     def __init__(self, endpoints: list[str], **kwargs):
+        kwargs.setdefault("limits", _http_limits())
         super().__init__(**kwargs)
         self.endpoints = endpoints
 

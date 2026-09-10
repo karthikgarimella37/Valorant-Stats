@@ -2,8 +2,8 @@
 
 > Session-agnostic source of truth. Updated by agents via the `session-continuity` skill. Commit and push this file so every new Cursor chat starts with current context.
 
-**Last updated:** 2026-09-08  
-**Updated by:** Added `vlr.dim_date` seed job (`vlr_date`); matches extract still running
+**Last updated:** 2026-09-09  
+**Updated by:** match_load failed on duplicate jsonl ids; dedupe before upsert
 
 ---
 
@@ -13,7 +13,8 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 
 ## Current focus
 
-- Let `vlr_matches` keep running
+- Rematerialize `match_load` only (extract catalog is complete; load now dedupes jsonl ids)
+- Pace is 6 in-flight / 0.4s via `src/config/.env` (not Dagster YAML)
 - Seed `vlr.dim_date` via job `vlr_date` (no vlr.gg)
 - Next static seeds: `dim_vct_regions`, `dim_regions`, `dim_economy`, agents/maps/weapons
 
@@ -65,8 +66,11 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 - Keep `docker compose up -d --build vlrggapi` running before `vlr_events` / `vlr_matches`
 - Matches list phase: **2980/2980** events in `event_matches.jsonl` (**107,429** series)
 - Match details (~21:34): **~3,800 / 107,429** in `matches.jsonl` (~3.5%); ~164 list-only after 429
-- Matches defaults: 8 event-list workers, 8 detail workers (env-tunable)
-- Rotator: `VLR_USE_IP_ROTATOR=1` + keys in `src/config/.env`. Compose defaults `VLR_IP_ROTATOR_REGIONS=us-east-1`
+- Matches: 6 in-flight `/v2` calls, ≥0.4s between starts; 429 pause 30s
+- JSONL append is not the bottleneck; each match detail scrapes several vlr.gg pages
+- Rotator: `VLR_IP_ROTATOR_REGIONS` in `src/config/.env` (comma list). `AWS_DEFAULT_REGION` must stay one region
+- Pace knobs live in `src/config/.env` (`VLR_API_CONCURRENCY`, `VLR_MATCH_WORKERS`, `VLR_API_INTERVAL_SEC`); Dagster has no separate YAML for them
+- Inbound vlrggapi limiter: official image is **20 match-details/min per client IP**. Compose sets `VLR_RL_DISABLE=1` after rebuild
 - **API gaps:** Attack/Defend player stats; labeled 2K/1vX/ECON; prize points/note; match `event_id` on detail
 - rib overlay join: fuzzy (event name + team names + date)
 
@@ -89,3 +93,9 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 | 2026-09-08 | Matches pipeline + short names (`vlr_events`, `vlr_matches`); require AWS rotator |
 | 2026-09-08 | Match lists complete; details ~3.5% + 429s. Next parallel: static seed dims |
 | 2026-09-08 | `vlr.dim_date` seed job `vlr_date` with year/quarter/month/week range columns |
+| 2026-09-09 | Match extract speed: 32 workers, 256 vlrggapi conns, short retries, skip queued futures |
+| 2026-09-09 | 429 flood: cap 3 in-flight calls, global cooldown, do not land empty detail |
+| 2026-09-09 | vlr_v2 logs GET/429/wait with match_id, attempt, elapsed; rematerialize to see them |
+| 2026-09-09 | 429 was vlrggapi inbound 20/min, not vlr.gg; overlay disables inbound cap |
+| 2026-09-09 | Pace 6/0.4s in src/config/.env; regions moved to VLR_IP_ROTATOR_REGIONS |
+| 2026-09-09 | match_load CardinalityViolation: duplicate vlr_match_id in one INSERT; load now unique | |

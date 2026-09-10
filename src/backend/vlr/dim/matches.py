@@ -5,11 +5,13 @@ from __future__ import annotations
 import json
 import logging
 import os
+import queue
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from backend.api_connectors.ip_rotator_gateway import assert_container_rotator
 from backend.api_connectors.vlr_v2_connector import VlrV2Connector
@@ -17,7 +19,6 @@ from backend.config.env import load_project_env
 from backend.database_connectors.supabase_connectors import SupabaseConnector
 from backend.vlr.dim.util import (
     append_event_match_list,
-    append_match_row,
     event_ids_from_jsonl,
     event_ids_with_match_lists,
     event_matches_jsonl_path,
@@ -27,6 +28,7 @@ from backend.vlr.dim.util import (
     parse_match_date,
     parse_match_patch,
     read_event_match_lists,
+    serialize_match_row,
     utc_now,
     year_from_text,
 )
@@ -155,49 +157,139 @@ def _has_stats(detail: dict[str, Any]) -> bool:
     return False
 
 
+def _needs_detail(listing: dict[str, Any]) -> bool:
+    """Skip /v2/match/details for upcoming/TBD series that have no scoreboard yet."""
+    status = str(listing.get("status") or "").strip().lower()
+    if status == "upcoming":
+        return False
+    team_1 = listing.get("team1") if isinstance(listing.get("team1"), dict) else {}
+    if str(team_1.get("name") or "").strip().upper() == "TBD":
+        return False
+    return True
+
+
+def _listing_id(listing: dict[str, Any]) -> str:
+    """Match id from a list row without fetching detail."""
+    return str(listing.get("match_id") or match_id_from_url(str(listing.get("url") or "")) or "")
+
+
+def _run_pool(items: list[Any], fn: Callable[[Any], None], workers: int) -> None:
+    """Bounded queue of in-flight work so we do not create 100k Future objects."""
+    if not items:
+        return
+    work: queue.Queue = queue.Queue(maxsize=max(workers * 4, 32))
+    errors: list[BaseException] = []
+    stop = threading.Event()
+
+    def consume() -> None:
+        while True:
+            item = work.get()
+            try:
+                if item is None:
+                    return
+                if stop.is_set():
+                    return
+                fn(item)
+            except Exception as exc:
+                errors.append(exc)
+                stop.set()
+            finally:
+                work.task_done()
+
+    threads = [
+        threading.Thread(target=consume, name=f"match-w{i}", daemon=True)
+        for i in range(workers)
+    ]
+    for thread in threads:
+        thread.start()
+    for item in items:
+        if stop.is_set():
+            break
+        work.put(item)
+    for _ in threads:
+        work.put(None)
+    for thread in threads:
+        thread.join()
+    if errors:
+        raise errors[0]
+
+
 @dataclass
 class Progress:
-    """Thread-safe N/total so Dagster logs show which match just finished."""
+    """Thread-safe N/total + rate; log every 50 so Dagster is not the bottleneck."""
 
     total: int
     done: int = 0
+    failed: int = 0
+    t0: float = field(default_factory=time.monotonic)
     lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
-    def mark(self, label: str, *, skipped: bool = False) -> None:
-        suffix = " skip" if skipped else ""
+    def mark(self, label: str, *, failed: bool = False) -> None:
         with self.lock:
             self.done += 1
-            logger.info("[matches] %s/%s %s%s", self.done, self.total, label, suffix)
+            if failed:
+                self.failed += 1
+            if self.done % 50 == 0 or self.done == self.total or failed:
+                elapsed = max(time.monotonic() - self.t0, 0.001)
+                rate = self.done / elapsed
+                logger.info(
+                    "[matches] %s/%s %.1f/s fail=%s %s",
+                    self.done,
+                    self.total,
+                    rate,
+                    self.failed,
+                    label,
+                )
 
 
 @dataclass
 class Landing:
-    """Append-only matches.jsonl; tracks ids so workers do not duplicate."""
+    """Append-only matches.jsonl with one open handle so writes stay cheap."""
 
     repo_root: Path
     ids: set[str]
+    handle: Any
     lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
+    written: int = 0
 
     @classmethod
     def open(cls, repo_root: Path) -> Landing:
         """Load existing ids so a resume appends only new matches."""
-        return cls(repo_root=repo_root, ids=match_ids_in_jsonl(repo_root))
+        path = matches_jsonl_path(repo_root)
+        logger.info("[matches] Scanning landed ids path=%s", path)
+        ids = match_ids_in_jsonl(repo_root)
+        logger.info("[matches] Already landed=%s", len(ids))
+        handle = path.open("a", encoding="utf-8")
+        return cls(repo_root=repo_root, ids=ids, handle=handle)
 
     def has(self, match_id: str) -> bool:
         with self.lock:
             return match_id in self.ids
 
     def write(self, row: dict[str, Any]) -> bool:
-        """Append one landing line. Returns False if the id was already landed."""
+        """Append one landing line. Serialize off the lock; write under the lock."""
         match_id = str(row.get("vlr_match_id") or "")
         if not match_id:
             return False
+        payload = json.dumps(
+            serialize_match_row({k: v for k, v in row.items() if k != "_label"}),
+            ensure_ascii=False,
+            default=str,
+        )
         with self.lock:
             if match_id in self.ids:
                 return False
-            append_match_row(self.repo_root, row)
+            self.handle.write(payload + "\n")
             self.ids.add(match_id)
+            self.written += 1
+            if self.written % 16 == 0:
+                self.handle.flush()
             return True
+
+    def close(self) -> None:
+        with self.lock:
+            self.handle.flush()
+            self.handle.close()
 
 
 def format_row(
@@ -251,6 +343,7 @@ def format_row(
         "n_maps": n_maps,
         "is_completed": _done(status),
         "has_stats": _has_stats(detail),
+        "has_detail": bool(detail),
         "has_vod": bool(vods),
         "has_rib_replay": False,
         "rib_match_id": None,
@@ -294,11 +387,9 @@ def _fetch_one(
     listing: dict[str, Any],
     landing: Landing,
     progress: Progress,
-    *,
-    skip_existing: bool,
 ) -> None:
-    """Fetch one match detail, land dim + raw JSON, log N/total."""
-    match_id = str(listing.get("match_id") or match_id_from_url(str(listing.get("url") or "")) or "")
+    """Fetch one match detail (or list-only for upcoming), land JSON, log rate."""
+    match_id = _listing_id(listing)
     team_1 = listing.get("team1") if isinstance(listing.get("team1"), dict) else {}
     team_2 = listing.get("team2") if isinstance(listing.get("team2"), dict) else {}
     label = (
@@ -306,16 +397,21 @@ def _fetch_one(
         f"({parse_match_date(listing.get('date')) or '?'})"
     )
     if not match_id:
-        progress.mark("(missing id)", skipped=True)
+        progress.mark("(missing id)", failed=True)
         return
-    if skip_existing and landing.has(match_id):
-        progress.mark(label, skipped=True)
-        return
-    try:
-        detail = connector.get_match_details(match_id)
-    except Exception:
-        logger.exception("[matches] Detail failed match_id=%s; landing list row only", match_id)
-        detail = {}
+    logger.info("[matches] Query %s event_id=%s", label, event_id)
+    detail: dict[str, Any] = {}
+    if _needs_detail(listing):
+        try:
+            detail = connector.get_match_details(match_id)
+        except Exception as exc:
+            logger.warning(
+                "[matches] Detail failed match_id=%s err=%s; not landed (retry on resume)",
+                match_id,
+                exc,
+            )
+            progress.mark(label, failed=True)
+            return
     row = format_row(event_id, listing, detail)
     landing.write(row)
     progress.mark(row.get("_label") or label)
@@ -347,49 +443,53 @@ def extract_matches(repo_root: Path | None = None) -> int:
     skip_listed = os.getenv("VLR_MATCH_SKIP_LISTED", "1") == "1"
     skip_existing = os.getenv("VLR_MATCH_SKIP_EXISTING", "1") == "1"
     list_workers = int(os.getenv("VLR_MATCH_EVENT_WORKERS", "8"))
-    detail_workers = int(os.getenv("VLR_MATCH_WORKERS", "8"))
+    detail_workers = int(os.getenv("VLR_MATCH_WORKERS", "6"))
     cached = event_ids_with_match_lists(repo_root)
     cache_lock = threading.Lock()
+    to_list = [eid for eid in event_ids if not (skip_listed and eid in cached)]
     logger.info(
-        "[matches] Listing events=%s cached_lists=%s workers=%s",
+        "[matches] Listing events=%s to_fetch=%s cached_lists=%s workers=%s",
         len(event_ids),
+        len(to_list),
         len(cached),
         list_workers,
     )
-    list_connector = VlrV2Connector(max_workers=list_workers)
-    # Independent event match lists — parallel; 429/502 retries live in the connector.
-    with ThreadPoolExecutor(max_workers=list_workers) as pool:
-        futures = [
-            pool.submit(
-                _list_one,
-                list_connector,
-                repo_root,
-                event_id,
-                cached,
-                cache_lock,
-                skip_listed,
-            )
-            for event_id in event_ids
-        ]
-        listed = 0
-        for future in as_completed(futures):
-            event_id, matches = future.result()
-            listed += 1
-            logger.info(
-                "[matches] list %s/%s event %s matches=%s",
-                listed,
-                len(event_ids),
-                event_id,
-                len(matches),
-            )
+    if to_list:
+        list_connector = VlrV2Connector(max_workers=list_workers)
+        # Independent event match lists — parallel; 429/502 retries live in the connector.
+        with ThreadPoolExecutor(max_workers=list_workers) as pool:
+            futures = [
+                pool.submit(
+                    _list_one,
+                    list_connector,
+                    repo_root,
+                    event_id,
+                    cached,
+                    cache_lock,
+                    skip_listed,
+                )
+                for event_id in to_list
+            ]
+            listed = 0
+            for future in as_completed(futures):
+                event_id, matches = future.result()
+                listed += 1
+                if listed % 50 == 0 or listed == len(to_list):
+                    logger.info(
+                        "[matches] list %s/%s event %s matches=%s",
+                        listed,
+                        len(to_list),
+                        event_id,
+                        len(matches),
+                    )
+    else:
+        logger.info("[matches] All event lists cached; skip list phase")
     by_event = read_event_match_lists(repo_root)
     jobs: list[tuple[str, dict[str, Any]]] = []
     seen: set[str] = set()
     for event_id in event_ids:
         for listing in by_event.get(event_id, []):
-            match_id = str(
-                listing.get("match_id") or match_id_from_url(str(listing.get("url") or "")) or ""
-            )
+            match_id = _listing_id(listing)
             if not match_id or match_id in seen:
                 continue
             seen.add(match_id)
@@ -399,32 +499,30 @@ def extract_matches(repo_root: Path | None = None) -> int:
         jobs = jobs[: int(max_matches)]
         logger.info("[matches] Capped matches=%s", len(jobs))
     landing = Landing.open(repo_root)
-    progress = Progress(total=len(jobs))
+    if skip_existing:
+        pending = [(eid, listing) for eid, listing in jobs if not landing.has(_listing_id(listing))]
+    else:
+        pending = jobs
+    progress = Progress(total=len(pending))
     logger.info(
-        "[matches] Details matches=%s already=%s skip_existing=%s workers=%s jsonl=%s",
-        len(jobs),
+        "[matches] Details pending=%s already=%s workers=%s concurrency=%s jsonl=%s",
+        len(pending),
         len(landing.ids),
-        skip_existing,
         detail_workers,
+        os.getenv("VLR_API_CONCURRENCY", "6"),
         matches_jsonl_path(repo_root),
     )
-    detail_connector = VlrV2Connector(max_workers=detail_workers)
-    # Each match detail is independent I/O; landing/progress use locks.
-    with ThreadPoolExecutor(max_workers=detail_workers) as pool:
-        futures = [
-            pool.submit(
-                _fetch_one,
-                detail_connector,
-                event_id,
-                listing,
-                landing,
-                progress,
-                skip_existing=skip_existing,
-            )
-            for event_id, listing in jobs
-        ]
-        for future in as_completed(futures):
-            future.result()
+    detail_connector = VlrV2Connector(max_workers=detail_workers, timeout=60)
+
+    def _one(item: tuple[str, dict[str, Any]]) -> None:
+        event_id, listing = item
+        _fetch_one(detail_connector, event_id, listing, landing, progress)
+
+    try:
+        # Each match detail is independent I/O; landing/progress use locks.
+        _run_pool(pending, _one, detail_workers)
+    finally:
+        landing.close()
     count = len(landing.ids)
     logger.info(
         "[matches] Done landed=%s processed=%s/%s lists=%s jsonl=%s",
@@ -463,36 +561,62 @@ def json_loads_obj(line: str) -> dict[str, Any] | None:
     return obj if isinstance(obj, dict) else None
 
 
+def _match_row_rank(row: dict[str, Any]) -> tuple[int, int, int]:
+    """Prefer a stats/detail row over a 429 stub when jsonl has the same match id twice."""
+    return (
+        1 if row.get("has_stats") else 0,
+        1 if row.get("has_detail") else 0,
+        1 if row.get("is_completed") else 0,
+    )
+
+
+def unique_dim_rows(repo_root: Path | None = None) -> list[dict[str, Any]]:
+    """One dim row per match id. Postgres ON CONFLICT cannot update the same key twice in one INSERT."""
+    by_id: dict[str, dict[str, Any]] = {}
+    scanned = 0
+    for row in iter_dim_rows(repo_root):
+        scanned += 1
+        match_id = str(row.get("vlr_match_id") or "")
+        if not match_id:
+            continue
+        prev = by_id.get(match_id)
+        if prev is None or _match_row_rank(row) >= _match_row_rank(prev):
+            by_id[match_id] = row
+        if scanned % 25000 == 0:
+            logger.info("[matches] Load scan lines=%s unique=%s", scanned, len(by_id))
+    logger.info("[matches] Load scan done lines=%s unique=%s", scanned, len(by_id))
+    return list(by_id.values())
+
+
+def _upsert_dim_batch(connector: SupabaseConnector, batch: list[dict[str, Any]]) -> int:
+    """Write one unique-key batch into vlr.dim_matches."""
+    return connector.upsert_rows(
+        batch,
+        schema="vlr",
+        table="dim_matches",
+        columns=DIM_COLS,
+        conflict_column="vlr_match_id",
+        update_columns=[c for c in DIM_COLS if c not in {"vlr_match_id", "insert_date"}],
+    )
+
+
 def load_matches(repo_root: Path | None = None) -> int:
     """Upsert dim columns from matches.jsonl; keep row_number on re-run."""
     load_project_env(repo_root)
     repo_root = _root(repo_root)
     logger.info("[matches] Load start jsonl=%s", matches_jsonl_path(repo_root))
     connector = SupabaseConnector()
+    rows = unique_dim_rows(repo_root)
     total = 0
     batch: list[dict[str, Any]] = []
-    for row in iter_dim_rows(repo_root):
+    for row in rows:
         batch.append(row)
         if len(batch) >= 1000:
-            total += connector.upsert_rows(
-                batch,
-                schema="vlr",
-                table="dim_matches",
-                columns=DIM_COLS,
-                conflict_column="vlr_match_id",
-                update_columns=[c for c in DIM_COLS if c not in {"vlr_match_id", "insert_date"}],
-            )
-            logger.info("[matches] Load progress upserted=%s", total)
+            total += _upsert_dim_batch(connector, batch)
+            logger.info("[matches] Load progress upserted=%s/%s", total, len(rows))
             batch = []
     if batch:
-        total += connector.upsert_rows(
-            batch,
-            schema="vlr",
-            table="dim_matches",
-            columns=DIM_COLS,
-            conflict_column="vlr_match_id",
-            update_columns=[c for c in DIM_COLS if c not in {"vlr_match_id", "insert_date"}],
-        )
+        total += _upsert_dim_batch(connector, batch)
     logger.info("[matches] Load done upserted=%s", total)
     return total
 

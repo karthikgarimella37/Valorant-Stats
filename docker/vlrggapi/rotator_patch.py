@@ -1,5 +1,6 @@
 
 # Valorant-Stats overlay: recreate the httpx client with AWS API Gateway mounts.
+import os as _vlr_os
 from utils.rotator_mount import rotator_mounts as _vlr_rotator_mounts
 
 
@@ -12,7 +13,10 @@ def get_http_client() -> httpx.AsyncClient:
             headers=headers,
             timeout=httpx.Timeout(DEFAULT_TIMEOUT),
             follow_redirects=True,
-            limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
+            limits=httpx.Limits(
+                max_connections=int(_vlr_os.getenv("VLR_HTTP_MAX_CONN", "32")),
+                max_keepalive_connections=int(_vlr_os.getenv("VLR_HTTP_KEEPALIVE", "16")),
+            ),
             mounts=mounts,
         )
     return _client
