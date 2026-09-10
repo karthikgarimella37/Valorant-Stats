@@ -97,4 +97,5 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 | 2026-09-09 | 429 flood: cap 3 in-flight calls, global cooldown, do not land empty detail |
 | 2026-09-09 | vlr_v2 logs GET/429/wait with match_id, attempt, elapsed; rematerialize to see them |
 | 2026-09-09 | 429 was vlrggapi inbound 20/min, not vlr.gg; overlay disables inbound cap |
-| 2026-09-09 | Pace 6/0.4s in src/config/.env; regions moved to VLR_IP_ROTATOR_REGIONS | |
+| 2026-09-09 | Pace 6/0.4s in src/config/.env; regions moved to VLR_IP_ROTATOR_REGIONS |
+| 2026-09-09 | match_load CardinalityViolation: duplicate vlr_match_id in one INSERT; load now unique | |
