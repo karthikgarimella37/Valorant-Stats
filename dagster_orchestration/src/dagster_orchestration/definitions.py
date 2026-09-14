@@ -565,6 +565,46 @@ def match_load(context: AssetExecutionContext) -> int:
     return loaded
 
 
+@asset(group_name="vlr_hist")
+def team_schema(context: AssetExecutionContext) -> str:
+    """Create or alter vlr.dim_teams so /v2/team profile columns exist (no DROP)."""
+    context.log.info("=== STEP team_schema: ensure vlr.dim_teams ===")
+    path = apply_teams_schema(REPO_ROOT)
+    context.add_output_metadata({"sql_path": MetadataValue.path(str(path))})
+    return str(path)
+
+
+@asset(group_name="vlr_hist", deps=[team_schema])
+def team_extract(context: AssetExecutionContext) -> int:
+    """GET /v2/team?q=profile for every known id into data/vlr/teams.jsonl."""
+    context.log.info(
+        "=== STEP team_extract: workers=%s concurrency=%s interval=%s max=%s ===",
+        os.getenv("VLR_TEAM_WORKERS", os.getenv("VLR_MATCH_WORKERS", "6")),
+        os.getenv("VLR_API_CONCURRENCY", "6"),
+        os.getenv("VLR_API_INTERVAL_SEC", "0.4"),
+        os.getenv("VLR_MAX_TEAMS", "unlimited"),
+    )
+    count = extract_teams(REPO_ROOT)
+    context.add_output_metadata(
+        {
+            "team_count": count,
+            "json_path": MetadataValue.path(str(REPO_ROOT / "data" / "vlr" / "teams.jsonl")),
+        }
+    )
+    context.log.info("Teams extracted: %s", count)
+    return count
+
+
+@asset(group_name="vlr_hist", deps=[team_extract])
+def team_load(context: AssetExecutionContext) -> int:
+    """Upsert dim columns from teams.jsonl into vlr.dim_teams."""
+    context.log.info("=== STEP team_load: upsert vlr.dim_teams ===")
+    loaded = load_teams(REPO_ROOT)
+    context.add_output_metadata({"upserted": loaded})
+    context.log.info("dim_teams upserted=%s", loaded)
+    return loaded
+
+
 # ---------------------------------------------------------------------------
 # VLR.gg extract → parquet → vlr.*  (self-hosted vlrggapi via VLR_API_BASE)
 # ---------------------------------------------------------------------------
