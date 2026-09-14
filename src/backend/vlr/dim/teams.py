@@ -126,7 +126,7 @@ def split_current_roster(roster: Any) -> tuple[list[dict[str, Any]], list[dict[s
         if not isinstance(person, dict):
             continue
         role = str(person.get("role") or "").strip().lower()
-        if "assistant" in role:
+        if "assistant" in role and "coach" in role:
             row = _person_json(person, include_role=True)
             if row:
                 assistants.append(row)
