@@ -55,8 +55,8 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 - [x] Optional no-API parse: unique teams/players from `events.jsonl` `teams_json`
 - [ ] Let `vlr_matches` finish; then upsert `vlr.dim_matches` and refetch empty-detail 429 rows
 - [ ] Parse facts from `matches.jsonl` (overall / rounds / performance / economy)
-- [ ] Materialize `vlr_teams` (resume `teams.jsonl`; ~21k `/v2/team` calls)
-- [ ] `dim_players` next: `/v2/player` (same one-dim-at-a-time pattern)
+- [ ] Materialize `vlr_teams` (schema+load from existing `teams.jsonl` for roster/socials)
+- [ ] Materialize `vlr_players` (~28k `/v2/player` calls; rebuild vlrggapi first for twitter + team href ids)
 - [ ] Incremental extract via `vlr_watermarks` after historical
 - [ ] Fork/patch vlrggapi: Attack/Defend, event_id on match, labeled performance
 - [ ] rib overlay: replay kills when `vlr_match_id` can join
