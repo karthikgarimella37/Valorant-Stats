@@ -63,6 +63,19 @@ Optional: `VLR_DATE_START=2020-01-01` `VLR_DATE_END=2030-12-31`
 
 Join match/event text dates on `project_date` (`2026/7/8`). Filter ranges with `year`, `year_month`, `year_quarter`, `iso_week_num`, or `full_date BETWEEN …`.
 
+## Seed remaining VLR dims (no match scrape)
+
+Job: `vlr_dims`
+
+- `dims_static` — `dim_vct_regions`, `dim_regions`, `dim_economy`
+- `dims_from_landings` — `dim_maps`, `dim_agents`, `dim_country`, `dim_teams`, `dim_players` from `events.jsonl` + `matches.jsonl`
+- `dims_weapons` — rib.gg `/v1/weapons` into `dim_weapons`
+
+```bash
+cd dagster_orchestration
+uv run dagster job execute -m dagster_orchestration.definitions -j vlr_dims
+```
+
 ## Historical VLR jobs (Dagster)
 
 Jobs: `vlr_events` then `vlr_matches`.

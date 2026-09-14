@@ -73,17 +73,17 @@ CREATE SEQUENCE valorant.seq_<table>_row_number
 
 | Table | Kind | Status | Daily Dagster? | Source |
 |-------|------|--------|----------------|--------|
-| `dim_vct_regions` | dim | Required (static) | Rare | VCT circuits only: `americas`, `emea`, `pacific`, `china` |
-| `dim_regions` | dim | Required (static) | Rare | Local ranking codes only: `na`, `eu`, `br`, `ap`, `kr`, `ch`, `jp`, `lan`, `las`, `oce`, `mn`, `gc` |
-| `dim_country` | dim | Required | Yes | Distinct `country` on VLR teams/players |
+| `dim_vct_regions` | dim | Seed job `vlr_dims` | Rare | Seed `src/backend/vlr/regions.py` |
+| `dim_regions` | dim | Seed job `vlr_dims` | Rare | Seed local ranking codes |
+| `dim_country` | dim | Seed job `vlr_dims` | Rare | Distinct flags on `events.jsonl` rosters |
 | `dim_matches` | dim | Required | Yes | `/v2/events/matches` + `/v2/match/details` |
 | `dim_events` | dim | Required | Yes | `/v2/events`, `/v2/event/{id}` |
-| `dim_players` | dim | Required | Yes | `/v2/player` + team rosters |
-| `dim_teams` | dim | Required | Yes | `/v2/team` + `/v2/rankings` + event rosters |
-| `dim_agents` | dim | Required (static) | Rare | Distinct agent names from VLR match/event agents pages |
-| `dim_maps` | dim | Required (static) | Rare | Distinct map names from VLR matches |
-| `dim_economy` | dim | Required (static) | Rare | Seed buy types; map from VLR economy tab |
-| `dim_weapons` | dim | Required (static) | Rare | Names seen on rib replay kills (nullable on facts) |
+| `dim_players` | dim | Thin load `vlr_dims` | Later `/v2/player` | Event roster ids/ign/flag |
+| `dim_teams` | dim | Thin load `vlr_dims` | Later `/v2/team` | Event rosters + match team ids |
+| `dim_agents` | dim | Seed job `vlr_dims` | Rare | Distinct `agent` on match scoreboards |
+| `dim_maps` | dim | Seed job `vlr_dims` | Rare | Distinct `maps[].map_name` on match detail |
+| `dim_economy` | dim | Seed job `vlr_dims` | Rare | Seed buy types |
+| `dim_weapons` | dim | Seed job `vlr_dims` | Rare | rib.gg `/v1/weapons` (not VLR) |
 | `dim_date` | dim | Seed job `vlr_date` | Rare (extend range) | Generated calendar 2020–2030 |
 | `fact_match_overall_stats` | fact | Landed (parquet) | Yes | VLR `/v2/match/details` map `players[]` |
 | `fact_round_results` | fact | Landed (parquet) | Yes | VLR map `rounds[]` (winner, side t/ct; **no win method**) |
