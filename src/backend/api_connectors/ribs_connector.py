@@ -267,6 +267,30 @@ class RibsConnector:
 
         return self.get_all_paginated("teams", parallel=False)
 
+    def get_all_weapons(self) -> list[dict[str, Any]]:
+        """Fetch the rib.gg gun catalog for dim_weapons (VLR has no weapon list)."""
+        logger.info("[rib] Weapons start")
+        try:
+            payload = self._request("weapons/all", params={"take": 100000})
+            if isinstance(payload, list) and payload:
+                logger.info("[rib] Weapons done source=/weapons/all rows=%s", len(payload))
+                return [row for row in payload if isinstance(row, dict)]
+            if isinstance(payload, dict) and isinstance(payload.get("data"), list) and payload["data"]:
+                rows = [row for row in payload["data"] if isinstance(row, dict)]
+                logger.info("[rib] Weapons done source=/weapons/all rows=%s", len(rows))
+                return rows
+            logger.warning("[rib] /weapons/all empty or unexpected; trying paginated /weapons")
+        except Exception:
+            logger.exception("[rib] /weapons/all failed; trying paginated /weapons")
+        rows = self.get_all_paginated("weapons", parallel=True)
+        logger.info("[rib] Weapons done source=/weapons rows=%s", len(rows))
+        if not rows:
+            raise RuntimeError(
+                "rib.gg returned 0 weapons from /weapons/all and /weapons. "
+                "Check https://be-prod.rib.gg/v1/weapons"
+            )
+        return rows
+
     def probe_endpoints(self) -> list[dict[str, Any]]:
         """
         Probe known rib.gg endpoints and return status + sample column info.
