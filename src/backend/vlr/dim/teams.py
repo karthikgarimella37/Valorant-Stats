@@ -74,6 +74,7 @@ DIM_TYPES = {
     "coaches_json": "JSONB",
     "assistant_coaches_json": "JSONB",
     "coach_vlr_player_id": "TEXT",
+    "social_links_json": "JSONB",
     "insert_date": "TIMESTAMPTZ",
     "update_date": "TIMESTAMPTZ",
 }
