@@ -3,7 +3,7 @@
 > Session-agnostic source of truth. Updated by agents via the `session-continuity` skill. Commit and push this file so every new Cursor chat starts with current context.
 
 **Last updated:** 2026-09-14  
-**Updated by:** Job `vlr_dims` loads remaining dims; weapons from rib.gg
+**Updated by:** dim_teams from `/v2/team` (job `vlr_teams`)
 
 ---
 
@@ -13,7 +13,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 
 ## Current focus
 
-- Materialize `dims_weapons` when `be-prod.rib.gg` DNS works (catalog code is ready)
+- Run job `vlr_teams` to enrich `vlr.dim_teams` from `/v2/team` (ids already in jsonl; ~21k profiles)
 
 ## Status
 
