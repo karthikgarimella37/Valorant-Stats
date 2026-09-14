@@ -49,8 +49,8 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 ## Next up
 
 - [x] Seed `vlr.dim_date` (job `vlr_date`, 2020–2030, range-filter columns)
-- [ ] Seed remaining static tables: `dim_vct_regions`, `dim_regions`, `dim_economy`, `dim_agents`, `dim_maps`, `dim_weapons`
-- [ ] Optional no-API parse: unique teams/players from `events.jsonl` `teams_json` (28k team rows, player flags)
+- [x] Seed remaining static tables: `dim_vct_regions`, `dim_regions`, `dim_economy`, `dim_agents`, `dim_maps`, `dim_weapons`
+- [x] Optional no-API parse: unique teams/players from `events.jsonl` `teams_json`
 - [ ] Let `vlr_matches` finish; then upsert `vlr.dim_matches` and refetch empty-detail 429 rows
 - [ ] Parse facts from `matches.jsonl` (overall / rounds / performance / economy)
 - [ ] `/v2/team` + `/v2/rankings` enrich after matches is done (do not compete for 429 budget now)
