@@ -755,6 +755,11 @@ vlr_date = define_asset_job(
     selection=[date_schema, date_seed, date_load],
 )
 
+vlr_dims = define_asset_job(
+    "vlr_dims",
+    selection=[dims_static, dims_from_landings, dims_weapons],
+)
+
 vlr_events = define_asset_job(
     "vlr_events",
     selection=[evt_schema, evt_extract, evt_load],
