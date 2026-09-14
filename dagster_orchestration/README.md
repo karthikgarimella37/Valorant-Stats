@@ -78,7 +78,7 @@ uv run dagster job execute -m dagster_orchestration.definitions -j vlr_dims
 
 ## Historical VLR jobs (Dagster)
 
-Jobs: `vlr_events` then `vlr_matches`.
+Jobs: `vlr_events` then `vlr_matches`. After matches ids exist, `vlr_teams` enriches `vlr.dim_teams` from `/v2/team`.
 
 Launch from the UI or CLI. Extracts refuse to start unless `docker logs vlrggapi` shows `Ready endpoints=` > 0 (AWS IPs). Do not scrape vlr.gg from the host IP.
 
