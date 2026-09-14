@@ -857,6 +857,11 @@ vlr_teams = define_asset_job(
     selection=[team_schema, team_extract, team_load],
 )
 
+vlr_players = define_asset_job(
+    "vlr_players",
+    selection=[player_schema, player_extract, player_load],
+)
+
 defs = Definitions(
     assets=[
         dbt_build_select_one_plus_ten,
