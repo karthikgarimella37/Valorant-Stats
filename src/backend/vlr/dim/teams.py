@@ -417,6 +417,7 @@ def format_row(
         "coaches_json": coaches,
         "assistant_coaches_json": assistants,
         "coach_vlr_player_id": _coach_vlr_player_id(coaches),
+        "social_links_json": _social_links_json(profile.get("social_links")),
         "insert_date": now,
         "update_date": now,
         "roster": roster,
