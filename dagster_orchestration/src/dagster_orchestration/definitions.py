@@ -859,5 +859,6 @@ defs = Definitions(
         vlr_dims,
         vlr_events,
         vlr_matches,
+        vlr_teams,
     ],
 )

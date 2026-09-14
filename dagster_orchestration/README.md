@@ -92,6 +92,7 @@ cd dagster_orchestration
 ./dev.sh
 # Jobs → vlr_events → Materialize
 # Jobs → vlr_matches → Materialize
+# Jobs → vlr_teams → Materialize
 ```
 
 CLI:
