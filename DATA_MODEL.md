@@ -408,9 +408,9 @@ One row per buy type. Seeded, not scraped.
 
 ---
 
-### `dim_weapons` — Required (static)
+### `dim_weapons` — Seeded from rib.gg
 
-One row per weapon **name** seen on rib replay kills. VLR has no gun catalog.  
+One row per weapon. VLR match JSON has **no gun names**.  
 **PK:** `row_number`  
 **Business key:** `weapon_name`  
 **Sequence:** `seq_dim_weapons_row_number`
@@ -418,13 +418,19 @@ One row per weapon **name** seen on rib replay kills. VLR has no gun catalog.
 | Column | Type | Notes |
 |--------|------|--------|
 | `weapon_name` | `TEXT` | |
+| `rib_weapon_id` | `TEXT` | rib.gg id when present |
+| `weapon_type` | `TEXT` | Category if rib sends it |
+| `credits` | `INT` | Shop cost if present |
+| `fire_rate` | `FLOAT` | If present |
+| `magazine_size` | `INT` | If present |
+| `image_url` | `TEXT` | If present |
+| `stats_json` | `JSONB` | Full rib payload (any extra fields) |
 | `row_number` | `BIGINT` PK | |
 | `insert_date` | `TIMESTAMPTZ` | |
 | `update_date` | `TIMESTAMPTZ` | |
 
-No fire-rate / accuracy without valorant-api.com.  
-**Insert from:** distinct weapon names on rib kill events.  
-**Dagster:** upsert when replay overlay runs.
+**Insert from:** rib.gg `GET /v1/weapons/all` (fallback paginated `/v1/weapons`). Job `vlr_dims` asset `dims_weapons`.  
+**Dagster:** rare upsert on `weapon_name`.
 
 ---
 
