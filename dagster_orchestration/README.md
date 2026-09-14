@@ -102,6 +102,7 @@ cd dagster_orchestration
 uv run dagster job execute -m dagster_orchestration.definitions -j vlr_events
 uv run dagster job execute -m dagster_orchestration.definitions -j vlr_matches
 uv run dagster job execute -m dagster_orchestration.definitions -j vlr_teams
+uv run dagster job execute -m dagster_orchestration.definitions -j vlr_players
 ```
 
 `vlr_events`: ensure `vlr.dim_events` → `data/vlr/events.jsonl` → upsert.  
