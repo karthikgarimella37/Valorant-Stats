@@ -560,7 +560,13 @@ def load_teams(repo_root: Path | None = None) -> int:
     repo_root = _root(repo_root)
     logger.info("[teams] Load start jsonl=%s", teams_jsonl_path(repo_root))
     rows = unique_dim_rows(repo_root)
-    loaded = upsert_dim_rows(rows, table="dim_teams", columns=DIM_COLS, conflict_column="vlr_team_id")
+    loaded = upsert_dim_rows(
+        rows,
+        table="dim_teams",
+        columns=DIM_COLS,
+        conflict_column="vlr_team_id",
+        jsonb_columns=JSON_COLS,
+    )
     logger.info("[teams] Load done upserted=%s", loaded)
     return loaded
 
