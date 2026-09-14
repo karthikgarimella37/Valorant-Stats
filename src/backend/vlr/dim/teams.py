@@ -48,10 +48,16 @@ DIM_COLS = (
     "coaches_json",
     "assistant_coaches_json",
     "coach_vlr_player_id",
+    "social_links_json",
     "insert_date",
     "update_date",
 )
-JSON_COLS = ("current_roster_json", "coaches_json", "assistant_coaches_json")
+JSON_COLS = (
+    "current_roster_json",
+    "coaches_json",
+    "assistant_coaches_json",
+    "social_links_json",
+)
 DIM_TYPES = {
     "row_number": "BIGINT",
     "vlr_team_id": "TEXT",
