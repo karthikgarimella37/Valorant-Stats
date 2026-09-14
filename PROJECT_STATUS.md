@@ -13,7 +13,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 
 ## Current focus
 
-- Run job `vlr_teams` to enrich `vlr.dim_teams` from `/v2/team` (ids already in jsonl; ~21k profiles)
+- Run job `vlr_teams` to enrich `vlr.dim_teams` from `/v2/team` (ids already in jsonl; ~21k profiles; roster JSON on the dim)
 
 ## Status
 
