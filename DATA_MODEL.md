@@ -79,7 +79,7 @@ CREATE SEQUENCE valorant.seq_<table>_row_number
 | `dim_matches` | dim | Required | Yes | `/v2/events/matches` + `/v2/match/details` |
 | `dim_events` | dim | Required | Yes | `/v2/events`, `/v2/event/{id}` |
 | `dim_players` | dim | Thin load `vlr_dims` | Later `/v2/player` | Event roster ids/ign/flag |
-| `dim_teams` | dim | Thin load `vlr_dims` | Later `/v2/team` | Event rosters + match team ids |
+| `dim_teams` | dim | Job `vlr_teams` | Yes | `/v2/team?id=&q=profile` + rankings overlay; ids from event/match jsonl |
 | `dim_agents` | dim | Seed job `vlr_dims` | Rare | Distinct `agent` on match scoreboards |
 | `dim_maps` | dim | Seed job `vlr_dims` | Rare | Distinct `maps[].map_name` on match detail |
 | `dim_economy` | dim | Seed job `vlr_dims` | Rare | Seed buy types |
