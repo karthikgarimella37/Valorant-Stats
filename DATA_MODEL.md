@@ -297,22 +297,25 @@ One row per player.
 |--------|------|--------|
 | `vlr_player_id` | `TEXT` | |
 | `rib_player_id` | `BIGINT` | Overlay; nullable |
-| `current_team_id` | `BIGINT` FK | → `dim_teams.row_number` |
-| `country_id` | `BIGINT` FK | → `dim_country.row_number` |
-| `ign` | `TEXT` | |
-| `first_name` | `TEXT` | |
-| `last_name` | `TEXT` | |
-| `role` | `TEXT` | player / coach |
-| `is_igl` | `BOOLEAN` | |
-| `image_url` | `TEXT` | |
-| `twitch_url` | `TEXT` | |
-| `twitter_url` | `TEXT` | |
+| `ign` | `TEXT` | VLR handle (`vora`) |
+| `full_name` | `TEXT` | `real_name` (`Jordan Pulwer`) |
+| `first_name` | `TEXT` | Split from `full_name` |
+| `last_name` | `TEXT` | Remainder after first token |
+| `country_flag` | `TEXT` | `/v2/player` `country` (`ca`) |
+| `country_name` | `TEXT` | Mapped display name (`Canada`) |
+| `image_url` | `TEXT` | Avatar |
+| `player_href` | `TEXT` | `https://www.vlr.gg/player/{id}` |
+| `vlr_team_id` | `TEXT` | Current org id (join `dim_teams`). Warehouse `current_team_id` FK later. |
+| `current_team_name` | `TEXT` | Current org name (`100 Thieves`) |
+| `current_team_joined` | `TEXT` | `joined in November 2025` → `November 2025`; null if unknown |
+| `social_links_json` | `JSONB` | `[{"platform","url"}, …]`. Drops vlr.gg chrome. Header twitter (e.g. `@vorazune`) needs vlrggapi overlay rebuild. |
+| `teams_json` | `JSONB` | Current + past: `[{"vlr_team_id","team_name","joined_at","left_at","status"}]`. `left_at` is null while current / unknown. |
 | `row_number` | `BIGINT` PK | |
 | `insert_date` | `TIMESTAMPTZ` | |
 | `update_date` | `TIMESTAMPTZ` | |
 
-**Insert from:** VLR `/players/{id}` and `/teams/{id}` roster.  
-**Dagster:** daily upsert on `vlr_player_id`.
+**Insert from:** `/v2/player?id=&q=profile`. Team id from profile `current_team.id` / `past_teams[].id` after overlay, else unique `team_name` match on `teams.jsonl`. Id universe from event rosters + `teams.jsonl` roster.  
+**Dagster:** job `vlr_players` daily upsert on `vlr_player_id`.
 
 ---
 
