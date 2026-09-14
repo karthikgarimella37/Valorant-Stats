@@ -107,7 +107,8 @@ uv run dagster job execute -m dagster_orchestration.definitions -j vlr_players
 
 `vlr_events`: ensure `vlr.dim_events` → `data/vlr/events.jsonl` → upsert.  
 `vlr_matches`: ensure `vlr.dim_matches` → `data/vlr/matches.jsonl` (dim + full match JSON) → upsert.  
-`vlr_teams`: ALTER `vlr.dim_teams` → `data/vlr/teams.jsonl` (`/v2/team?q=profile`) → upsert.
+`vlr_teams`: ALTER `vlr.dim_teams` → `data/vlr/teams.jsonl` (`/v2/team?q=profile`) → upsert.  
+`vlr_players`: ALTER `vlr.dim_players` → `data/vlr/players.jsonl` (`/v2/player?q=profile`) → upsert.
 
 Needs: vlrggapi on `http://127.0.0.1:3001` with AWS rotator, and working Supabase env.
 
