@@ -369,20 +369,21 @@ One row per org / team.
 |--------|------|--------|
 | `vlr_team_id` | `TEXT` | |
 | `rib_team_id` | `BIGINT` | Overlay; nullable |
-| `region_id` | `BIGINT` FK | → `dim_regions.row_number` (local only; circuit via `vct_region_code`) |
-| `country_id` | `BIGINT` FK | → `dim_country.row_number` |
+| `region_code` | `TEXT` | Local ranking code when known. Profile has no region; overlay from `/v2/rankings`. Warehouse `region_id` FK later. |
+| `country_name` | `TEXT` | `/v2/team` `country_name`. Warehouse `country_id` FK later. |
+| `country_flag` | `TEXT` | `/v2/team` `country` (`kr`, …) |
 | `team_name` | `TEXT` | |
-| `team_code` | `TEXT` | Short name |
+| `team_code` | `TEXT` | Short tag (`GEN`) |
 | `logo_url` | `TEXT` | `img` |
-| `team_href` | `TEXT` | vlr.gg url |
-| `division` | `TEXT` | When known |
-| `coach_player_id` | `BIGINT` FK | → `dim_players.row_number` (nullable) |
+| `team_href` | `TEXT` | `https://www.vlr.gg/team/{id}` |
+| `division` | `TEXT` | When known (not on team profile today) |
+| `coach_vlr_player_id` | `TEXT` | Head coach from roster `role`. Warehouse `coach_player_id` FK later. |
 | `row_number` | `BIGINT` PK | |
 | `insert_date` | `TIMESTAMPTZ` | |
 | `update_date` | `TIMESTAMPTZ` | |
 
-**Insert from:** `/v2/team?id=&q=profile`, `/v2/rankings?region=`, `/v2/event/{id}` rosters.  
-**Dagster:** daily upsert on `vlr_team_id`.
+**Insert from:** `/v2/team?id=&q=profile` (roster comes on the same payload; do not also call `q=roster`). Rankings overlay `region_code` by name+country (rankings often lack team id). Id universe from `/v2/event/{id}` rosters + match team ids.  
+**Dagster:** job `vlr_teams` daily upsert on `vlr_team_id`. Store TEXT codes now; resolve `region_id` / `country_id` / `coach_player_id` `row_number` FKs after those dims are complete.
 
 ---
 
