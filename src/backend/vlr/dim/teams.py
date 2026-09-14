@@ -177,6 +177,9 @@ def _social_links_json(raw: Any) -> list[dict[str, str]]:
         seen.add(key)
         out.append({"platform": platform, "url": url})
     return out
+
+
+def _coach_vlr_player_id(coaches: list[dict[str, Any]]) -> str | None:
     """Scalar head-coach id for a simple join; full list lives in coaches_json."""
     if not coaches:
         return None
