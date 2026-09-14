@@ -100,4 +100,4 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 | 2026-09-09 | Pace 6/0.4s in src/config/.env; regions moved to VLR_IP_ROTATOR_REGIONS |
 | 2026-09-09 | match_load CardinalityViolation: duplicate vlr_match_id in one INSERT; load now unique |
 | 2026-09-14 | Job `vlr_dims` for remaining dims; weapons from rib.gg `/v1/weapons` |
-| 2026-09-14 | dim_teams roster JSON: current players, coaches, assistant coaches with vlr_player_id |
+| 2026-09-14 | dim_teams also loads social_links_json from existing teams.jsonl (country already on dim) |
