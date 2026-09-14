@@ -559,6 +559,10 @@ def _fill_roster_json(obj: dict[str, Any], row: dict[str, Any]) -> dict[str, Any
             except json.JSONDecodeError:
                 parsed = []
         row["coach_vlr_player_id"] = _coach_vlr_player_id(parsed if isinstance(parsed, list) else [])
+    social = obj.get("social_links_json")
+    if social is None:
+        social = _social_links_json(obj.get("social_links"))
+    row["social_links_json"] = json_dumps(social) if not isinstance(social, str) else social
     return row
 
 
