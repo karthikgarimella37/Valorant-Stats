@@ -225,13 +225,14 @@ def _iter_map_players(game: dict[str, Any]):
                 yield player
 
 
-def collect_maps_and_agents(repo_root: Path) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Distinct map_name and agent from matches.jsonl. Serial: one file, sequential scan."""
+def collect_from_matches(repo_root: Path) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, str]]:
+    """One pass over matches.jsonl for maps, agents, and extra team ids. Serial: single file."""
     path = matches_jsonl_path(repo_root)
     maps: set[str] = set()
     agents: set[str] = set()
+    teams: dict[str, str] = {}
     scanned = 0
-    logger.info("[landings] Scan matches for maps/agents path=%s", path)
+    logger.info("[landings] Scan matches path=%s", path)
     if not path.exists():
         raise FileNotFoundError(f"matches.jsonl missing at {path}. Run vlr_matches first.")
     with path.open(encoding="utf-8") as handle:
@@ -242,6 +243,14 @@ def collect_maps_and_agents(repo_root: Path) -> tuple[list[dict[str, Any]], list
             obj = json_loads_obj(line)
             if not obj:
                 continue
+            for tid_key, name_key in (
+                ("vlr_team_1_id", "team_1_name"),
+                ("vlr_team_2_id", "team_2_name"),
+            ):
+                team_id = str(obj.get(tid_key) or "").strip()
+                if team_id:
+                    name = str(obj.get(name_key) or "").strip()
+                    teams[team_id] = name or teams.get(team_id) or team_id
             detail = obj.get("detail") if isinstance(obj.get("detail"), dict) else {}
             games = detail.get("maps") if isinstance(detail.get("maps"), list) else []
             for game in games:
@@ -256,21 +265,28 @@ def collect_maps_and_agents(repo_root: Path) -> tuple[list[dict[str, Any]], list
                         agents.add(agent)
             if scanned % 25000 == 0:
                 logger.info(
-                    "[landings] Scan progress lines=%s maps=%s agents=%s",
+                    "[landings] Match scan lines=%s maps=%s agents=%s teams=%s",
                     scanned,
                     len(maps),
                     len(agents),
+                    len(teams),
                 )
-    logger.info("[landings] Scan done lines=%s maps=%s agents=%s", scanned, len(maps), len(agents))
+    logger.info(
+        "[landings] Match scan done lines=%s maps=%s agents=%s teams=%s",
+        scanned,
+        len(maps),
+        len(agents),
+        len(teams),
+    )
     map_rows = stamp_rows([{"map_name": name} for name in sorted(maps)])
     agent_rows = stamp_rows(
         [{"agent_name": name, "role_name": AGENT_ROLES.get(name)} for name in sorted(agents)]
     )
-    return map_rows, agent_rows
+    return map_rows, agent_rows, teams
 
 
-def collect_teams_players_countries(repo_root: Path) -> tuple[list[dict[str, Any]], ...]:
-    """Unique teams/players/countries from events.jsonl plus match team ids."""
+def collect_from_events(repo_root: Path, teams: dict[str, str]) -> tuple[list[dict[str, Any]], ...]:
+    """Unique players/countries and extra team names from events.jsonl rosters."""
     events_path = events_jsonl_path(repo_root)
     matches_path = matches_jsonl_path(repo_root)
     teams: dict[str, str] = {}
