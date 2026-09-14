@@ -25,6 +25,7 @@ from backend.vlr.dim.util import (
     team_ids_in_jsonl,
     teams_jsonl_path,
     utc_now,
+    clean_vlr_social_links,
 )
 from backend.vlr.regions import normalize_region_code
 
