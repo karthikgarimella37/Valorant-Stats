@@ -33,6 +33,7 @@ __all__ = [
     "run_dates",
     "run_events",
     "run_matches",
+    "run_teams",
     "run_weapons",
     "seed_dates",
 ]
