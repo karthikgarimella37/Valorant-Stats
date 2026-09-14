@@ -455,6 +455,36 @@ def date_load(context: AssetExecutionContext) -> int:
     return loaded
 
 
+@asset(group_name="vlr_seed")
+def dims_static(context: AssetExecutionContext) -> dict[str, int]:
+    """Load VCT circuits, local ranking codes, and economy buy types (no API)."""
+    context.log.info("=== STEP dims_static: vct_regions + regions + economy ===")
+    counts = load_static(REPO_ROOT)
+    context.add_output_metadata({"row_counts": MetadataValue.json(counts)})
+    context.log.info("Static dims upserted=%s", counts)
+    return counts
+
+
+@asset(group_name="vlr_seed")
+def dims_from_landings(context: AssetExecutionContext) -> dict[str, int]:
+    """Distinct maps/agents/teams/players/countries from events.jsonl + matches.jsonl."""
+    context.log.info("=== STEP dims_from_landings: parse jsonl into remaining dims ===")
+    counts = load_from_landings(REPO_ROOT)
+    context.add_output_metadata({"row_counts": MetadataValue.json(counts)})
+    context.log.info("Landing dims upserted=%s", counts)
+    return counts
+
+
+@asset(group_name="vlr_seed")
+def dims_weapons(context: AssetExecutionContext) -> dict[str, int]:
+    """rib.gg weapon catalog into vlr.dim_weapons (VLR has no gun list)."""
+    context.log.info("=== STEP dims_weapons: GET rib.gg /weapons ===")
+    counts = run_weapons(REPO_ROOT)
+    context.add_output_metadata({"row_counts": MetadataValue.json(counts)})
+    context.log.info("Weapons upserted=%s", counts)
+    return counts
+
+
 @asset(group_name="vlr_hist")
 def evt_schema(context: AssetExecutionContext) -> str:
     """Create or alter vlr.dim_events so extract rows match warehouse columns."""
