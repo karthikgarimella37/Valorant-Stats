@@ -2,8 +2,8 @@
 
 > Session-agnostic source of truth. Updated by agents via the `session-continuity` skill. Commit and push this file so every new Cursor chat starts with current context.
 
-**Last updated:** 2026-09-09  
-**Updated by:** match_load failed on duplicate jsonl ids; dedupe before upsert
+**Last updated:** 2026-09-14  
+**Updated by:** Job `vlr_dims` loads remaining dims; weapons from rib.gg
 
 ---
 
