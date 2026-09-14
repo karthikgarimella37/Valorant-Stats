@@ -534,7 +534,7 @@ def _row_rank(row: dict[str, Any]) -> tuple[int, int, int, int]:
 
 
 def _fill_roster_json(obj: dict[str, Any], row: dict[str, Any]) -> dict[str, Any]:
-    """Use pre-split JSON columns, or rebuild them from a raw profile roster list."""
+    """Use pre-split JSON columns, or rebuild them from raw profile roster/socials."""
     players = obj.get("current_roster_json")
     coaches = obj.get("coaches_json")
     assistants = obj.get("assistant_coaches_json")
