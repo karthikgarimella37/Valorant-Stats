@@ -44,10 +44,14 @@ DIM_COLS = (
     "logo_url",
     "team_href",
     "division",
+    "current_roster_json",
+    "coaches_json",
+    "assistant_coaches_json",
     "coach_vlr_player_id",
     "insert_date",
     "update_date",
 )
+JSON_COLS = ("current_roster_json", "coaches_json", "assistant_coaches_json")
 DIM_TYPES = {
     "row_number": "BIGINT",
     "vlr_team_id": "TEXT",
@@ -60,6 +64,9 @@ DIM_TYPES = {
     "logo_url": "TEXT",
     "team_href": "TEXT",
     "division": "TEXT",
+    "current_roster_json": "JSONB",
+    "coaches_json": "JSONB",
+    "assistant_coaches_json": "JSONB",
     "coach_vlr_player_id": "TEXT",
     "insert_date": "TIMESTAMPTZ",
     "update_date": "TIMESTAMPTZ",
