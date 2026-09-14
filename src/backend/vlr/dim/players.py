@@ -521,7 +521,13 @@ def _row_rank(row: dict[str, Any]) -> tuple[int, int, int]:
     teams = row.get("teams_json")
     has_teams = bool(teams) and teams not in ("[]", None, [])
     socials = row.get("social_links_json")
-    has_socials = bool(socials) and socials not in ("[]", None, [])
+    has_socials = False
+    if isinstance(socials, dict):
+        has_socials = bool(socials.get("twitter") or socials.get("twitch"))
+    elif isinstance(socials, str) and socials not in ("{}", "[]", ""):
+        has_socials = '"twitter": "' in socials or '"twitch": "' in socials
+    elif isinstance(socials, list) and socials:
+        has_socials = True
     return (
         1 if row.get("full_name") else 0,
         1 if has_teams else 0,
