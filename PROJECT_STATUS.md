@@ -21,8 +21,8 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 |------|--------|-------|
 | Overall | In progress | Events done. Match lists done. Match details still scraping |
 | Data sources | Validated | Self-hosted vlrggapi `/v2` via AWS IP rotator overlay |
-| Orchestration | In progress | Jobs `vlr_events`, `vlr_matches` |
-| Dim tables | In progress | Events/matches/date loaded. Job `vlr_dims` fills the rest |
+| Orchestration | In progress | Jobs `vlr_events`, `vlr_matches`, `vlr_teams` |
+| Dim tables | In progress | Thin teams/players loaded. `vlr_teams` enriches orgs from `/v2/team` |
 | Fact tables | Blocked on matches | Parse `matches.jsonl` after details finish |
 | Frontend / viz | Not started | Graphs and dashboards listed in `Valorant API.md` |
 | Session process | Done | Status + standards markdown; always-on Cursor rules/skills; auto-commit hook |
