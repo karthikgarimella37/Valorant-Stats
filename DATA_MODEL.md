@@ -377,7 +377,10 @@ One row per org / team.
 | `logo_url` | `TEXT` | `img` |
 | `team_href` | `TEXT` | `https://www.vlr.gg/team/{id}` |
 | `division` | `TEXT` | When known (not on team profile today) |
-| `coach_vlr_player_id` | `TEXT` | Head coach from roster `role`. Warehouse `coach_player_id` FK later. |
+| `current_roster_json` | `JSONB` | Active players only: `[{"vlr_player_id","ign"}, …]`. Join on `vlr_player_id`. |
+| `coaches_json` | `JSONB` | Head/other coaches (not assistants): `[{"vlr_player_id","ign","role"}, …]`. |
+| `assistant_coaches_json` | `JSONB` | Assistant coaches, same object shape. |
+| `coach_vlr_player_id` | `TEXT` | Head coach id (first `head coach`, else first coaches_json row). |
 | `row_number` | `BIGINT` PK | |
 | `insert_date` | `TIMESTAMPTZ` | |
 | `update_date` | `TIMESTAMPTZ` | |
