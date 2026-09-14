@@ -183,7 +183,7 @@ One row per **local VLR ranking code**. Do not put `americas` / `emea` / `pacifi
 **Insert from:** seed in `src/backend/vlr/regions.py` (`LOCAL_REGIONS`). API aliases: `cn`→`ch`, `la-n`→`lan`, `la-s`→`las`.  
 **Dagster:** load once.
 
-Rule: a row is **either** a VCT circuit **or** a local code. Events store at most one of `vct_region_id` / `region_id`. Teams and countries always use local `region_id`; circuit is via `dim_regions.vct_region_code`.
+Rule: a row is **either** a VCT circuit **or** a local code. Events store at most one of `vct_region_id` / `region_id`. Teams store local `region_code` from rankings overlay (profile has no region); `region_id` FK later. Circuit is via `dim_regions.vct_region_code`.
 
 ---
 
