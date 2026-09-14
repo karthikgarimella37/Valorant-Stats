@@ -807,6 +807,7 @@ defs = Definitions(
         rib_gg_star_schema_job,
         vlr_star_schema_job,
         vlr_date,
+        vlr_dims,
         vlr_events,
         vlr_matches,
     ],
