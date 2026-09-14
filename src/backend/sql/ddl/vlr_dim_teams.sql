@@ -15,6 +15,9 @@ CREATE TABLE IF NOT EXISTS vlr.dim_teams (
     logo_url TEXT,
     team_href TEXT,
     division TEXT,
+    current_roster_json JSONB,
+    coaches_json JSONB,
+    assistant_coaches_json JSONB,
     coach_vlr_player_id TEXT,
     insert_date TIMESTAMPTZ NOT NULL DEFAULT now(),
     update_date TIMESTAMPTZ NOT NULL DEFAULT now()
