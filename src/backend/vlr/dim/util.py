@@ -430,3 +430,46 @@ def event_ids_from_jsonl(repo_root: Path) -> list[str]:
             seen.add(event_id)
             ids.append(event_id)
     return ids
+
+
+def teams_jsonl_path(repo_root: Path) -> Path:
+    """Single append file of /v2/team profiles (one JSON object per line)."""
+    path = Path(repo_root) / "data" / "vlr" / "teams.jsonl"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def serialize_team_row(row: dict[str, Any]) -> dict[str, Any]:
+    """JSON-safe copy of a team landing row (datetimes as ISO)."""
+    out = dict(row)
+    for key in ("insert_date", "update_date"):
+        value = out.get(key)
+        if isinstance(value, datetime):
+            out[key] = value.isoformat()
+        elif isinstance(value, date):
+            out[key] = format_project_date(value)
+    return out
+
+
+def team_ids_in_jsonl(repo_root: Path) -> set[str]:
+    """Ids that already have a usable /v2/team profile so empty stubs are refetched."""
+    path = teams_jsonl_path(repo_root)
+    ids: set[str] = set()
+    if not path.exists():
+        return ids
+    key_re = re.compile(r'"vlr_team_id"\s*:\s*"([^"]+)"')
+    with path.open(encoding="utf-8") as handle:
+        for line in handle:
+            if not line.strip():
+                continue
+            head = line[:800]
+            match = key_re.search(head)
+            if not match:
+                continue
+            # Real profiles have tag/logo/country; tiny error stubs are refetched.
+            if (
+                '"team_name"' in head
+                and ('"team_code": "' in head or '"logo_url": "http' in head or '"country_name": "' in head)
+            ) or len(line) > 400:
+                ids.add(match.group(1))
+    return ids
