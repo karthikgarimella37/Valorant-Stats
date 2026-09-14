@@ -46,6 +46,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 - [x] `vlr.dim_date` generated calendar (2020–2030) + job `vlr_date`
 - [x] Job `vlr_dims`: seed vct/regions/economy; parse maps/agents/teams/players/country; rib weapons
 - [x] Job `vlr_teams` code: `/v2/team?q=profile` → `data/vlr/teams.jsonl` → upsert `vlr.dim_teams`
+- [x] Job `vlr_players` code: `/v2/player?q=profile` → `data/vlr/players.jsonl` → upsert `vlr.dim_players`
 
 ## Next up
 
