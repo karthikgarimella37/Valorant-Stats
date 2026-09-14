@@ -7,10 +7,12 @@ RUN uv pip install --system --no-cache requests-ip-rotator boto3
 COPY docker/vlrggapi/rotator_mount.py /vlrggapi/utils/rotator_mount.py
 COPY docker/vlrggapi/rotator_patch.py /tmp/rotator_patch.py
 COPY docker/vlrggapi/rate_limiter_patch.py /tmp/rate_limiter_patch.py
+COPY docker/vlrggapi/players_patch.py /tmp/players_patch.py
 RUN cat /tmp/rotator_patch.py >> /vlrggapi/utils/http_client.py \
     && cat /tmp/rate_limiter_patch.py >> /vlrggapi/api/utils/rate_limiter.py \
+    && cat /tmp/players_patch.py >> /vlrggapi/api/scrapers/players.py \
     && chown vlrggapi:vlrggapi /vlrggapi/utils/rotator_mount.py /vlrggapi/utils/http_client.py \
-        /vlrggapi/api/utils/rate_limiter.py \
-    && rm /tmp/rotator_patch.py /tmp/rate_limiter_patch.py
+        /vlrggapi/api/utils/rate_limiter.py /vlrggapi/api/scrapers/players.py \
+    && rm /tmp/rotator_patch.py /tmp/rate_limiter_patch.py /tmp/players_patch.py
 
 USER vlrggapi

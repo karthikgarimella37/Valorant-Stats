@@ -9,6 +9,7 @@ from .historical import (
     run_events,
 )
 from .matches import apply_matches_schema, extract_matches, load_matches, run_matches
+from .players import apply_players_schema, extract_players, load_players, run_players
 from .static import load_static
 from .teams import apply_teams_schema, extract_teams, load_teams, run_teams
 from .weapons import run_weapons
