@@ -10,6 +10,7 @@ from .historical import (
 )
 from .matches import apply_matches_schema, extract_matches, load_matches, run_matches
 from .static import load_static
+from .teams import apply_teams_schema, extract_teams, load_teams, run_teams
 from .weapons import run_weapons
 
 __all__ = [
