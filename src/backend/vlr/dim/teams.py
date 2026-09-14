@@ -363,6 +363,7 @@ def format_row(
         if region_code is None:
             region_code = region_lookup.get((name.lower(), ""))
     roster = profile.get("roster") if isinstance(profile.get("roster"), list) else []
+    players, coaches, assistants = split_current_roster(roster)
     now = utc_now()
     return {
         "vlr_team_id": team_id,
@@ -375,7 +376,10 @@ def format_row(
         "logo_url": _text(profile.get("logo")),
         "team_href": f"{SITE_BASE}/team/{team_id}" if team_id else None,
         "division": None,
-        "coach_vlr_player_id": _coach_vlr_player_id(roster),
+        "current_roster_json": players,
+        "coaches_json": coaches,
+        "assistant_coaches_json": assistants,
+        "coach_vlr_player_id": _coach_vlr_player_id(coaches),
         "insert_date": now,
         "update_date": now,
         "roster": roster,
