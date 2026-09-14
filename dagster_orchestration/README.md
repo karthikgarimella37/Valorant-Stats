@@ -117,7 +117,7 @@ Optional env vars:
 - `VLR_EVENT_DETAIL_WORKERS` (default `12`)
 - `VLR_EVENT_PAGE_WORKERS` (default `8`)
 - `VLR_EVENT_PAGE_DELAY_SEC` (default `0.2`)
-- `VLR_MAX_EVENTS` / `VLR_MAX_MATCHES` / `VLR_MAX_TEAMS` — cap for a smoke run
+- `VLR_MAX_EVENTS` / `VLR_MAX_MATCHES` / `VLR_MAX_TEAMS` / `VLR_MAX_PLAYERS` — cap for a smoke run
 - `VLR_EVENT_SKIP_EXISTING=1` — skip ids already in `events.jsonl`
 - `VLR_MATCH_EVENT_WORKERS` (default `8`) / `VLR_MATCH_WORKERS` (default `6`)
 - `VLR_API_CONCURRENCY` (default `6`) — max in-flight `/v2` match-detail calls
