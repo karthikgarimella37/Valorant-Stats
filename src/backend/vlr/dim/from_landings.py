@@ -338,9 +338,6 @@ def collect_teams_players_countries(repo_root: Path) -> tuple[list[dict[str, Any
                 if not line.strip():
                     continue
                 extra += 1
-                head = line[:2000]
-                obj = json_loads_obj(head + "}" if not head.rstrip().endswith("}") else head)
-                # Full parse needed for team names; only cheap-parse dim fields from the prefix.
                 parsed = json_loads_obj(line)
                 if not parsed:
                     continue
