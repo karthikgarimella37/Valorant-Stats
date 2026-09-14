@@ -13,7 +13,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 
 ## Current focus
 
-- Materialize job `vlr_dims` (`dims_static`, `dims_from_landings`, `dims_weapons`)
+- Materialize `dims_weapons` when `be-prod.rib.gg` DNS works (catalog code is ready)
 
 ## Status
 
