@@ -19,10 +19,10 @@ from backend.config.env import load_project_env
 from backend.vlr.dim.from_landings import FLAG_TO_COUNTRY
 from backend.vlr.dim.load import apply_dim_schema, stamp_rows, upsert_dim_rows
 from backend.vlr.dim.util import (
-    clean_vlr_social_links,
     events_jsonl_path,
     json_dumps,
     player_ids_in_jsonl,
+    player_social_links_map,
     players_jsonl_path,
     serialize_player_row,
     teams_jsonl_path,
