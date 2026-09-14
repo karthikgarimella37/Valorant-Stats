@@ -44,6 +44,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 - [x] Extracts fail unless vlrggapi rotator `Ready endpoints=` > 0
 - [x] Project calendar dates: `YYYY/M/D` no pad (example `2026/7/8`)
 - [x] `vlr.dim_date` generated calendar (2020–2030) + job `vlr_date`
+- [x] Job `vlr_dims`: seed vct/regions/economy; parse maps/agents/teams/players/country; rib weapons
 
 ## Next up
 
