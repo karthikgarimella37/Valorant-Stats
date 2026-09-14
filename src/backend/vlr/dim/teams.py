@@ -82,12 +82,6 @@ DIM_TYPES = {
 
 _TEAM_1_ID_RE = re.compile(r'"vlr_team_1_id"\s*:\s*"([^"]+)"')
 _TEAM_2_ID_RE = re.compile(r'"vlr_team_2_id"\s*:\s*"([^"]+)"')
-# vlrggapi copies site chrome onto every team page; those are not org socials.
-_VLR_SOCIAL_NOISE = (
-    "twitter.com/vlrdotgg",
-    "x.com/vlrdotgg",
-    "discord.com/invite/vlr",
-)
 
 
 def _root(repo_root: Path | None) -> Path:
