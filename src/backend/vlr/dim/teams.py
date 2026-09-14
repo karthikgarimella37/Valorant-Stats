@@ -483,13 +483,45 @@ def json_loads_obj(line: str) -> dict[str, Any] | None:
     return obj if isinstance(obj, dict) else None
 
 
-def _row_rank(row: dict[str, Any]) -> tuple[int, int, int]:
-    """Prefer a profile with tag/country/logo when jsonl has the same team twice."""
+def _row_rank(row: dict[str, Any]) -> tuple[int, int, int, int]:
+    """Prefer a profile with roster JSON + tag/country when jsonl has the same team twice."""
+    roster = row.get("current_roster_json")
+    has_roster = bool(roster) and roster not in ("[]", None, [])
     return (
+        1 if has_roster else 0,
         1 if row.get("team_code") else 0,
         1 if row.get("country_name") else 0,
         1 if row.get("logo_url") else 0,
     )
+
+
+def _fill_roster_json(obj: dict[str, Any], row: dict[str, Any]) -> dict[str, Any]:
+    """Use pre-split JSON columns, or rebuild them from a raw profile roster list."""
+    players = obj.get("current_roster_json")
+    coaches = obj.get("coaches_json")
+    assistants = obj.get("assistant_coaches_json")
+    if players is None or coaches is None or assistants is None:
+        split_players, split_coaches, split_assistants = split_current_roster(obj.get("roster"))
+        if players is None:
+            players = split_players
+        if coaches is None:
+            coaches = split_coaches
+        if assistants is None:
+            assistants = split_assistants
+    row["current_roster_json"] = json_dumps(players) if not isinstance(players, str) else players
+    row["coaches_json"] = json_dumps(coaches) if not isinstance(coaches, str) else coaches
+    row["assistant_coaches_json"] = (
+        json_dumps(assistants) if not isinstance(assistants, str) else assistants
+    )
+    if not row.get("coach_vlr_player_id"):
+        parsed = coaches
+        if isinstance(parsed, str):
+            try:
+                parsed = json.loads(parsed)
+            except json.JSONDecodeError:
+                parsed = []
+        row["coach_vlr_player_id"] = _coach_vlr_player_id(parsed if isinstance(parsed, list) else [])
+    return row
 
 
 def unique_dim_rows(repo_root: Path | None = None) -> list[dict[str, Any]]:
