@@ -125,6 +125,8 @@ Optional env vars:
 - `VLR_MATCH_SKIP_EXISTING=1` — skip ids already in `matches.jsonl`
 - `VLR_TEAM_WORKERS` (default same as `VLR_MATCH_WORKERS` / `6`)
 - `VLR_TEAM_SKIP_EXISTING=1` — skip ids already in `teams.jsonl`
+- `VLR_PLAYER_WORKERS` (default same as `VLR_MATCH_WORKERS` / `6`)
+- `VLR_PLAYER_SKIP_EXISTING=1` — skip ids already in `players.jsonl`
 - `VLR_REQUIRE_ROTATOR=0` — only for local debug; do not use for a full scrape
 
 ## Run the VLR.gg extract → parquet → Supabase job
