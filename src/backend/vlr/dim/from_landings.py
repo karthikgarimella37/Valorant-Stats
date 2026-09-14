@@ -169,6 +169,16 @@ def _root(repo_root: Path | None) -> Path:
     return repo_root or REPO_ROOT
 
 
+def json_loads_obj(line: str) -> dict[str, Any] | None:
+    """Parse one JSONL line; skip corrupt rows so a huge file can still load."""
+    try:
+        obj = json.loads(line)
+    except json.JSONDecodeError:
+        logger.warning("[landings] Skip bad JSONL line")
+        return None
+    return obj if isinstance(obj, dict) else None
+
+
 def apply_landing_schema(repo_root: Path | None = None) -> None:
     """Create dims that are filled from jsonl so load does not fail on missing tables."""
     load_project_env(repo_root)
