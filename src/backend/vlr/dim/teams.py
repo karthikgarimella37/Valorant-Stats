@@ -98,21 +98,56 @@ def _profile_usable(profile: dict[str, Any] | None) -> bool:
     return bool(team_id and name)
 
 
-def _coach_vlr_player_id(roster: Any) -> str | None:
-    """Head coach from profile roster; vlrggapi is_staff is often wrong so use role."""
-    if not isinstance(roster, list):
+def _person_json(person: dict[str, Any], *, include_role: bool) -> dict[str, Any] | None:
+    """One joinable {vlr_player_id, ign} object; coaches also keep role text."""
+    player_id = _text(person.get("id"))
+    if not player_id:
         return None
+    row: dict[str, Any] = {
+        "vlr_player_id": player_id,
+        "ign": _text(person.get("alias")) or _text(person.get("name")),
+    }
+    if include_role:
+        row["role"] = _text(person.get("role"))
+    return row
+
+
+def split_current_roster(roster: Any) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+    """Split VLR current roster: active players vs head/other coaches vs assistant coaches.
+
+    vlrggapi puts coaches in the same list as players and is_staff is often false, so classify on role.
+    """
+    players: list[dict[str, Any]] = []
     coaches: list[dict[str, Any]] = []
+    assistants: list[dict[str, Any]] = []
+    if not isinstance(roster, list):
+        return players, coaches, assistants
     for person in roster:
         if not isinstance(person, dict):
             continue
-        role = str(person.get("role") or "").lower()
-        if "coach" in role and person.get("id"):
-            coaches.append(person)
+        role = str(person.get("role") or "").strip().lower()
+        if "assistant" in role:
+            row = _person_json(person, include_role=True)
+            if row:
+                assistants.append(row)
+            continue
+        if "coach" in role:
+            row = _person_json(person, include_role=True)
+            if row:
+                coaches.append(row)
+            continue
+        row = _person_json(person, include_role=False)
+        if row:
+            players.append(row)
+    return players, coaches, assistants
+
+
+def _coach_vlr_player_id(coaches: list[dict[str, Any]]) -> str | None:
+    """Scalar head-coach id for a simple join; full list lives in coaches_json."""
     if not coaches:
         return None
     head = next((p for p in coaches if "head" in str(p.get("role") or "").lower()), coaches[0])
-    return _text(head.get("id"))
+    return _text(head.get("vlr_player_id"))
 
 
 def _run_pool(items: list[Any], fn: Callable[[Any], None], workers: int) -> None:
