@@ -1,4 +1,4 @@
-"""Parse maps/agents/teams/players/country from existing VLR jsonl (no extra scrape)."""
+"""Parse maps/agents/thin teams/players/country from existing VLR jsonl (no extra scrape)."""
 
 from __future__ import annotations
 

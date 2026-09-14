@@ -99,4 +99,5 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 | 2026-09-09 | 429 was vlrggapi inbound 20/min, not vlr.gg; overlay disables inbound cap |
 | 2026-09-09 | Pace 6/0.4s in src/config/.env; regions moved to VLR_IP_ROTATOR_REGIONS |
 | 2026-09-09 | match_load CardinalityViolation: duplicate vlr_match_id in one INSERT; load now unique |
-| 2026-09-14 | Job `vlr_dims` for remaining dims; weapons from rib.gg `/v1/weapons` | |
+| 2026-09-14 | Job `vlr_dims` for remaining dims; weapons from rib.gg `/v1/weapons` |
+| 2026-09-14 | dim_teams from `/v2/team` (job `vlr_teams`); TEXT codes, not FK row_numbers yet |
