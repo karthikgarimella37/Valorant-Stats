@@ -381,6 +381,7 @@ One row per org / team.
 | `coaches_json` | `JSONB` | Head/other coaches (not assistants): `[{"vlr_player_id","ign","role"}, …]`. |
 | `assistant_coaches_json` | `JSONB` | Assistant coaches, same object shape. |
 | `coach_vlr_player_id` | `TEXT` | Head coach id (first `head coach`, else first coaches_json row). |
+| `social_links_json` | `JSONB` | Org links `[{"platform","url"}, …]`. Drops vlr.gg chrome (`vlrdotgg`, `discord.com/invite/VLR`). |
 | `row_number` | `BIGINT` PK | |
 | `insert_date` | `TIMESTAMPTZ` | |
 | `update_date` | `TIMESTAMPTZ` | |
