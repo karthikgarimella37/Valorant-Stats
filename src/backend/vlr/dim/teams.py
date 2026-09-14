@@ -152,26 +152,7 @@ def split_current_roster(roster: Any) -> tuple[list[dict[str, Any]], list[dict[s
 
 def _social_links_json(raw: Any) -> list[dict[str, str]]:
     """Keep website/twitter/discord for the org; drop vlr.gg chrome copied onto every page."""
-    out: list[dict[str, str]] = []
-    if not isinstance(raw, list):
-        return out
-    seen: set[tuple[str, str]] = set()
-    for item in raw:
-        if not isinstance(item, dict):
-            continue
-        url = _text(item.get("url"))
-        if not url:
-            continue
-        lower = url.lower()
-        if any(noise in lower for noise in _VLR_SOCIAL_NOISE):
-            continue
-        platform = _text(item.get("platform")) or "other"
-        key = (platform.lower(), lower.rstrip("/"))
-        if key in seen:
-            continue
-        seen.add(key)
-        out.append({"platform": platform, "url": url})
-    return out
+    return clean_vlr_social_links(raw)
 
 
 def _coach_vlr_player_id(coaches: list[dict[str, Any]]) -> str | None:
