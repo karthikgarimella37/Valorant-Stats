@@ -288,8 +288,6 @@ def collect_from_matches(repo_root: Path) -> tuple[list[dict[str, Any]], list[di
 def collect_from_events(repo_root: Path, teams: dict[str, str]) -> tuple[list[dict[str, Any]], ...]:
     """Unique players/countries and extra team names from events.jsonl rosters."""
     events_path = events_jsonl_path(repo_root)
-    matches_path = matches_jsonl_path(repo_root)
-    teams: dict[str, str] = {}
     players: dict[str, dict[str, Any]] = {}
     countries: dict[str, str] = {}
     logger.info("[landings] Scan events for teams/players path=%s", events_path)
@@ -346,30 +344,6 @@ def collect_from_events(repo_root: Path, teams: dict[str, str]) -> tuple[list[di
                     len(players),
                 )
     logger.info("[landings] Events done events=%s teams=%s players=%s", scanned, len(teams), len(players))
-    if matches_path.exists():
-        logger.info("[landings] Scan matches for extra team ids path=%s", matches_path)
-        extra = 0
-        with matches_path.open(encoding="utf-8") as handle:
-            for line in handle:
-                if not line.strip():
-                    continue
-                extra += 1
-                parsed = json_loads_obj(line)
-                if not parsed:
-                    continue
-                for tid_key, name_key in (
-                    ("vlr_team_1_id", "team_1_name"),
-                    ("vlr_team_2_id", "team_2_name"),
-                ):
-                    team_id = str(parsed.get(tid_key) or "").strip()
-                    if not team_id:
-                        continue
-                    name = str(parsed.get(name_key) or "").strip()
-                    if team_id not in teams or (name and not teams.get(team_id)):
-                        teams[team_id] = name or teams.get(team_id) or team_id
-                if extra % 25000 == 0:
-                    logger.info("[landings] Match team scan lines=%s teams=%s", extra, len(teams))
-        logger.info("[landings] Match team scan done lines=%s teams=%s", extra, len(teams))
     team_rows = stamp_rows(
         [{"vlr_team_id": tid, "team_name": name} for tid, name in sorted(teams.items())]
     )
@@ -385,8 +359,8 @@ def load_from_landings(repo_root: Path | None = None) -> dict[str, int]:
     load_project_env(repo_root)
     root = _root(repo_root)
     apply_landing_schema(root)
-    map_rows, agent_rows = collect_maps_and_agents(root)
-    team_rows, player_rows, country_rows = collect_teams_players_countries(root)
+    map_rows, agent_rows, teams = collect_from_matches(root)
+    team_rows, player_rows, country_rows = collect_from_events(root, teams)
     counts = {
         "dim_maps": upsert_dim_rows(map_rows, table="dim_maps", columns=MAP_COLS, conflict_column="map_name"),
         "dim_agents": upsert_dim_rows(
