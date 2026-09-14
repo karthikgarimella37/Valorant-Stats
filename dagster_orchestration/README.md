@@ -121,6 +121,8 @@ Optional env vars:
 - `VLR_API_CONCURRENCY` (default `6`) — max in-flight `/v2` match-detail calls
 - `VLR_API_INTERVAL_SEC` (default `0.4`) — min seconds between starting those calls
 - `VLR_MATCH_SKIP_EXISTING=1` — skip ids already in `matches.jsonl`
+- `VLR_TEAM_WORKERS` (default same as `VLR_MATCH_WORKERS` / `6`)
+- `VLR_TEAM_SKIP_EXISTING=1` — skip ids already in `teams.jsonl`
 - `VLR_REQUIRE_ROTATOR=0` — only for local debug; do not use for a full scrape
 
 ## Run the VLR.gg extract → parquet → Supabase job
