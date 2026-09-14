@@ -544,6 +544,7 @@ def unique_dim_rows(repo_root: Path | None = None) -> list[dict[str, Any]]:
             if not team_id:
                 continue
             row = {col: obj.get(col) for col in DIM_COLS}
+            row = _fill_roster_json(obj, row)
             prev = by_id.get(team_id)
             if prev is None or _row_rank(row) >= _row_rank(prev):
                 by_id[team_id] = row
