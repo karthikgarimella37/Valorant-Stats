@@ -504,6 +504,35 @@ def clean_vlr_social_links(raw: Any) -> list[dict[str, str]]:
     return out
 
 
+def player_social_links_map(raw: Any) -> dict[str, str | None]:
+    """Player socials as {twitter, twitch} URL keys. Missing platform is null."""
+    twitter: str | None = None
+    twitch: str | None = None
+    items: list[dict[str, Any]]
+    if isinstance(raw, dict) and ("twitter" in raw or "twitch" in raw):
+        return {
+            "twitter": str(raw["twitter"]).strip() or None if raw.get("twitter") else None,
+            "twitch": str(raw["twitch"]).strip() or None if raw.get("twitch") else None,
+        }
+    items = clean_vlr_social_links(raw)
+    for item in items:
+        url = item.get("url") or ""
+        lower = url.lower()
+        platform = (item.get("platform") or "").lower()
+        if "twitch.tv" in lower or platform == "twitch":
+            if not twitch:
+                twitch = url
+            continue
+        if (
+            "twitter.com" in lower
+            or "x.com/" in lower
+            or platform in {"twitter", "x"}
+        ):
+            if not twitter:
+                twitter = url
+    return {"twitter": twitter, "twitch": twitch}
+
+
 def players_jsonl_path(repo_root: Path) -> Path:
     """Single append file of /v2/player profiles (one JSON object per line)."""
     path = Path(repo_root) / "data" / "vlr" / "players.jsonl"
