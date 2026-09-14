@@ -136,6 +136,7 @@ COUNTRY_TYPES = {
     "insert_date": "TIMESTAMPTZ",
     "update_date": "TIMESTAMPTZ",
 }
+# Thin seed only. Job `vlr_teams` ADDs profile columns and must not be wiped here.
 TEAM_COLS = ("vlr_team_id", "team_name", "insert_date", "update_date")
 TEAM_TYPES = {
     "row_number": "BIGINT",
