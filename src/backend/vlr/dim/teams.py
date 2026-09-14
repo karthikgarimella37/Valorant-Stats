@@ -19,6 +19,7 @@ from backend.config.env import load_project_env
 from backend.vlr.dim.load import apply_dim_schema, stamp_rows, upsert_dim_rows
 from backend.vlr.dim.util import (
     events_jsonl_path,
+    json_dumps,
     matches_jsonl_path,
     serialize_team_row,
     team_ids_in_jsonl,
