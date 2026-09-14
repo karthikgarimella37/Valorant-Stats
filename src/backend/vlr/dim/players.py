@@ -565,7 +565,9 @@ def unique_dim_rows(repo_root: Path | None = None) -> list[dict[str, Any]]:
                 continue
             row = {col: obj.get(col) for col in DIM_COLS}
             if row.get("social_links_json") is None:
-                row["social_links_json"] = clean_vlr_social_links(obj.get("social_links"))
+                row["social_links_json"] = player_social_links_map(obj.get("social_links"))
+            else:
+                row["social_links_json"] = player_social_links_map(row.get("social_links_json"))
             if row.get("teams_json") is None:
                 lookup: dict[str, str] = {}
                 rebuilt = format_row(

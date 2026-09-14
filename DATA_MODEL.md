@@ -308,7 +308,7 @@ One row per player.
 | `vlr_team_id` | `TEXT` | Current org id (join `dim_teams`). Warehouse `current_team_id` FK later. |
 | `current_team_name` | `TEXT` | Current org name (`100 Thieves`) |
 | `current_team_joined` | `TEXT` | `joined in November 2025` → `November 2025`; null if unknown |
-| `social_links_json` | `JSONB` | `[{"platform","url"}, …]`. Drops vlr.gg chrome. Header twitter (e.g. `@vorazune`) needs vlrggapi overlay rebuild. |
+| `social_links_json` | `JSONB` | `{"twitter": "https://x.com/vorazune", "twitch": null}`. Keys are always `twitter` / `twitch`; missing link is null. Header twitter needs vlrggapi overlay rebuild. |
 | `teams_json` | `JSONB` | Current + past: `[{"vlr_team_id","team_name","joined_at","left_at","status"}]`. `left_at` is null while current / unknown. |
 | `row_number` | `BIGINT` PK | |
 | `insert_date` | `TIMESTAMPTZ` | |
