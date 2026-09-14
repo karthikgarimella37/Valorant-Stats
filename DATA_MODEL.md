@@ -370,8 +370,8 @@ One row per org / team.
 | `vlr_team_id` | `TEXT` | |
 | `rib_team_id` | `BIGINT` | Overlay; nullable |
 | `region_code` | `TEXT` | Local ranking code when known. Profile has no region; overlay from `/v2/rankings`. Warehouse `region_id` FK later. |
-| `country_name` | `TEXT` | `/v2/team` `country_name`. Warehouse `country_id` FK later. |
-| `country_flag` | `TEXT` | `/v2/team` `country` (`kr`, …) |
+| `country_name` | `TEXT` | `/v2/team` `country_name` (already on landing + dim). Warehouse `country_id` FK later. |
+| `country_flag` | `TEXT` | `/v2/team` `country` (`us`, `kr`, …) |
 | `team_name` | `TEXT` | |
 | `team_code` | `TEXT` | Short tag (`GEN`) |
 | `logo_url` | `TEXT` | `img` |
