@@ -385,7 +385,7 @@ One row per org / team.
 | `insert_date` | `TIMESTAMPTZ` | |
 | `update_date` | `TIMESTAMPTZ` | |
 
-**Insert from:** `/v2/team?id=&q=profile` (roster comes on the same payload; do not also call `q=roster`). Rankings overlay `region_code` by name+country (rankings often lack team id). Id universe from `/v2/event/{id}` rosters + match team ids.  
+**Insert from:** `/v2/team?id=&q=profile` (current roster is on that payload; classify players vs coach vs assistant coach by `role`, because `is_staff` is often wrong and `q=roster` `staff` is empty). Rankings overlay `region_code` by name+country (rankings often lack team id). Id universe from `/v2/event/{id}` rosters + match team ids.  
 **Dagster:** job `vlr_teams` daily upsert on `vlr_team_id`. Store TEXT codes now; resolve `region_id` / `country_id` / `coach_player_id` `row_number` FKs after those dims are complete.
 
 ---

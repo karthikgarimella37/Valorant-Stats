@@ -352,7 +352,7 @@ def format_row(
     *,
     region_lookup: dict[tuple[str, str], str],
 ) -> dict[str, Any]:
-    """Map /v2/team profile onto dim_teams columns plus roster for later player work."""
+    """Map /v2/team profile onto dim_teams, including current roster/coach JSON."""
     team_id = _text(profile.get("id")) or ""
     name = _text(profile.get("name"))
     country_name = _text(profile.get("country_name"))
