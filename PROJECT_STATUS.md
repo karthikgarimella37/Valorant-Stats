@@ -2,8 +2,8 @@
 
 > Session-agnostic source of truth. Updated by agents via the `session-continuity` skill. Commit and push this file so every new Cursor chat starts with current context.
 
-**Last updated:** 2026-09-09  
-**Updated by:** match_load failed on duplicate jsonl ids; dedupe before upsert
+**Last updated:** 2026-09-14  
+**Updated by:** dim_players from `/v2/player` (job `vlr_players`)
 
 ---
 
@@ -13,10 +13,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 
 ## Current focus
 
-- Rematerialize `match_load` only (extract catalog is complete; load now dedupes jsonl ids)
-- Pace is 6 in-flight / 0.4s via `src/config/.env` (not Dagster YAML)
-- Seed `vlr.dim_date` via job `vlr_date` (no vlr.gg)
-- Next static seeds: `dim_vct_regions`, `dim_regions`, `dim_economy`, agents/maps/weapons
+- Run job `vlr_players` after `vlr_teams` (full name, socials, current team, `teams_json` with leave dates)
 
 ## Status
 
@@ -24,8 +21,8 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 |------|--------|-------|
 | Overall | In progress | Events done. Match lists done. Match details still scraping |
 | Data sources | Validated | Self-hosted vlrggapi `/v2` via AWS IP rotator overlay |
-| Orchestration | In progress | Jobs `vlr_events`, `vlr_matches` |
-| Dim tables | In progress | Events landed; matches landing; `vlr.dim_date` loaded (4018 days) |
+| Orchestration | In progress | Jobs `vlr_events`, `vlr_matches`, `vlr_teams`, `vlr_players` |
+| Dim tables | In progress | `vlr_teams` enriches orgs. `vlr_players` enriches people from `/v2/player` |
 | Fact tables | Blocked on matches | Parse `matches.jsonl` after details finish |
 | Frontend / viz | Not started | Graphs and dashboards listed in `Valorant API.md` |
 | Session process | Done | Status + standards markdown; always-on Cursor rules/skills; auto-commit hook |
@@ -47,15 +44,19 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 - [x] Extracts fail unless vlrggapi rotator `Ready endpoints=` > 0
 - [x] Project calendar dates: `YYYY/M/D` no pad (example `2026/7/8`)
 - [x] `vlr.dim_date` generated calendar (2020–2030) + job `vlr_date`
+- [x] Job `vlr_dims`: seed vct/regions/economy; parse maps/agents/teams/players/country; rib weapons
+- [x] Job `vlr_teams` code: `/v2/team?q=profile` → `data/vlr/teams.jsonl` → upsert `vlr.dim_teams`
+- [x] Job `vlr_players` code: `/v2/player?q=profile` → `data/vlr/players.jsonl` → upsert `vlr.dim_players`
 
 ## Next up
 
 - [x] Seed `vlr.dim_date` (job `vlr_date`, 2020–2030, range-filter columns)
-- [ ] Seed remaining static tables: `dim_vct_regions`, `dim_regions`, `dim_economy`, `dim_agents`, `dim_maps`, `dim_weapons`
-- [ ] Optional no-API parse: unique teams/players from `events.jsonl` `teams_json` (28k team rows, player flags)
+- [x] Seed remaining static tables: `dim_vct_regions`, `dim_regions`, `dim_economy`, `dim_agents`, `dim_maps`, `dim_weapons`
+- [x] Optional no-API parse: unique teams/players from `events.jsonl` `teams_json`
 - [ ] Let `vlr_matches` finish; then upsert `vlr.dim_matches` and refetch empty-detail 429 rows
 - [ ] Parse facts from `matches.jsonl` (overall / rounds / performance / economy)
-- [ ] `/v2/team` + `/v2/rankings` enrich after matches is done (do not compete for 429 budget now)
+- [ ] Materialize `vlr_teams` (schema+load from existing `teams.jsonl` for roster/socials)
+- [ ] Materialize `vlr_players` (~28k `/v2/player` calls; rebuild vlrggapi first for twitter + team href ids)
 - [ ] Incremental extract via `vlr_watermarks` after historical
 - [ ] Fork/patch vlrggapi: Attack/Defend, event_id on match, labeled performance
 - [ ] rib overlay: replay kills when `vlr_match_id` can join
@@ -72,7 +73,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 - Pace knobs live in `src/config/.env` (`VLR_API_CONCURRENCY`, `VLR_MATCH_WORKERS`, `VLR_API_INTERVAL_SEC`); Dagster has no separate YAML for them
 - Inbound vlrggapi limiter: official image is **20 match-details/min per client IP**. Compose sets `VLR_RL_DISABLE=1` after rebuild
 - **API gaps:** Attack/Defend player stats; labeled 2K/1vX/ECON; prize points/note; match `event_id` on detail
-- rib overlay join: fuzzy (event name + team names + date)
+- rib.gg weapons: `be-prod.rib.gg` did not resolve from this host; rematerialize `dims_weapons` later
 
 ## Session log
 
@@ -98,4 +99,6 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 | 2026-09-09 | vlr_v2 logs GET/429/wait with match_id, attempt, elapsed; rematerialize to see them |
 | 2026-09-09 | 429 was vlrggapi inbound 20/min, not vlr.gg; overlay disables inbound cap |
 | 2026-09-09 | Pace 6/0.4s in src/config/.env; regions moved to VLR_IP_ROTATOR_REGIONS |
-| 2026-09-09 | match_load CardinalityViolation: duplicate vlr_match_id in one INSERT; load now unique | |
+| 2026-09-09 | match_load CardinalityViolation: duplicate vlr_match_id in one INSERT; load now unique |
+| 2026-09-14 | Job `vlr_dims` for remaining dims; weapons from rib.gg `/v1/weapons` |
+| 2026-09-14 | dim_players socials are `{twitter, twitch}` URL keys (null if missing) |

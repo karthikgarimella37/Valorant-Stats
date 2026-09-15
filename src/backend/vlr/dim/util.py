@@ -430,3 +430,145 @@ def event_ids_from_jsonl(repo_root: Path) -> list[str]:
             seen.add(event_id)
             ids.append(event_id)
     return ids
+
+
+def teams_jsonl_path(repo_root: Path) -> Path:
+    """Single append file of /v2/team profiles (one JSON object per line)."""
+    path = Path(repo_root) / "data" / "vlr" / "teams.jsonl"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def serialize_team_row(row: dict[str, Any]) -> dict[str, Any]:
+    """JSON-safe copy of a team landing row (datetimes as ISO)."""
+    out = dict(row)
+    for key in ("insert_date", "update_date"):
+        value = out.get(key)
+        if isinstance(value, datetime):
+            out[key] = value.isoformat()
+        elif isinstance(value, date):
+            out[key] = format_project_date(value)
+    return out
+
+
+def team_ids_in_jsonl(repo_root: Path) -> set[str]:
+    """Ids that already have a usable /v2/team profile so empty stubs are refetched."""
+    path = teams_jsonl_path(repo_root)
+    ids: set[str] = set()
+    if not path.exists():
+        return ids
+    key_re = re.compile(r'"vlr_team_id"\s*:\s*"([^"]+)"')
+    with path.open(encoding="utf-8") as handle:
+        for line in handle:
+            if not line.strip():
+                continue
+            head = line[:800]
+            match = key_re.search(head)
+            if not match:
+                continue
+            # Real profiles have tag/logo/country; tiny error stubs are refetched.
+            if (
+                '"team_name"' in head
+                and ('"team_code": "' in head or '"logo_url": "http' in head or '"country_name": "' in head)
+            ) or len(line) > 400:
+                ids.add(match.group(1))
+    return ids
+
+
+def clean_vlr_social_links(raw: Any) -> list[dict[str, str]]:
+    """Keep org/player social URLs; drop vlr.gg chrome copied onto every page."""
+    noise = (
+        "twitter.com/vlrdotgg",
+        "x.com/vlrdotgg",
+        "discord.com/invite/vlr",
+    )
+    out: list[dict[str, str]] = []
+    if not isinstance(raw, list):
+        return out
+    seen: set[tuple[str, str]] = set()
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        url = str(item.get("url") or "").strip()
+        if not url:
+            continue
+        lower = url.lower()
+        if any(n in lower for n in noise):
+            continue
+        platform = str(item.get("platform") or "").strip() or "other"
+        key = (platform.lower(), lower.rstrip("/"))
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append({"platform": platform, "url": url})
+    return out
+
+
+def player_social_links_map(raw: Any) -> dict[str, str | None]:
+    """Player socials as {twitter, twitch} URL keys. Missing platform is null."""
+    twitter: str | None = None
+    twitch: str | None = None
+    items: list[dict[str, Any]]
+    if isinstance(raw, dict) and ("twitter" in raw or "twitch" in raw):
+        return {
+            "twitter": str(raw["twitter"]).strip() or None if raw.get("twitter") else None,
+            "twitch": str(raw["twitch"]).strip() or None if raw.get("twitch") else None,
+        }
+    items = clean_vlr_social_links(raw)
+    for item in items:
+        url = item.get("url") or ""
+        lower = url.lower()
+        platform = (item.get("platform") or "").lower()
+        if "twitch.tv" in lower or platform == "twitch":
+            if not twitch:
+                twitch = url
+            continue
+        if (
+            "twitter.com" in lower
+            or "x.com/" in lower
+            or platform in {"twitter", "x"}
+        ):
+            if not twitter:
+                twitter = url
+    return {"twitter": twitter, "twitch": twitch}
+
+
+def players_jsonl_path(repo_root: Path) -> Path:
+    """Single append file of /v2/player profiles (one JSON object per line)."""
+    path = Path(repo_root) / "data" / "vlr" / "players.jsonl"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def serialize_player_row(row: dict[str, Any]) -> dict[str, Any]:
+    """JSON-safe copy of a player landing row (datetimes as ISO)."""
+    out = dict(row)
+    for key in ("insert_date", "update_date"):
+        value = out.get(key)
+        if isinstance(value, datetime):
+            out[key] = value.isoformat()
+        elif isinstance(value, date):
+            out[key] = format_project_date(value)
+    return out
+
+
+def player_ids_in_jsonl(repo_root: Path) -> set[str]:
+    """Ids that already have a usable /v2/player profile so empty stubs are refetched."""
+    path = players_jsonl_path(repo_root)
+    ids: set[str] = set()
+    if not path.exists():
+        return ids
+    key_re = re.compile(r'"vlr_player_id"\s*:\s*"([^"]+)"')
+    with path.open(encoding="utf-8") as handle:
+        for line in handle:
+            if not line.strip():
+                continue
+            head = line[:800]
+            match = key_re.search(head)
+            if not match:
+                continue
+            if '"ign"' in head and (
+                len(line) > 200 or '"full_name": "' in head or '"current_team_name": "' in head
+            ):
+                ids.add(match.group(1))
+    return ids

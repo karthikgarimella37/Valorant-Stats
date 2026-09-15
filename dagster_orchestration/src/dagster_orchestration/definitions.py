@@ -17,8 +17,13 @@ from backend.config.env import load_project_env
 from backend.database_connectors.supabase_connectors import SupabaseConnector
 from backend.rib_gg.extract import RibExtractPipeline, landing_dir_for, read_ndjson
 from backend.vlr.dim.dates import apply_dates_schema, load_dates, rows_from_dates_landing, seed_dates
+from backend.vlr.dim.from_landings import load_from_landings
 from backend.vlr.dim.historical import apply_events_schema, extract_events, load_events, rows_from_events_landing
 from backend.vlr.dim.matches import apply_matches_schema, extract_matches, load_matches
+from backend.vlr.dim.players import apply_players_schema, extract_players, load_players
+from backend.vlr.dim.static import load_static
+from backend.vlr.dim.teams import apply_teams_schema, extract_teams, load_teams
+from backend.vlr.dim.weapons import run_weapons
 from backend.vlr.extract import VlrExtractPipeline
 
 load_project_env(REPO_ROOT)
@@ -452,6 +457,36 @@ def date_load(context: AssetExecutionContext) -> int:
     return loaded
 
 
+@asset(group_name="vlr_seed")
+def dims_static(context: AssetExecutionContext) -> dict[str, int]:
+    """Load VCT circuits, local ranking codes, and economy buy types (no API)."""
+    context.log.info("=== STEP dims_static: vct_regions + regions + economy ===")
+    counts = load_static(REPO_ROOT)
+    context.add_output_metadata({"row_counts": MetadataValue.json(counts)})
+    context.log.info("Static dims upserted=%s", counts)
+    return counts
+
+
+@asset(group_name="vlr_seed")
+def dims_from_landings(context: AssetExecutionContext) -> dict[str, int]:
+    """Distinct maps/agents/teams/players/countries from events.jsonl + matches.jsonl."""
+    context.log.info("=== STEP dims_from_landings: parse jsonl into remaining dims ===")
+    counts = load_from_landings(REPO_ROOT)
+    context.add_output_metadata({"row_counts": MetadataValue.json(counts)})
+    context.log.info("Landing dims upserted=%s", counts)
+    return counts
+
+
+@asset(group_name="vlr_seed")
+def dims_weapons(context: AssetExecutionContext) -> dict[str, int]:
+    """rib.gg weapon catalog into vlr.dim_weapons (VLR has no gun list)."""
+    context.log.info("=== STEP dims_weapons: GET rib.gg /weapons ===")
+    counts = run_weapons(REPO_ROOT)
+    context.add_output_metadata({"row_counts": MetadataValue.json(counts)})
+    context.log.info("Weapons upserted=%s", counts)
+    return counts
+
+
 @asset(group_name="vlr_hist")
 def evt_schema(context: AssetExecutionContext) -> str:
     """Create or alter vlr.dim_events so extract rows match warehouse columns."""
@@ -528,6 +563,86 @@ def match_load(context: AssetExecutionContext) -> int:
     loaded = load_matches(REPO_ROOT)
     context.add_output_metadata({"upserted": loaded})
     context.log.info("dim_matches upserted=%s", loaded)
+    return loaded
+
+
+@asset(group_name="vlr_hist")
+def team_schema(context: AssetExecutionContext) -> str:
+    """Create or alter vlr.dim_teams so /v2/team profile columns exist (no DROP)."""
+    context.log.info("=== STEP team_schema: ensure vlr.dim_teams ===")
+    path = apply_teams_schema(REPO_ROOT)
+    context.add_output_metadata({"sql_path": MetadataValue.path(str(path))})
+    return str(path)
+
+
+@asset(group_name="vlr_hist", deps=[team_schema])
+def team_extract(context: AssetExecutionContext) -> int:
+    """GET /v2/team?q=profile for every known id into data/vlr/teams.jsonl."""
+    context.log.info(
+        "=== STEP team_extract: workers=%s concurrency=%s interval=%s max=%s ===",
+        os.getenv("VLR_TEAM_WORKERS", os.getenv("VLR_MATCH_WORKERS", "6")),
+        os.getenv("VLR_API_CONCURRENCY", "6"),
+        os.getenv("VLR_API_INTERVAL_SEC", "0.4"),
+        os.getenv("VLR_MAX_TEAMS", "unlimited"),
+    )
+    count = extract_teams(REPO_ROOT)
+    context.add_output_metadata(
+        {
+            "team_count": count,
+            "json_path": MetadataValue.path(str(REPO_ROOT / "data" / "vlr" / "teams.jsonl")),
+        }
+    )
+    context.log.info("Teams extracted: %s", count)
+    return count
+
+
+@asset(group_name="vlr_hist", deps=[team_extract])
+def team_load(context: AssetExecutionContext) -> int:
+    """Upsert dim columns from teams.jsonl into vlr.dim_teams."""
+    context.log.info("=== STEP team_load: upsert vlr.dim_teams ===")
+    loaded = load_teams(REPO_ROOT)
+    context.add_output_metadata({"upserted": loaded})
+    context.log.info("dim_teams upserted=%s", loaded)
+    return loaded
+
+
+@asset(group_name="vlr_hist")
+def player_schema(context: AssetExecutionContext) -> str:
+    """Create or alter vlr.dim_players so /v2/player profile columns exist (no DROP)."""
+    context.log.info("=== STEP player_schema: ensure vlr.dim_players ===")
+    path = apply_players_schema(REPO_ROOT)
+    context.add_output_metadata({"sql_path": MetadataValue.path(str(path))})
+    return str(path)
+
+
+@asset(group_name="vlr_hist", deps=[player_schema])
+def player_extract(context: AssetExecutionContext) -> int:
+    """GET /v2/player?q=profile for every known id into data/vlr/players.jsonl."""
+    context.log.info(
+        "=== STEP player_extract: workers=%s concurrency=%s interval=%s max=%s ===",
+        os.getenv("VLR_PLAYER_WORKERS", os.getenv("VLR_MATCH_WORKERS", "6")),
+        os.getenv("VLR_API_CONCURRENCY", "6"),
+        os.getenv("VLR_API_INTERVAL_SEC", "0.4"),
+        os.getenv("VLR_MAX_PLAYERS", "unlimited"),
+    )
+    count = extract_players(REPO_ROOT)
+    context.add_output_metadata(
+        {
+            "player_count": count,
+            "json_path": MetadataValue.path(str(REPO_ROOT / "data" / "vlr" / "players.jsonl")),
+        }
+    )
+    context.log.info("Players extracted: %s", count)
+    return count
+
+
+@asset(group_name="vlr_hist", deps=[player_extract])
+def player_load(context: AssetExecutionContext) -> int:
+    """Upsert dim columns from players.jsonl into vlr.dim_players."""
+    context.log.info("=== STEP player_load: upsert vlr.dim_players ===")
+    loaded = load_players(REPO_ROOT)
+    context.add_output_metadata({"upserted": loaded})
+    context.log.info("dim_players upserted=%s", loaded)
     return loaded
 
 
@@ -722,6 +837,11 @@ vlr_date = define_asset_job(
     selection=[date_schema, date_seed, date_load],
 )
 
+vlr_dims = define_asset_job(
+    "vlr_dims",
+    selection=[dims_static, dims_from_landings, dims_weapons],
+)
+
 vlr_events = define_asset_job(
     "vlr_events",
     selection=[evt_schema, evt_extract, evt_load],
@@ -730,6 +850,16 @@ vlr_events = define_asset_job(
 vlr_matches = define_asset_job(
     "vlr_matches",
     selection=[match_schema, match_extract, match_load],
+)
+
+vlr_teams = define_asset_job(
+    "vlr_teams",
+    selection=[team_schema, team_extract, team_load],
+)
+
+vlr_players = define_asset_job(
+    "vlr_players",
+    selection=[player_schema, player_extract, player_load],
 )
 
 defs = Definitions(
@@ -746,12 +876,21 @@ defs = Definitions(
         date_schema,
         date_seed,
         date_load,
+        dims_static,
+        dims_from_landings,
+        dims_weapons,
         evt_schema,
         evt_extract,
         evt_load,
         match_schema,
         match_extract,
         match_load,
+        team_schema,
+        team_extract,
+        team_load,
+        player_schema,
+        player_extract,
+        player_load,
         vlr_extract_regions,
         vlr_extract_events,
         vlr_extract_teams,
@@ -766,7 +905,10 @@ defs = Definitions(
         rib_gg_star_schema_job,
         vlr_star_schema_job,
         vlr_date,
+        vlr_dims,
         vlr_events,
         vlr_matches,
+        vlr_teams,
+        vlr_players,
     ],
 )

@@ -63,9 +63,22 @@ Optional: `VLR_DATE_START=2020-01-01` `VLR_DATE_END=2030-12-31`
 
 Join match/event text dates on `project_date` (`2026/7/8`). Filter ranges with `year`, `year_month`, `year_quarter`, `iso_week_num`, or `full_date BETWEEN …`.
 
+## Seed remaining VLR dims (no match scrape)
+
+Job: `vlr_dims`
+
+- `dims_static` — `dim_vct_regions`, `dim_regions`, `dim_economy`
+- `dims_from_landings` — `dim_maps`, `dim_agents`, `dim_country`, `dim_teams`, `dim_players` from `events.jsonl` + `matches.jsonl`
+- `dims_weapons` — rib.gg `/v1/weapons` into `dim_weapons`
+
+```bash
+cd dagster_orchestration
+uv run dagster job execute -m dagster_orchestration.definitions -j vlr_dims
+```
+
 ## Historical VLR jobs (Dagster)
 
-Jobs: `vlr_events` then `vlr_matches`.
+Jobs: `vlr_events` then `vlr_matches`. After matches ids exist, `vlr_teams` enriches `vlr.dim_teams` from `/v2/team`.
 
 Launch from the UI or CLI. Extracts refuse to start unless `docker logs vlrggapi` shows `Ready endpoints=` > 0 (AWS IPs). Do not scrape vlr.gg from the host IP.
 
@@ -79,6 +92,7 @@ cd dagster_orchestration
 ./dev.sh
 # Jobs → vlr_events → Materialize
 # Jobs → vlr_matches → Materialize
+# Jobs → vlr_teams → Materialize
 ```
 
 CLI:
@@ -87,10 +101,14 @@ CLI:
 cd dagster_orchestration
 uv run dagster job execute -m dagster_orchestration.definitions -j vlr_events
 uv run dagster job execute -m dagster_orchestration.definitions -j vlr_matches
+uv run dagster job execute -m dagster_orchestration.definitions -j vlr_teams
+uv run dagster job execute -m dagster_orchestration.definitions -j vlr_players
 ```
 
 `vlr_events`: ensure `vlr.dim_events` → `data/vlr/events.jsonl` → upsert.  
-`vlr_matches`: ensure `vlr.dim_matches` → `data/vlr/matches.jsonl` (dim + full match JSON) → upsert.
+`vlr_matches`: ensure `vlr.dim_matches` → `data/vlr/matches.jsonl` (dim + full match JSON) → upsert.  
+`vlr_teams`: ALTER `vlr.dim_teams` → `data/vlr/teams.jsonl` (`/v2/team?q=profile`) → upsert.  
+`vlr_players`: ALTER `vlr.dim_players` → `data/vlr/players.jsonl` (`/v2/player?q=profile`) → upsert.
 
 Needs: vlrggapi on `http://127.0.0.1:3001` with AWS rotator, and working Supabase env.
 
@@ -99,12 +117,16 @@ Optional env vars:
 - `VLR_EVENT_DETAIL_WORKERS` (default `12`)
 - `VLR_EVENT_PAGE_WORKERS` (default `8`)
 - `VLR_EVENT_PAGE_DELAY_SEC` (default `0.2`)
-- `VLR_MAX_EVENTS` / `VLR_MAX_MATCHES` — cap for a smoke run
+- `VLR_MAX_EVENTS` / `VLR_MAX_MATCHES` / `VLR_MAX_TEAMS` / `VLR_MAX_PLAYERS` — cap for a smoke run
 - `VLR_EVENT_SKIP_EXISTING=1` — skip ids already in `events.jsonl`
 - `VLR_MATCH_EVENT_WORKERS` (default `8`) / `VLR_MATCH_WORKERS` (default `6`)
 - `VLR_API_CONCURRENCY` (default `6`) — max in-flight `/v2` match-detail calls
 - `VLR_API_INTERVAL_SEC` (default `0.4`) — min seconds between starting those calls
 - `VLR_MATCH_SKIP_EXISTING=1` — skip ids already in `matches.jsonl`
+- `VLR_TEAM_WORKERS` (default same as `VLR_MATCH_WORKERS` / `6`)
+- `VLR_TEAM_SKIP_EXISTING=1` — skip ids already in `teams.jsonl`
+- `VLR_PLAYER_WORKERS` (default same as `VLR_MATCH_WORKERS` / `6`)
+- `VLR_PLAYER_SKIP_EXISTING=1` — skip ids already in `players.jsonl`
 - `VLR_REQUIRE_ROTATOR=0` — only for local debug; do not use for a full scrape
 
 ## Run the VLR.gg extract → parquet → Supabase job

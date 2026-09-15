@@ -4,7 +4,7 @@
 > Use this file to track **what is done**, **what is still required**, and **which API feeds which table**.  
 > Dagster runs daily: upsert dims first, then facts. dbt models live in `src/backend/sql/models/marts/`.
 
-**Last updated:** 2026-09-08
+**Last updated:** 2026-09-14
 
 ---
 
@@ -73,17 +73,17 @@ CREATE SEQUENCE valorant.seq_<table>_row_number
 
 | Table | Kind | Status | Daily Dagster? | Source |
 |-------|------|--------|----------------|--------|
-| `dim_vct_regions` | dim | Required (static) | Rare | VCT circuits only: `americas`, `emea`, `pacific`, `china` |
-| `dim_regions` | dim | Required (static) | Rare | Local ranking codes only: `na`, `eu`, `br`, `ap`, `kr`, `ch`, `jp`, `lan`, `las`, `oce`, `mn`, `gc` |
-| `dim_country` | dim | Required | Yes | Distinct `country` on VLR teams/players |
+| `dim_vct_regions` | dim | Seed job `vlr_dims` | Rare | Seed `src/backend/vlr/regions.py` |
+| `dim_regions` | dim | Seed job `vlr_dims` | Rare | Seed local ranking codes |
+| `dim_country` | dim | Seed job `vlr_dims` | Rare | Distinct flags on `events.jsonl` rosters |
 | `dim_matches` | dim | Required | Yes | `/v2/events/matches` + `/v2/match/details` |
 | `dim_events` | dim | Required | Yes | `/v2/events`, `/v2/event/{id}` |
-| `dim_players` | dim | Required | Yes | `/v2/player` + team rosters |
-| `dim_teams` | dim | Required | Yes | `/v2/team` + `/v2/rankings` + event rosters |
-| `dim_agents` | dim | Required (static) | Rare | Distinct agent names from VLR match/event agents pages |
-| `dim_maps` | dim | Required (static) | Rare | Distinct map names from VLR matches |
-| `dim_economy` | dim | Required (static) | Rare | Seed buy types; map from VLR economy tab |
-| `dim_weapons` | dim | Required (static) | Rare | Names seen on rib replay kills (nullable on facts) |
+| `dim_players` | dim | Job `vlr_players` | Yes | `/v2/player?id=&q=profile`; ids from event + team rosters |
+| `dim_teams` | dim | Job `vlr_teams` | Yes | `/v2/team?id=&q=profile` + rankings overlay; ids from event/match jsonl |
+| `dim_agents` | dim | Seed job `vlr_dims` | Rare | Distinct `agent` on match scoreboards |
+| `dim_maps` | dim | Seed job `vlr_dims` | Rare | Distinct `maps[].map_name` on match detail |
+| `dim_economy` | dim | Seed job `vlr_dims` | Rare | Seed buy types |
+| `dim_weapons` | dim | Seed job `vlr_dims` | Rare | rib.gg `/v1/weapons` (not VLR) |
 | `dim_date` | dim | Seed job `vlr_date` | Rare (extend range) | Generated calendar 2020–2030 |
 | `fact_match_overall_stats` | fact | Landed (parquet) | Yes | VLR `/v2/match/details` map `players[]` |
 | `fact_round_results` | fact | Landed (parquet) | Yes | VLR map `rounds[]` (winner, side t/ct; **no win method**) |
@@ -183,7 +183,7 @@ One row per **local VLR ranking code**. Do not put `americas` / `emea` / `pacifi
 **Insert from:** seed in `src/backend/vlr/regions.py` (`LOCAL_REGIONS`). API aliases: `cn`→`ch`, `la-n`→`lan`, `la-s`→`las`.  
 **Dagster:** load once.
 
-Rule: a row is **either** a VCT circuit **or** a local code. Events store at most one of `vct_region_id` / `region_id`. Teams and countries always use local `region_id`; circuit is via `dim_regions.vct_region_code`.
+Rule: a row is **either** a VCT circuit **or** a local code. Events store at most one of `vct_region_id` / `region_id`. Teams store local `region_code` from rankings overlay (profile has no region); `region_id` FK later. Circuit is via `dim_regions.vct_region_code`.
 
 ---
 
@@ -297,22 +297,25 @@ One row per player.
 |--------|------|--------|
 | `vlr_player_id` | `TEXT` | |
 | `rib_player_id` | `BIGINT` | Overlay; nullable |
-| `current_team_id` | `BIGINT` FK | → `dim_teams.row_number` |
-| `country_id` | `BIGINT` FK | → `dim_country.row_number` |
-| `ign` | `TEXT` | |
-| `first_name` | `TEXT` | |
-| `last_name` | `TEXT` | |
-| `role` | `TEXT` | player / coach |
-| `is_igl` | `BOOLEAN` | |
-| `image_url` | `TEXT` | |
-| `twitch_url` | `TEXT` | |
-| `twitter_url` | `TEXT` | |
+| `ign` | `TEXT` | VLR handle (`vora`) |
+| `full_name` | `TEXT` | `real_name` (`Jordan Pulwer`) |
+| `first_name` | `TEXT` | Split from `full_name` |
+| `last_name` | `TEXT` | Remainder after first token |
+| `country_flag` | `TEXT` | `/v2/player` `country` (`ca`) |
+| `country_name` | `TEXT` | Mapped display name (`Canada`) |
+| `image_url` | `TEXT` | Avatar |
+| `player_href` | `TEXT` | `https://www.vlr.gg/player/{id}` |
+| `vlr_team_id` | `TEXT` | Current org id (join `dim_teams`). Warehouse `current_team_id` FK later. |
+| `current_team_name` | `TEXT` | Current org name (`100 Thieves`) |
+| `current_team_joined` | `TEXT` | `joined in November 2025` → `November 2025`; null if unknown |
+| `social_links_json` | `JSONB` | `{"twitter": "https://x.com/vorazune", "twitch": null}`. Keys are always `twitter` / `twitch`; missing link is null. Header twitter needs vlrggapi overlay rebuild. |
+| `teams_json` | `JSONB` | Current + past: `[{"vlr_team_id","team_name","joined_at","left_at","status"}]`. `left_at` is null while current / unknown. |
 | `row_number` | `BIGINT` PK | |
 | `insert_date` | `TIMESTAMPTZ` | |
 | `update_date` | `TIMESTAMPTZ` | |
 
-**Insert from:** VLR `/players/{id}` and `/teams/{id}` roster.  
-**Dagster:** daily upsert on `vlr_player_id`.
+**Insert from:** `/v2/player?id=&q=profile`. Team id from profile `current_team.id` / `past_teams[].id` after overlay, else unique `team_name` match on `teams.jsonl`. Id universe from event rosters + `teams.jsonl` roster.  
+**Dagster:** job `vlr_players` daily upsert on `vlr_player_id`.
 
 ---
 
@@ -369,20 +372,25 @@ One row per org / team.
 |--------|------|--------|
 | `vlr_team_id` | `TEXT` | |
 | `rib_team_id` | `BIGINT` | Overlay; nullable |
-| `region_id` | `BIGINT` FK | → `dim_regions.row_number` (local only; circuit via `vct_region_code`) |
-| `country_id` | `BIGINT` FK | → `dim_country.row_number` |
+| `region_code` | `TEXT` | Local ranking code when known. Profile has no region; overlay from `/v2/rankings`. Warehouse `region_id` FK later. |
+| `country_name` | `TEXT` | `/v2/team` `country_name` (already on landing + dim). Warehouse `country_id` FK later. |
+| `country_flag` | `TEXT` | `/v2/team` `country` (`us`, `kr`, …) |
 | `team_name` | `TEXT` | |
-| `team_code` | `TEXT` | Short name |
+| `team_code` | `TEXT` | Short tag (`GEN`) |
 | `logo_url` | `TEXT` | `img` |
-| `team_href` | `TEXT` | vlr.gg url |
-| `division` | `TEXT` | When known |
-| `coach_player_id` | `BIGINT` FK | → `dim_players.row_number` (nullable) |
+| `team_href` | `TEXT` | `https://www.vlr.gg/team/{id}` |
+| `division` | `TEXT` | When known (not on team profile today) |
+| `current_roster_json` | `JSONB` | Active players only: `[{"vlr_player_id","ign"}, …]`. Join on `vlr_player_id`. |
+| `coaches_json` | `JSONB` | Head/other coaches (not assistants): `[{"vlr_player_id","ign","role"}, …]`. |
+| `assistant_coaches_json` | `JSONB` | Assistant coaches, same object shape. |
+| `coach_vlr_player_id` | `TEXT` | Head coach id (first `head coach`, else first coaches_json row). |
+| `social_links_json` | `JSONB` | Org links `[{"platform","url"}, …]`. Drops vlr.gg chrome (`vlrdotgg`, `discord.com/invite/VLR`). |
 | `row_number` | `BIGINT` PK | |
 | `insert_date` | `TIMESTAMPTZ` | |
 | `update_date` | `TIMESTAMPTZ` | |
 
-**Insert from:** `/v2/team?id=&q=profile`, `/v2/rankings?region=`, `/v2/event/{id}` rosters.  
-**Dagster:** daily upsert on `vlr_team_id`.
+**Insert from:** `/v2/team?id=&q=profile` (current roster is on that payload; classify players vs coach vs assistant coach by `role`, because `is_staff` is often wrong and `q=roster` `staff` is empty). Rankings overlay `region_code` by name+country (rankings often lack team id). Id universe from `/v2/event/{id}` rosters + match team ids.  
+**Dagster:** job `vlr_teams` daily upsert on `vlr_team_id`. Store TEXT codes now; resolve `region_id` / `country_id` / `coach_player_id` `row_number` FKs after those dims are complete.
 
 ---
 
@@ -408,9 +416,9 @@ One row per buy type. Seeded, not scraped.
 
 ---
 
-### `dim_weapons` — Required (static)
+### `dim_weapons` — Seeded from rib.gg
 
-One row per weapon **name** seen on rib replay kills. VLR has no gun catalog.  
+One row per weapon. VLR match JSON has **no gun names**.  
 **PK:** `row_number`  
 **Business key:** `weapon_name`  
 **Sequence:** `seq_dim_weapons_row_number`
@@ -418,13 +426,19 @@ One row per weapon **name** seen on rib replay kills. VLR has no gun catalog.
 | Column | Type | Notes |
 |--------|------|--------|
 | `weapon_name` | `TEXT` | |
+| `rib_weapon_id` | `TEXT` | rib.gg id when present |
+| `weapon_type` | `TEXT` | Category if rib sends it |
+| `credits` | `INT` | Shop cost if present |
+| `fire_rate` | `FLOAT` | If present |
+| `magazine_size` | `INT` | If present |
+| `image_url` | `TEXT` | If present |
+| `stats_json` | `JSONB` | Full rib payload (any extra fields) |
 | `row_number` | `BIGINT` PK | |
 | `insert_date` | `TIMESTAMPTZ` | |
 | `update_date` | `TIMESTAMPTZ` | |
 
-No fire-rate / accuracy without valorant-api.com.  
-**Insert from:** distinct weapon names on rib kill events.  
-**Dagster:** upsert when replay overlay runs.
+**Insert from:** rib.gg `GET /v1/weapons/all` (fallback paginated `/v1/weapons`). Job `vlr_dims` asset `dims_weapons`.  
+**Dagster:** rare upsert on `weapon_name`.
 
 ---
 
