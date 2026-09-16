@@ -477,6 +477,7 @@ def extract_agents(repo_root: Path | None = None) -> list[dict[str, Any]]:
 def load_agents(rows: list[dict[str, Any]] | None = None, repo_root: Path | None = None) -> int:
     """Upsert kit catalog on agent_name; keep row_number on re-run."""
     load_project_env(repo_root)
+    logger.info("[agents] Load start remap kits (E cost=0, live valorant-api slots)")
     apply_agents_schema(repo_root)
     if rows is None:
         path = agents_jsonl_path(_root(repo_root))
