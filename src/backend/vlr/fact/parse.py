@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from backend.vlr.dim.util import canonical_agent_name, text_or_none
+from backend.vlr.dim.util import canonical_agent_name
 from backend.vlr.fact.util import (
     duration_sec,
     fact_key,
