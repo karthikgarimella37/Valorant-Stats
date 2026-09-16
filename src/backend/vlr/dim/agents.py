@@ -192,8 +192,7 @@ def parse_liquipedia_agent(wikitext: str) -> dict[str, Any]:
     return info
 
 
-def _api_ability_index(agent: dict[str, Any]) -> dict[str, dict[str, Any]]:
-    """Index valorant-api abilities by lowercase name for icon/description merge."""
+def _name_key(name: str | None) -> str:
     """Compare ability names so 'Nebula / Dissipate' still matches Liquipedia 'Nebula'."""
     return "".join(ch for ch in (name or "").lower() if ch.isalnum())
 
