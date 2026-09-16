@@ -210,7 +210,7 @@ def _copy_one_table(
     spec: FactSpec,
     root: Path,
     *,
-    batch_size: int = 5000,
+    batch_size: int = 1000,
     max_cpu_pct: int = 60,
 ) -> tuple[str, int]:
     """COPY one empty-or-append fact jsonl. Fails if grain keys already exist."""
@@ -225,6 +225,7 @@ def _copy_one_table(
         columns=spec.columns,
         batch_size=batch_size,
         max_cpu_pct=max_cpu_pct,
+        min_sleep_sec=min_sleep_sec,
     )
     logger.info("[facts] Copy done table=%s rows=%s", spec.table, count)
     return spec.table, count
