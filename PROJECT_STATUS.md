@@ -41,7 +41,8 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 
 ## Next up
 
-- [ ] Discuss fact grains; then run `vlr_facts` when the user says so
+- [ ] Let `fact_player_match_performance` load finish; then switch it to the same composite unique
+- [ ] Re-extract/load overall + remaining facts on composite keys when the user says so (not while performance is loading)
 - [ ] Let `vlr_matches` finish; upsert `vlr.dim_matches`; refetch empty-detail 429 rows
 - [ ] Optional: rematerialize `vlr_teams` / `vlr_players` from existing jsonl
 - [ ] Incremental watermarks — see `LATER.md` (not now)
@@ -53,10 +54,10 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 
 ## Open questions / blockers
 
-- **Do not run** `vlr_facts` until discussed
+- Do **not** rematerialize `vlr_facts` / ALTER `fact_player_match_performance` while that upsert is running
 - Keep `docker compose up -d --build vlrggapi` running before `vlr_events` / `vlr_matches`
 - Match details still incomplete in `matches.jsonl` (~3.5% when last noted)
-- Scoreboard facts use `player_name` (no VLR player id on the map scoreboard)
+- Map scoreboard has no player id; overall `vlr_player_id` is resolved from teams/players/events jsonl
 - `round_economy` is usually empty until economy-tab scrape is on the landing
 - Round `win_method_code` is null on current `/v2` rounds
 - Series 2K/1vX only attach to **map 1** (VLR does not split them per map)
