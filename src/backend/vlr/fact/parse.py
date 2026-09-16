@@ -18,12 +18,6 @@ from backend.vlr.fact.util import (
     win_method_code,
 )
 
-# text_or_none lives in wikitext too; dim.util may not export it.
-try:
-    from backend.vlr.dim.util import text_or_none as _text
-except ImportError:
-    _text = None
-
 
 def _s(value: Any) -> str | None:
     """Blank strings become null so facts do not store empty keys."""
