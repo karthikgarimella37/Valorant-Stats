@@ -106,15 +106,7 @@ def parse_match_facts(
         if not isinstance(eco, dict):
             continue
         tag = _s(eco.get("0") or eco.get("team") or eco.get("Team"))
-        team_id = None
-        if tag:
-            n1 = (_s(team_1.get("name")) or "").lower()
-            n2 = (_s(team_2.get("name")) or "").lower()
-            t = tag.lower()
-            if t == n1 or n1.startswith(t) or t in n1:
-                team_id = team_1_id
-            elif t == n2 or n2.startswith(t) or t in n2:
-                team_id = team_2_id
+        team_id = resolve_team_id_from_tag(tag, team_1, team_2, team_1_id, team_2_id)
         counts = _economy_counts(eco)
         buckets["economy"].append(
             {
