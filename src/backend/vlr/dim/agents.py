@@ -310,7 +310,7 @@ def _merge_abilities(agent: dict[str, Any], lp: dict[str, Any]) -> list[dict[str
                 "stats": card.get("stats") or {},
             }
         )
-    return _apply_live_slots(merged)
+    return _drop_stale_lp_dupes(_apply_live_slots(merged))
 
 
 def _hotkey_row(
