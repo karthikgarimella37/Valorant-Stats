@@ -51,9 +51,10 @@ def _missing_id_sql(col: str) -> str:
     return f"({col} IS NULL OR BTRIM({col}) = '' OR {col} = '{UNKNOWN_ID}')"
 
 
-def _fill_other_team(connector: SupabaseConnector, table: str, *, extra_eq: str = "") -> int:
+def _fill_other_team(connector: SupabaseConnector, table: str, *, by_map: bool = False) -> int:
     """When a match already has one real team id, the -1 row is the other dim_matches team."""
-    extra = f" AND {extra_eq}" if extra_eq else ""
+    map_join = "AND known.map_game_number = t.map_game_number" if by_map else ""
+    map_exist = "AND x.map_game_number = t.map_game_number" if by_map else ""
     sql = f"""
         UPDATE vlr.{table} AS t
         SET vlr_team_id = CASE
@@ -64,8 +65,8 @@ def _fill_other_team(connector: SupabaseConnector, table: str, *, extra_eq: str 
         FROM vlr.dim_matches AS m
         JOIN vlr.{table} AS known
           ON known.vlr_match_id = t.vlr_match_id
+         {map_join}
          AND NOT {_missing_id_sql("known.vlr_team_id")}
-         {extra.replace("t.", "known.") if False else ""}
         WHERE t.vlr_match_id = m.vlr_match_id
           AND {_missing_id_sql("t.vlr_team_id")}
           AND m.vlr_team_1_id IS NOT NULL
@@ -74,41 +75,13 @@ def _fill_other_team(connector: SupabaseConnector, table: str, *, extra_eq: str 
           AND NOT EXISTS (
             SELECT 1 FROM vlr.{table} AS x
             WHERE x.vlr_match_id = t.vlr_match_id
+              {map_exist}
               AND x.vlr_team_id = CASE
                     WHEN known.vlr_team_id = m.vlr_team_1_id THEN m.vlr_team_2_id
                     ELSE m.vlr_team_1_id
                   END
-              {extra.replace("t.", "x.") if extra_eq else ""}
           )
     """
-    if extra_eq:
-        sql = f"""
-        UPDATE vlr.{table} AS t
-        SET vlr_team_id = CASE
-            WHEN known.vlr_team_id = m.vlr_team_1_id THEN m.vlr_team_2_id
-            WHEN known.vlr_team_id = m.vlr_team_2_id THEN m.vlr_team_1_id
-            ELSE t.vlr_team_id
-        END
-        FROM vlr.dim_matches AS m
-        JOIN vlr.{table} AS known
-          ON known.vlr_match_id = t.vlr_match_id
-         AND known.map_game_number = t.map_game_number
-         AND NOT {_missing_id_sql("known.vlr_team_id")}
-        WHERE t.vlr_match_id = m.vlr_match_id
-          AND {_missing_id_sql("t.vlr_team_id")}
-          AND m.vlr_team_1_id IS NOT NULL
-          AND m.vlr_team_2_id IS NOT NULL
-          AND known.vlr_team_id IN (m.vlr_team_1_id, m.vlr_team_2_id)
-          AND NOT EXISTS (
-            SELECT 1 FROM vlr.{table} AS x
-            WHERE x.vlr_match_id = t.vlr_match_id
-              AND x.map_game_number = t.map_game_number
-              AND x.vlr_team_id = CASE
-                    WHEN known.vlr_team_id = m.vlr_team_1_id THEN m.vlr_team_2_id
-                    ELSE m.vlr_team_1_id
-                  END
-          )
-        """
     with connector._connect() as conn:
         with conn.cursor() as cur:
             cur.execute("SET statement_timeout = '10min'")
