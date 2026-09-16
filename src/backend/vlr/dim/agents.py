@@ -383,10 +383,7 @@ def format_agent_row(api_agent: dict[str, Any], lp: dict[str, Any]) -> dict[str,
         return None
     role = api_agent.get("role") if isinstance(api_agent.get("role"), dict) else {}
     abilities = _merge_abilities(api_agent, lp)
-    c_row = _hotkey_row(abilities, "C")
-    q_row = _hotkey_row(abilities, "Q")
-    e_row = _hotkey_row(abilities, "E")
-    x_row = _hotkey_row(abilities, "X", kind="Ultimate")
+    kit = flatten_kit_columns(abilities)
     tags = api_agent.get("characterTags")
     tags = tags if isinstance(tags, list) else []
     face = text_or_none(api_agent.get("displayIcon"))
@@ -405,15 +402,8 @@ def format_agent_row(api_agent: dict[str, Any], lp: dict[str, Any]) -> dict[str,
         "role_icon_url": text_or_none(role.get("displayIcon")),
         "valorant_api_uuid": text_or_none(api_agent.get("uuid")),
         "liquipedia_url": LP_AGENT_URL.format(name=name.replace(" ", "_")),
-        "ability_c_name": (c_row or {}).get("name"),
-        "ability_c_cost": (c_row or {}).get("cost_credits"),
-        "ability_q_name": (q_row or {}).get("name"),
-        "ability_q_cost": (q_row or {}).get("cost_credits"),
-        "ability_e_name": (e_row or {}).get("name"),
-        "ability_e_cost": (e_row or {}).get("cost_credits"),
-        "ultimate_name": (x_row or {}).get("name"),
-        "ultimate_orbs": (x_row or {}).get("ultimate_orbs"),
-        "abilities_json": abilities,
+        **{k: kit[k] for k in kit if k != "abilities_json"},
+        "abilities_json": kit["abilities_json"],
         "tags_json": tags,
     }
 
