@@ -59,6 +59,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 - [ ] Parse facts from `matches.jsonl` (overall / rounds / performance / economy)
 - [x] Materialize `vlr_agents` (29 agents)
 - [x] Materialize `vlr_maps` (18 maps; skip Range/Skirmish; unique `map_name` before upsert)
+- [ ] Materialize `vlr_weapons` (Fandom catalog; job `vlr_weapons`)
 - [ ] Materialize `vlr_teams` (schema+load from existing `teams.jsonl` for roster/socials)
 - [ ] Materialize `vlr_players` (~28k `/v2/player` calls; rebuild vlrggapi first for twitter + team href ids)
 - [ ] Incremental extract via `vlr_watermarks` after historical
