@@ -52,7 +52,12 @@ def _grain_tuple(row: dict[str, Any], unique_cols: tuple[str, ...]) -> tuple[Any
 
 
 def _fill_null_grain_ids(connector: SupabaseConnector, spec: FactSpec) -> None:
-    """Replace warehouse null/blank grain ids with -1, then NOT NULL."""
+    """Replace warehouse null/blank grain ids with -1, then NOT NULL.
+
+    Does not rewrite vlr_player_id in the warehouse: nearly all current values are
+    null, and coalescing them under UNIQUE (..., vlr_player_id) would collapse
+    one player per map/team. Extract/load still writes '-1' for missing player ids.
+    """
     id_cols = tuple(col for col in _grain_id_cols(spec.unique_cols) if col != "vlr_player_id")
     extra = tuple(
         col
