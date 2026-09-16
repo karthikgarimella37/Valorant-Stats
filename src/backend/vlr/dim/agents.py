@@ -216,7 +216,9 @@ def _lp_card_for(name: str, cards: list[dict[str, Any]]) -> dict[str, Any]:
         return {}
     for card in cards:
         other = _name_key(card.get("name"))
-        if other == key or key.startswith(other) or other.startswith(key):
+        if other == key:
+            return card
+        if min(len(key), len(other)) >= 5 and (key.startswith(other) or other.startswith(key)):
             return card
     return {}
 
