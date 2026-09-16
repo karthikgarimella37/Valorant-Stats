@@ -235,6 +235,7 @@ ECONOMY_COLS = (
 ECONOMY_UNIQUE = ("vlr_match_id", "vlr_team_id")
 ECONOMY_TYPES = {
     **BASE_TYPES,
+    "fact_key": "TEXT",
     "vlr_team_id": "TEXT",
     "pistol_played": "INTEGER",
     "pistol_won": "INTEGER",
