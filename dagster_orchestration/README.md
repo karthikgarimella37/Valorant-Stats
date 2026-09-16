@@ -111,6 +111,17 @@ cd dagster_orchestration
 uv run dagster job execute -m dagster_orchestration.definitions -j vlr_weapons
 ```
 
+## Fact tables from matches.jsonl (do not run until discussed)
+
+Job: `vlr_facts`
+
+Parses `data/vlr/matches.jsonl` into `data/vlr/facts/*.jsonl` then upserts `vlr.fact_*`. **No VLR HTTP.**
+
+```bash
+cd dagster_orchestration
+uv run dagster job execute -m dagster_orchestration.definitions -j vlr_facts
+```
+
 ## Historical VLR jobs (Dagster)
 
 Jobs: `vlr_events` then `vlr_matches`. After matches ids exist, `vlr_teams` enriches `vlr.dim_teams` from `/v2/team`.

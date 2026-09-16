@@ -559,7 +559,7 @@ Every fact, in this order at the ends:
 | `insert_date` | `TIMESTAMPTZ` | First load |
 | `update_date` | `TIMESTAMPTZ` | Last upsert |
 
-All `*_id` columns on facts are FKs to `dim_*.row_number`.  
+All fact grain keys are TEXT source ids/names (`vlr_match_id`, `player_name`, …).  
 `map_game_number` and `round_number` are integers (degenerate), not dims.
 
 ---

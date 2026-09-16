@@ -152,6 +152,7 @@ data/vlr/matches.jsonl                  # dim_matches row + listing + full match
 data/vlr/dim_agents.jsonl               # kit catalog (valorant-api + Liquipedia)
 data/vlr/dim_maps.jsonl                 # map catalog (valorant-api + Liquipedia)
 data/vlr/dim_weapons.jsonl              # gun catalog (valorant.fandom.com)
+data/vlr/facts/<stem>.jsonl             # fact landings from matches.jsonl
 data/vlr/dim_date.parquet               # generated calendar for vlr.dim_date
 data/vlr/watermarks.json                # incremental fetch cursor
 ```
