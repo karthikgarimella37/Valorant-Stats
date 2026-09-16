@@ -36,7 +36,8 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 - [x] Historical events / matches extract jobs; match details still filling
 - [x] Dim catalogs: date, regions, economy seed, agents, maps, weapons
 - [x] Dim teams/players **code** + `teams.jsonl` / player extract job
-- [x] Fact **backend** (DDL + parse + load + job `vlr_facts`) — not executed
+- [x] Fact **backend** (DDL + parse + load + job `vlr_facts`)
+- [x] Fact unique keys: composite grain columns; overall uses `vlr_player_id` (join from landings)
 
 ## Next up
 
