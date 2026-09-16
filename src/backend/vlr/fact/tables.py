@@ -300,6 +300,7 @@ VETO_COLS = (
 VETO_UNIQUE = ("vlr_match_id", "action_order")
 VETO_TYPES = {
     **BASE_TYPES,
+    "fact_key": "TEXT",
     "map_name": "TEXT",
     "team_tag": "TEXT",
     "action_order": "INTEGER",
