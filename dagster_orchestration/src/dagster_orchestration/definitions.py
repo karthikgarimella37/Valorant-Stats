@@ -510,6 +510,26 @@ def dims_maps(context: AssetExecutionContext) -> dict[str, int]:
     return counts
 
 
+@asset(group_name="vlr_facts")
+def facts_extract(context: AssetExecutionContext) -> dict[str, int]:
+    """Parse matches.jsonl into fact jsonl. No VLR HTTP."""
+    context.log.info("=== STEP facts_extract: parse matches.jsonl into fact jsonl ===")
+    counts = extract_facts(REPO_ROOT)
+    context.add_output_metadata({"row_counts": MetadataValue.json(counts)})
+    context.log.info("Fact jsonl landed=%s", counts)
+    return counts
+
+
+@asset(group_name="vlr_facts", deps=[facts_extract])
+def facts_load(context: AssetExecutionContext) -> dict[str, int]:
+    """Upsert fact jsonl into vlr.fact_* on fact_key."""
+    context.log.info("=== STEP facts_load: upsert vlr.fact_* from jsonl ===")
+    counts = load_facts(REPO_ROOT)
+    context.add_output_metadata({"row_counts": MetadataValue.json(counts)})
+    context.log.info("Facts upserted=%s", counts)
+    return counts
+
+
 @asset(group_name="vlr_hist")
 def evt_schema(context: AssetExecutionContext) -> str:
     """Create or alter vlr.dim_events so extract rows match warehouse columns."""
