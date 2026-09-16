@@ -37,6 +37,10 @@ class ValorantApiConnector:
         rows = payload.get("data") if isinstance(payload, dict) else None
         if not isinstance(rows, list):
             raise RuntimeError("valorant-api.com /v1/agents did not return data[]")
-        playable = [row for row in rows if isinstance(row, dict)]
+        playable = [
+            row
+            for row in rows
+            if isinstance(row, dict) and row.get("isPlayableCharacter", True)
+        ]
         logger.info("[valorant-api] Agents fetched=%s", len(playable))
         return playable

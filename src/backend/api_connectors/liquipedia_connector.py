@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import logging
+import os
+import threading
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
@@ -19,9 +22,21 @@ USER_AGENT = "Valorant-Stats/1.0 (esports warehouse catalog; gzip MediaWiki API)
 class LiquipediaValorantConnector:
     """Fetch agent wikitext so we can parse credit costs and ult orbs (not on valorant-api.com)."""
 
-    def __init__(self, timeout: int = 30, max_workers: int = 6) -> None:
+    def __init__(
+        self,
+        timeout: int = 30,
+        max_workers: int | None = None,
+        interval_sec: float | None = None,
+    ) -> None:
         self.timeout = timeout
-        self.max_workers = max_workers
+        self.max_workers = max_workers or int(os.getenv("VLR_LIQUIPEDIA_WORKERS", "4"))
+        self.interval_sec = (
+            interval_sec
+            if interval_sec is not None
+            else float(os.getenv("VLR_LIQUIPEDIA_INTERVAL_SEC", "0.4"))
+        )
+        self._gate = threading.Lock()
+        self._last_start = 0.0
         self.session = requests.Session()
         retry = Retry(total=3, backoff_factor=0.8, status_forcelist=(429, 500, 502, 503, 504))
         adapter = HTTPAdapter(max_retries=retry)
@@ -34,8 +49,17 @@ class LiquipediaValorantConnector:
             }
         )
 
+    def _wait_turn(self) -> None:
+        """Space Liquipedia GETs so parallel workers stay polite."""
+        with self._gate:
+            wait = self.interval_sec - (time.monotonic() - self._last_start)
+            if wait > 0:
+                time.sleep(wait)
+            self._last_start = time.monotonic()
+
     def get_page_wikitext(self, title: str) -> str | None:
         """One agent page as wikitext (Infobox + AbilityCard)."""
+        self._wait_turn()
         logger.info("[liquipedia] GET parse page=%s", title)
         resp = self.session.get(
             BASE_URL,
