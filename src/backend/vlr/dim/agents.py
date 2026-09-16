@@ -189,10 +189,10 @@ def parse_liquipedia_agent(wikitext: str) -> dict[str, Any]:
     boxes = _iter_templates(wikitext, "Infobox agent")
     if boxes:
         fields = _template_fields(boxes[0])
-        info["real_name"] = _text(fields.get("realname") or fields.get("real_name"))
-        info["country_name"] = _text(fields.get("country") or fields.get("nationality"))
+        info["real_name"] = _strip_wiki(fields.get("realname") or fields.get("real_name"))
+        info["country_name"] = _strip_wiki(fields.get("country") or fields.get("nationality"))
         info["release_date"] = _text(fields.get("releasedate") or fields.get("release_date"))
-        info["role_name"] = _text(fields.get("class"))
+        info["role_name"] = _strip_wiki(fields.get("class"))
     cards: list[dict[str, Any]] = []
     for block in _iter_templates(wikitext, "AbilityCard"):
         fields = _template_fields(block)
