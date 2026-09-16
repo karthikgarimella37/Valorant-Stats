@@ -186,6 +186,7 @@ def _load_one_table(
     on_conflict: str = "update",
     batch_size: int = 1000,
     max_cpu_pct: int | None = 60,
+    min_sleep_sec: float = 4.0,
 ) -> tuple[str, int]:
     """Upsert one fact jsonl onto its composite unique. Independent of other fact tables."""
     rows = _read_fact_jsonl(spec, root)
@@ -199,6 +200,7 @@ def _load_one_table(
         batch_size=batch_size,
         on_conflict=on_conflict,
         max_cpu_pct=max_cpu_pct,
+        min_sleep_sec=min_sleep_sec,
     )
     logger.info("[facts] Load progress table=%s upserted=%s", spec.table, count)
     return spec.table, count
