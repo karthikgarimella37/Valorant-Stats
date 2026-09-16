@@ -13,7 +13,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 
 ## Current focus
 
-- Materialize `vlr_maps` then `vlr_agents` (AWS rotator). Then `vlr_teams` schema+load, then `vlr_players` after vlrggapi rebuild
+- Materialize `vlr_teams` (schema+load from existing `teams.jsonl`). Then `vlr_players` after vlrggapi rebuild
 
 ## Status
 
