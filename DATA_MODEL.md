@@ -321,22 +321,40 @@ One row per player.
 
 ### `dim_agents` — Required (static)
 
-One row per agent **name** seen on VLR (no ability catalog).  
+One row per playable agent. Kit catalog (abilities, costs, portraits) plus any extra names seen on VLR scoreboards.  
 **PK:** `row_number`  
 **Business key:** `agent_name`  
 **Sequence:** `seq_dim_agents_row_number`
 
 | Column | Type | Notes |
 |--------|------|--------|
-| `agent_name` | `TEXT` | VLR spelling (`Jett`, `Omen`, …) |
-| `role_name` | `TEXT` | If present on event agents page; else null |
-| `image_url` | `TEXT` | From match agent img |
+| `agent_name` | `TEXT` | Riot / VLR spelling (`Jett`, `KAY/O`). Scoreboard `KAYO` canonicalizes to `KAY/O`. |
+| `role_name` | `TEXT` | Duelist / Initiator / Controller / Sentinel from valorant-api.com |
+| `description` | `TEXT` | Short bio from valorant-api.com |
+| `real_name` | `TEXT` | Liquipedia Infobox (`Sunwoo Han`) |
+| `country_name` | `TEXT` | Liquipedia Infobox (`South Korea`) |
+| `release_date` | `TEXT` | Liquipedia `YYYY-MM-DD` (API uses `1970-01-01` for launch roster) |
+| `image_url` | `TEXT` | valorant-api `displayIcon` |
+| `portrait_url` | `TEXT` | valorant-api `fullPortrait` |
+| `role_icon_url` | `TEXT` | valorant-api role icon |
+| `valorant_api_uuid` | `TEXT` | Riot agent uuid |
+| `liquipedia_url` | `TEXT` | `https://liquipedia.net/valorant/{name}` |
+| `ability_c_name` | `TEXT` | C (grenade) ability name |
+| `ability_c_cost` | `INTEGER` | Credits; `0` = Free |
+| `ability_q_name` | `TEXT` | Q ability name |
+| `ability_q_cost` | `INTEGER` | Credits; `0` = Free |
+| `ability_e_name` | `TEXT` | E (signature) ability name |
+| `ability_e_cost` | `INTEGER` | Credits; `0` = Free |
+| `ultimate_name` | `TEXT` | X ultimate name |
+| `ultimate_orbs` | `INTEGER` | Ult points (Liquipedia `ultimatecost`) |
+| `abilities_json` | `JSONB` | Full kit: hotkey, kind, name, cost_credits, ultimate_orbs, charges, description, icon_url, api_slot. Includes Passive when the API has one. |
+| `tags_json` | `JSONB` | valorant-api `characterTags` (`["VP and Yoru are the only agents..."]` style tags) |
 | `row_number` | `BIGINT` PK | |
 | `insert_date` | `TIMESTAMPTZ` | |
 | `update_date` | `TIMESTAMPTZ` | |
 
-**Insert from:** distinct agents on VLR `/matches/{id}` and `/events/{id}/agents`.  
-**Dagster:** upsert new names as they appear.
+**Insert from:** one GET `https://valorant-api.com/v1/agents?isPlayableCharacter=true` (names, role, ability text/icons, portraits). Credit costs and ult orbs are **not** on that API — merge Liquipedia MediaWiki `parse` wikitext `AbilityCard` (`cost`, `ultimatecost`, `charges`) + Infobox (`realname`, `country`, `releasedate`). Not used for matches.  
+**Dagster:** job `vlr_agents` (also in `vlr_dims`). Full catalog upsert on `agent_name`. Rematerialize when Riot ships a new agent. `dims_from_landings` only inserts new scoreboard names and does not wipe kit columns.
 
 ---
 
