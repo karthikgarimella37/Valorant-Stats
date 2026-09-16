@@ -35,9 +35,11 @@ def _grain_id_cols(unique_cols: tuple[str, ...]) -> tuple[str, ...]:
     return tuple(col for col in unique_cols if col.endswith("_id"))
 
 
-def _fill_row_ids(row: dict[str, Any], unique_cols: tuple[str, ...]) -> dict[str, Any]:
-    """COALESCE(NULLIF(trim(id), ''), '-1') on grain id columns."""
-    for col in _grain_id_cols(unique_cols):
+def _fill_row_ids(row: dict[str, Any], unique_cols: tuple[str, ...] = ()) -> dict[str, Any]:
+    """COALESCE(NULLIF(trim(id), ''), '-1') on grain and other vlr_*_id columns."""
+    cols = {col for col in unique_cols if col.endswith("_id")}
+    cols.update(col for col in row if col.endswith("_id") and col != "vlr_event_id")
+    for col in cols:
         row[col] = coalesce_id(row.get(col))
     return row
 
