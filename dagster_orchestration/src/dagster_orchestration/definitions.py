@@ -522,7 +522,7 @@ def facts_extract(context: AssetExecutionContext) -> dict[str, int]:
 
 @asset(group_name="vlr_facts", deps=[facts_extract])
 def facts_load(context: AssetExecutionContext) -> dict[str, int]:
-    """Upsert fact jsonl into vlr.fact_* on fact_key."""
+    """Upsert fact jsonl into vlr.fact_* on composite grain unique (tables in parallel)."""
     context.log.info("=== STEP facts_load: upsert vlr.fact_* from jsonl ===")
     counts = load_facts(REPO_ROOT)
     context.add_output_metadata({"row_counts": MetadataValue.json(counts)})

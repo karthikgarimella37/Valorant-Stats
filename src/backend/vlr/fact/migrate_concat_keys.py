@@ -222,17 +222,15 @@ def run_migrate(repo_root: Path | None = None, *, wait: bool, idle_sec: int, pol
     root = _root(repo_root)
     logger.info("[migrate] Start wait=%s", wait)
     connector = SupabaseConnector()
-    connector.execute("SET statement_timeout = 0")
     if wait:
         wait_for_load(connector, root, idle_sec=idle_sec, poll_sec=poll_sec)
     elif load_still_running(connector, root):
         raise RuntimeError("Fact load is still writing. Re-run with --wait or wait until facts_load finishes.")
-    apply_dim_schema(root, FACT_SPECS[0].sql_name, FACT_SPECS[0].table, FACT_SPECS[0].types)
     for spec in FACT_SPECS:
         apply_dim_schema(root, spec.sql_name, spec.table, spec.types)
     _backfill_player_ids(connector, root)
     for spec in FACT_SPECS:
-        migrate_table(connector, spec, root)
+        migrate_table(connector, spec)
     logger.info("[migrate] Done tables=%s", [spec.table for spec in FACT_SPECS])
 
 
