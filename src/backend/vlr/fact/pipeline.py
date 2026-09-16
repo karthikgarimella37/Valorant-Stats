@@ -214,7 +214,7 @@ def _read_fact_jsonl(spec: FactSpec, root: Path) -> list[dict[str, Any]]:
                 continue
             obj = json.loads(line)
             if isinstance(obj, dict):
-                rows.append(obj)
+                rows.append(_fill_row_ids(obj, spec.unique_cols))
     return stamp_rows(rows)
 
 
