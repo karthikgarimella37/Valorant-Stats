@@ -41,11 +41,6 @@ def fact_jsonl_path(repo_root: Path, stem: str) -> Path:
     return facts_dir(repo_root) / f"{stem}.jsonl"
 
 
-def fact_key(*parts: Any) -> str:
-    """Concat grain for fact_player_match_performance only while that load is in flight."""
-    return "|".join("" if p is None else str(p) for p in parts)
-
-
 def to_int(value: Any) -> int | None:
     """Scoreboard strings like '+9' or '24' into ints."""
     if value is None or value == "":

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 
@@ -13,10 +15,12 @@ from backend.vlr.dim.load import apply_dim_schema, stamp_rows, upsert_dim_rows
 from backend.vlr.dim.util import matches_jsonl_path
 from backend.vlr.fact.parse import parse_match_facts
 from backend.vlr.fact.player_ids import load_player_id_lookup
-from backend.vlr.fact.tables import FACT_SPECS, FROZEN_FACT_TABLES, FactSpec
+from backend.vlr.fact.tables import FACT_SPECS, FactSpec
 from backend.vlr.fact.util import REPO_ROOT, fact_jsonl_path, facts_dir
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_LOAD_WORKERS = 8
 
 
 def _root(repo_root: Path | None) -> Path:
@@ -76,15 +80,12 @@ def _ensure_grain_unique(connector: SupabaseConnector, spec: FactSpec) -> None:
 
 
 def apply_facts_schema(repo_root: Path | None = None) -> None:
-    """Create-if-missing fact tables; ADD columns (no DROP). Skip the in-flight performance table."""
+    """Create-if-missing fact tables; ADD columns; composite unique on grain columns."""
     load_project_env(repo_root)
     root = _root(repo_root)
     logger.info("[facts] Schema start tables=%s", len(FACT_SPECS))
     connector = SupabaseConnector()
     for spec in FACT_SPECS:
-        if spec.table in FROZEN_FACT_TABLES:
-            logger.info("[facts] Schema skip in-flight table=%s", spec.table)
-            continue
         apply_dim_schema(root, spec.sql_name, spec.table, spec.types)
         _retire_concat_key(connector, spec.table)
         _ensure_grain_unique(connector, spec)
@@ -158,41 +159,44 @@ def extract_facts(repo_root: Path | None = None) -> dict[str, int]:
     return counts
 
 
+def _load_one_table(spec: FactSpec, root: Path) -> tuple[str, int]:
+    """Upsert one fact jsonl onto its composite unique. Independent of other fact tables."""
+    path = fact_jsonl_path(root, spec.stem)
+    if not path.exists():
+        logger.warning("[facts] Load skip missing jsonl table=%s path=%s", spec.table, path)
+        return spec.table, 0
+    rows: list[dict[str, Any]] = []
+    with path.open() as handle:
+        for line in handle:
+            if not line.strip():
+                continue
+            obj = json.loads(line)
+            if isinstance(obj, dict):
+                rows.append(obj)
+    stamp_rows(rows)
+    count = upsert_dim_rows(
+        rows,
+        table=spec.table,
+        columns=spec.columns,
+        conflict_column=spec.unique_cols,
+    )
+    logger.info("[facts] Load progress table=%s upserted=%s", spec.table, count)
+    return spec.table, count
+
+
 def load_facts(repo_root: Path | None = None) -> dict[str, int]:
-    """Upsert landed fact jsonl on the composite grain. Performance stays on fact_key."""
+    """Schema first (serial), then upsert each fact table in parallel — they do not share rows."""
     load_project_env(repo_root)
-    logger.info("[facts] Load start")
     apply_facts_schema(repo_root)
     root = _root(repo_root)
+    workers = max(1, int(os.environ.get("VLR_FACT_LOAD_WORKERS", str(DEFAULT_LOAD_WORKERS))))
+    logger.info("[facts] Load start tables=%s workers=%s", len(FACT_SPECS), workers)
     counts: dict[str, int] = {}
-    for spec in FACT_SPECS:
-        path = fact_jsonl_path(root, spec.stem)
-        if not path.exists():
-            logger.warning("[facts] Load skip missing jsonl table=%s path=%s", spec.table, path)
-            counts[spec.table] = 0
-            continue
-        rows: list[dict[str, Any]] = []
-        with path.open() as handle:
-            for line in handle:
-                if not line.strip():
-                    continue
-                obj = json.loads(line)
-                if isinstance(obj, dict):
-                    rows.append(obj)
-        stamp_rows(rows)
-        # String fact_key keeps the in-flight upsert contract if this module reloads.
-        conflict: str | tuple[str, ...]
-        if spec.table in FROZEN_FACT_TABLES:
-            conflict = "fact_key"
-        else:
-            conflict = spec.unique_cols
-        counts[spec.table] = upsert_dim_rows(
-            rows,
-            table=spec.table,
-            columns=spec.columns,
-            conflict_column=conflict,
-        )
-        logger.info("[facts] Load progress table=%s upserted=%s", spec.table, counts[spec.table])
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = [pool.submit(_load_one_table, spec, root) for spec in FACT_SPECS]
+        for fut in as_completed(futures):
+            table, count = fut.result()
+            counts[table] = count
     logger.info("[facts] Load done %s", counts)
     return counts
 
@@ -206,4 +210,4 @@ def run_facts(repo_root: Path | None = None) -> dict[str, int]:
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
-    print("Fact backend is ready. Do not extract/load until discussed. Job: vlr_facts")
+    print("Fact backend uses composite unique keys. Job: vlr_facts")
