@@ -269,7 +269,10 @@ VETO_COLS = (
     *STAMP,
 )
 VETO_TYPES = {
-    **KEY_TYPES,
+    **BASE_TYPES,
+    "map_name": "TEXT",
+    "team_tag": "TEXT",
+    "action_order": "INTEGER",
     "is_ban": "BOOLEAN",
     "is_pick": "BOOLEAN",
     "is_decider": "BOOLEAN",
