@@ -82,11 +82,22 @@ uv run dagster job execute -m dagster_orchestration.definitions -j vlr_dims
 
 Job: `vlr_agents`
 
-Does **not** call vlr.gg. One GET to `valorant-api.com/v1/agents` plus ~30 Liquipedia pages. Re-run when Riot ships a new agent.
+Does **not** call vlr.gg. One GET to `valorant-api.com/v1/agents` plus ~30 Liquipedia pages, **through AWS IP rotator** (never the host IP). Re-run when Riot ships a new agent.
 
 ```bash
 cd dagster_orchestration
 uv run dagster job execute -m dagster_orchestration.definitions -j vlr_agents
+```
+
+## Map catalog (rare rematerialize)
+
+Job: `vlr_maps`
+
+Same rotator rule. One GET to `valorant-api.com/v1/maps` plus one Liquipedia page per map. Re-run when Riot ships a new map.
+
+```bash
+cd dagster_orchestration
+uv run dagster job execute -m dagster_orchestration.definitions -j vlr_maps
 ```
 
 ## Historical VLR jobs (Dagster)
