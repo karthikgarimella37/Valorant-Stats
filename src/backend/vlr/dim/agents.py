@@ -503,6 +503,7 @@ def load_agents(rows: list[dict[str, Any]] | None = None, repo_root: Path | None
             row["abilities_json"] = json_dumps(row.get("abilities_json"))
         if not isinstance(row.get("tags_json"), str):
             row["tags_json"] = json_dumps(row.get("tags_json"))
+    _write_agents_jsonl(agents_jsonl_path(_root(repo_root)), rows)
     loaded = upsert_dim_rows(
         rows,
         table="dim_agents",
