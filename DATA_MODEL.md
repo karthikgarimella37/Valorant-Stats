@@ -458,29 +458,36 @@ One row per buy type. Seeded, not scraped.
 
 ---
 
-### `dim_weapons` — Seeded from rib.gg
+### `dim_weapons` — Fandom catalog
 
-One row per weapon. VLR match JSON has **no gun names**.  
+One row per competitive weapon (sidearms, SMGs, shotguns, rifles, snipers, LMGs, melee). VLR match JSON has **no gun names**.  
 **PK:** `row_number`  
 **Business key:** `weapon_name`  
 **Sequence:** `seq_dim_weapons_row_number`
 
 | Column | Type | Notes |
 |--------|------|--------|
-| `weapon_name` | `TEXT` | |
-| `rib_weapon_id` | `TEXT` | rib.gg id when present |
-| `weapon_type` | `TEXT` | Category if rib sends it |
-| `credits` | `INT` | Shop cost if present |
-| `fire_rate` | `FLOAT` | If present |
-| `magazine_size` | `INT` | If present |
-| `image_url` | `TEXT` | If present |
-| `stats_json` | `JSONB` | Full rib payload (any extra fields) |
+| `weapon_name` | `TEXT` | Classic, Vandal, … |
+| `weapon_type` | `TEXT` | Sidearm / SMG / Shotgun / Rifle / Sniper Rifle / Machine Gun / Melee |
+| `credits` | `INT` | Shop cost; `0` = Free |
+| `wall_penetration` | `TEXT` | Low / Medium / High |
+| `length` | `TEXT` | Canon length (`30.92 cm`) |
+| `creator` | `TEXT` | Manufacturer (`Falcon`) |
+| `quote` | `TEXT` | Fandom `{{Quote1}}` tagline |
+| `image_url` | `TEXT` | Full weapon render |
+| `icon_url` | `TEXT` | Shop / HUD icon |
+| `killfeed_icon_url` | `TEXT` | Killfeed icon |
+| `fire_rate` | `FLOAT` | Primary rounds/sec (first number) |
+| `magazine_size` | `INT` | |
+| `fandom_url` | `TEXT` | `https://valorant.fandom.com/wiki/{name}` |
+| `rib_weapon_id` | `TEXT` | Optional leftover rib.gg id |
+| `fire_stats_json` | `JSONB` | `{primary_fire, alternate_fire, spread}`. Primary/alt hold fire mode, rate, damage bands, TTK at 100/125/150 HP. Spread is first-shot / max / movement penalties per firing mode. |
 | `row_number` | `BIGINT` PK | |
 | `insert_date` | `TIMESTAMPTZ` | |
 | `update_date` | `TIMESTAMPTZ` | |
 
-**Insert from:** rib.gg `GET /v1/weapons/all` (fallback paginated `/v1/weapons`). Job `vlr_dims` asset `dims_weapons`.  
-**Dagster:** rare upsert on `weapon_name`.
+**Insert from:** AWS-rotated MediaWiki `https://valorant.fandom.com/api.php` (`Weapons` list + each `Infobox weapon` page + `imageinfo` URLs). Host IP is never used. Skips Golden Gun / Snowball Launcher.  
+**Dagster:** job `vlr_weapons` (also in `vlr_dims`). Rare upsert on `weapon_name`. Rematerialize when Riot ships a new gun.
 
 ---
 
