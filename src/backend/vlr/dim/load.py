@@ -67,6 +67,7 @@ def upsert_dim_rows(
         conflict_column=conflict_column,
         update_columns=update_columns,
         jsonb_columns=jsonb_columns,
+        batch_size=batch_size,
     )
     logger.info("[dims] Load done table=%s upserted=%s", table, total)
     return total
