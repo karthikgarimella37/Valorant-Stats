@@ -912,6 +912,7 @@ defs = Definitions(
         dims_from_landings,
         dims_weapons,
         dims_agents,
+        dims_maps,
         evt_schema,
         evt_extract,
         evt_load,
