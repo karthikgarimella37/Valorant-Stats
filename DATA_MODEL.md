@@ -348,7 +348,7 @@ One row per playable agent. Kit catalog (abilities, costs, portraits) plus any e
 | `ultimate_name` | `TEXT` | X ultimate name |
 | `ultimate_orbs` | `INTEGER` | Ult points (Liquipedia `ultimatecost`) |
 | `abilities_json` | `JSONB` | Full kit: hotkey, kind, name, cost_credits, ultimate_orbs, charges, description, icon_url, api_slot. Includes Passive when the API has one. |
-| `tags_json` | `JSONB` | valorant-api `characterTags` (`["VP and Yoru are the only agents..."]` style tags) |
+| `tags_json` | `JSONB` | valorant-api `characterTags` (string list; often empty) |
 | `row_number` | `BIGINT` PK | |
 | `insert_date` | `TIMESTAMPTZ` | |
 | `update_date` | `TIMESTAMPTZ` | |
