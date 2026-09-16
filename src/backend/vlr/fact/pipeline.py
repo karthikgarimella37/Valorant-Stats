@@ -134,4 +134,4 @@ def run_facts(repo_root: Path | None = None) -> dict[str, int]:
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
-    print(extract_facts())
+    print("Fact backend is ready. Do not extract/load until discussed. Job: vlr_facts")
