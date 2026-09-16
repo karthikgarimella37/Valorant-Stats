@@ -87,11 +87,11 @@ MAP_TYPES = {
     "insert_date": "TIMESTAMPTZ",
     "update_date": "TIMESTAMPTZ",
 }
-AGENT_COLS = ("agent_name", "role_name", "insert_date", "update_date")
+# Thin seed only. Job `vlr_agents` fills kit columns and must not be wiped here.
+AGENT_COLS = ("agent_name", "insert_date", "update_date")
 AGENT_TYPES = {
     "row_number": "BIGINT",
     "agent_name": "TEXT",
-    "role_name": "TEXT",
     "insert_date": "TIMESTAMPTZ",
     "update_date": "TIMESTAMPTZ",
 }
