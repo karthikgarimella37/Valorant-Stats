@@ -155,7 +155,6 @@ def parse_match_facts(
             continue
         buckets["series"].append(
             {
-                "fact_key": fact_key(match_id, team_id),
                 "vlr_match_id": match_id,
                 "vlr_event_id": event_id,
                 "match_date": match_date,
