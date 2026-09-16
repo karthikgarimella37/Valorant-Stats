@@ -35,7 +35,12 @@ OVERALL_COLS = (
     *STAMP,
 )
 OVERALL_TYPES = {
-    **KEY_TYPES,
+    **BASE_TYPES,
+    "map_name": "TEXT",
+    "map_game_number": "INTEGER",
+    "player_name": "TEXT",
+    "vlr_team_id": "TEXT",
+    "agent_name": "TEXT",
     "kills": "INTEGER",
     "deaths": "INTEGER",
     "assists": "INTEGER",
