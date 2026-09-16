@@ -61,8 +61,7 @@ def _ensure_grain_unique(connector: SupabaseConnector, spec: FactSpec) -> None:
     name = f"uq_vlr_{spec.table}_grain"
     cols = ", ".join(spec.unique_cols)
     logger.info("[facts] Ensure grain unique table=%s cols=%s", spec.table, spec.unique_cols)
-    connector.execute(
-        f"""
+    sql = f"""
         DO $$
         BEGIN
           IF NOT EXISTS (
@@ -75,8 +74,12 @@ def _ensure_grain_unique(connector: SupabaseConnector, spec: FactSpec) -> None:
             ALTER TABLE vlr.{spec.table} ADD CONSTRAINT {name} UNIQUE ({cols});
           END IF;
         END $$;
-        """
-    )
+    """
+    with connector._connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SET statement_timeout = 0")
+            cur.execute(sql)
+        conn.commit()
 
 
 def apply_facts_schema(repo_root: Path | None = None) -> None:
