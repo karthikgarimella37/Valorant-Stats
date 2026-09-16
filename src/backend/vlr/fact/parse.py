@@ -225,41 +225,39 @@ def parse_match_facts(
                     if player_ids
                     else _s(player.get("id") or player.get("player_id"))
                 )
-                if team_id and player_id:
-                    buckets["overall"].append(
-                        {
-                            "vlr_match_id": match_id,
-                            "vlr_event_id": event_id,
-                            "match_date": match_date,
-                            "map_name": map_name,
-                            "map_game_number": map_game_number,
-                            "player_name": ign,
-                            "vlr_team_id": team_id,
-                            "vlr_player_id": player_id,
-                            "agent_name": agent,
-                            "kills": to_int(player.get("kills")),
-                            "deaths": to_int(player.get("deaths")),
-                            "assists": to_int(player.get("assists")),
-                            "plus_minus": to_int(player.get("kd_diff") or player.get("plus_minus")),
-                            "acs": to_float(player.get("acs")),
-                            "adr": to_float(player.get("adr")),
-                            "rating": to_float(player.get("rating")),
-                            "rounds_played": rounds_played,
-                            "is_winner": is_winner,
-                        }
-                    )
+                buckets["overall"].append(
+                    {
+                        "vlr_match_id": match_id,
+                        "vlr_event_id": event_id,
+                        "match_date": match_date,
+                        "map_name": map_name,
+                        "map_game_number": map_game_number,
+                        "player_name": ign,
+                        "vlr_team_id": coalesce_id(team_id),
+                        "vlr_player_id": coalesce_id(player_id),
+                        "agent_name": agent,
+                        "kills": to_int(player.get("kills")),
+                        "deaths": to_int(player.get("deaths")),
+                        "assists": to_int(player.get("assists")),
+                        "plus_minus": to_int(player.get("kd_diff") or player.get("plus_minus")),
+                        "acs": to_float(player.get("acs")),
+                        "adr": to_float(player.get("adr")),
+                        "rating": to_float(player.get("rating")),
+                        "rounds_played": rounds_played,
+                        "is_winner": is_winner,
+                    }
+                )
                 adv = match_advanced(ign, series_advanced) if map_game_number == 1 else {}
-                if team_id and player_id:
-                    buckets["performance"].append(
-                        {
-                            "vlr_match_id": match_id,
-                            "vlr_event_id": event_id,
-                            "match_date": match_date,
-                            "map_name": map_name,
-                            "map_game_number": map_game_number,
-                            "player_name": ign,
-                            "vlr_team_id": team_id,
-                            "vlr_player_id": player_id,
+                buckets["performance"].append(
+                    {
+                        "vlr_match_id": match_id,
+                        "vlr_event_id": event_id,
+                        "match_date": match_date,
+                        "map_name": map_name,
+                        "map_game_number": map_game_number,
+                        "player_name": ign,
+                        "vlr_team_id": coalesce_id(team_id),
+                        "vlr_player_id": coalesce_id(player_id),
                             "agent_name": agent,
                             "kast": to_float(player.get("kast")),
                             "hs_pct": to_float(player.get("hs_pct")),
