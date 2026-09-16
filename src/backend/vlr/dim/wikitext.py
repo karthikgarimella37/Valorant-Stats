@@ -122,9 +122,11 @@ def extra_stat_lines(raw: str | None) -> dict[str, str]:
 
 
 def dms_to_decimal(deg: str, minutes: str, seconds: str | None, hemi: str) -> float:
-    """Convert lore/DMS coordinates; A/Z seconds count as 0."""
-    sec_raw = (seconds or "0").upper()
-    sec = 0.0 if sec_raw in {"A", "Z"} else float(sec_raw)
+    """Convert lore/DMS coordinates; letter seconds (A, BF, …) count as 0."""
+    try:
+        sec = float(seconds) if seconds not in (None, "") else 0.0
+    except (TypeError, ValueError):
+        sec = 0.0
     value = float(deg) + float(minutes) / 60.0 + sec / 3600.0
     if hemi.upper() in {"S", "W"}:
         value = -value

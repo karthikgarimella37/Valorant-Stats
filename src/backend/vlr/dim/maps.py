@@ -92,7 +92,81 @@ MAP_TYPES = {
     "update_date": "TIMESTAMPTZ",
 }
 
-_SKIP_INFOBOX = {"name", "image", "_extra_lines"}
+SKIP_MAP_NAMES = {"The Range", "Basic Training"}
+
+
+def is_catalog_map(name: str | None) -> bool:
+    """Drop Range / training / Skirmish so dim_maps is competitive maps only."""
+    text = (name or "").strip()
+    if not text:
+        return False
+    if text in SKIP_MAP_NAMES:
+        return False
+    if text.lower().startswith("skirmish"):
+        return False
+    return True
+
+
+def _map_rank(api_map: dict[str, Any]) -> int:
+    """Prefer the UUID that has a minimap and callouts when names collide."""
+    score = 0
+    if api_map.get("displayIcon"):
+        score += 10
+    callouts = api_map.get("callouts") or []
+    if isinstance(callouts, list):
+        score += len(callouts)
+    if api_map.get("narrativeDescription"):
+        score += 5
+    return score
+
+
+def unique_api_maps(api_maps: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """One row per displayName so ON CONFLICT map_name does not CardinalityViolation."""
+    best: dict[str, dict[str, Any]] = {}
+    skipped = 0
+    for row in api_maps:
+        name = text_or_none(row.get("displayName"))
+        if not is_catalog_map(name):
+            skipped += 1
+            continue
+        assert name is not None
+        prev = best.get(name)
+        if prev is None or _map_rank(row) > _map_rank(prev):
+            best[name] = row
+    logger.info("[maps] Catalog maps=%s skipped_training=%s", len(best), skipped)
+    return list(best.values())
+
+
+def unique_map_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Last-write-wins unique on map_name before upsert."""
+    by_name: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        name = text_or_none(row.get("map_name"))
+        if not is_catalog_map(name):
+            continue
+        assert name is not None
+        by_name[name] = row
+    return list(by_name.values())
+
+
+def _useful_feature(bit: str | None) -> bool:
+    """Infobox teleporters=0 is not a map feature."""
+    if not bit:
+        return False
+    return bit.strip().lower() not in {"0", "none", "n/a", "no", "false", "-"}
+
+
+def _spike_sites_from_fields(fields: dict[str, str]) -> str | None:
+    """sites=A/B, or bombsites=2/3 → A/B / A/B/C."""
+    raw = strip_wiki(fields.get("sites") or fields.get("spikesites") or fields.get("spike_sites"))
+    if raw and not raw.isdigit():
+        return raw
+    n = as_int(raw or fields.get("bombsites"))
+    if n == 2:
+        return "A/B"
+    if n == 3:
+        return "A/B/C"
+    return None
 
 
 def _root(repo_root: Path | None) -> Path:
