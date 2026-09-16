@@ -14,7 +14,7 @@ from .matches import apply_matches_schema, extract_matches, load_matches, run_ma
 from .players import apply_players_schema, extract_players, load_players, run_players
 from .static import load_static
 from .teams import apply_teams_schema, extract_teams, load_teams, run_teams
-from .weapons import run_weapons
+from .weapons import apply_weapons_schema, extract_weapons, load_weapons, run_weapons
 
 __all__ = [
     "apply_agents_schema",
