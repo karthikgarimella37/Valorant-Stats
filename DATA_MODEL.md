@@ -334,7 +334,10 @@ One row per playable agent. Kit catalog (abilities, costs, portraits) plus any e
 | `real_name` | `TEXT` | Liquipedia Infobox (`Sunwoo Han`) |
 | `country_name` | `TEXT` | Liquipedia Infobox (`South Korea`) |
 | `release_date` | `TEXT` | Liquipedia `YYYY-MM-DD` (API uses `1970-01-01` for launch roster) |
-| `image_url` | `TEXT` | valorant-api `displayIcon` |
+| `face_url` | `TEXT` | Agent face / scoreboard icon (`displayIcon`) |
+| `image_url` | `TEXT` | Same as `face_url` |
+| `bust_url` | `TEXT` | valorant-api `bustPortrait` |
+| `killfeed_portrait_url` | `TEXT` | valorant-api `killfeedPortrait` |
 | `portrait_url` | `TEXT` | valorant-api `fullPortrait` |
 | `role_icon_url` | `TEXT` | valorant-api role icon |
 | `valorant_api_uuid` | `TEXT` | Riot agent uuid |
