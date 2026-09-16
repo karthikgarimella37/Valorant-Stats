@@ -28,12 +28,50 @@ def _root(repo_root: Path | None) -> Path:
     return Path(repo_root or REPO_ROOT)
 
 
+def _grain_id_cols(unique_cols: tuple[str, ...]) -> tuple[str, ...]:
+    """Unique columns that are source ids (never null; missing → -1)."""
+    return tuple(col for col in unique_cols if col.endswith("_id"))
+
+
+def _fill_row_ids(row: dict[str, Any], unique_cols: tuple[str, ...]) -> dict[str, Any]:
+    """COALESCE(NULLIF(trim(id), ''), '-1') on grain id columns."""
+    for col in _grain_id_cols(unique_cols):
+        row[col] = coalesce_id(row.get(col))
+    return row
+
+
 def _grain_tuple(row: dict[str, Any], unique_cols: tuple[str, ...]) -> tuple[Any, ...] | None:
-    """Composite grain for jsonl dedupe; skip rows missing any unique column."""
+    """Composite grain for jsonl dedupe; id blanks become -1; skip if a non-id key is missing."""
+    _fill_row_ids(row, unique_cols)
     values = tuple(row.get(col) for col in unique_cols)
     if any(value is None or value == "" for value in values):
         return None
     return values
+
+
+def _fill_null_grain_ids(connector: SupabaseConnector, spec: FactSpec) -> None:
+    """Replace warehouse null/blank grain ids with -1, then NOT NULL."""
+    id_cols = _grain_id_cols(spec.unique_cols)
+    extra = tuple(
+        col
+        for col in spec.columns
+        if col.endswith("_id") and col not in id_cols and col != "vlr_event_id"
+    )
+    cols = id_cols + extra
+    if not cols:
+        return
+    logger.info("[facts] Fill null ids table=%s cols=%s", spec.table, cols)
+    sets = ", ".join(f"{col} = COALESCE(NULLIF(BTRIM({col}), ''), '-1')" for col in cols)
+    where = " OR ".join(f"{col} IS NULL OR BTRIM({col}) = ''" for col in cols)
+    with connector._connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SET statement_timeout = '10min'")
+            cur.execute(f"UPDATE vlr.{spec.table} SET {sets} WHERE {where}")
+            updated = cur.rowcount
+            for col in cols:
+                cur.execute(f"ALTER TABLE vlr.{spec.table} ALTER COLUMN {col} SET NOT NULL")
+        conn.commit()
+    logger.info("[facts] Fill null ids done table=%s updated=%s", spec.table, updated)
 
 
 def _retire_concat_key(connector: SupabaseConnector, table: str) -> None:
