@@ -27,6 +27,7 @@ from backend.vlr.dim.static import load_static
 from backend.vlr.dim.teams import apply_teams_schema, extract_teams, load_teams
 from backend.vlr.dim.weapons import run_weapons
 from backend.vlr.extract import VlrExtractPipeline
+from backend.vlr.fact.pipeline import extract_facts, load_facts
 
 load_project_env(REPO_ROOT)
 
