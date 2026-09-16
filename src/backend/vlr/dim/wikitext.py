@@ -83,6 +83,98 @@ def iter_templates(wikitext: str, name: str) -> list[str]:
     return out
 
 
+def template_fields_lines(block: str) -> dict[str, str]:
+    """One |key=value per line so [[File:x|100px]] and [[A|B]] stay intact."""
+    fields: dict[str, str] = {}
+    body = block.strip()
+    if body.startswith("{{"):
+        body = body[2:]
+    if body.endswith("}}"):
+        body = body[:-2]
+    for raw_line in body.splitlines()[1:]:
+        line = raw_line.strip()
+        if not line.startswith("|") or "=" not in line:
+            continue
+        key, value = line[1:].split("=", 1)
+        key = key.strip().lower()
+        if key:
+            fields[key] = value.strip()
+    return fields
+
+
+def wiki_file_name(raw: str | None) -> str | None:
+    """Turn [[File:Classic icon.png|100px]] or Classic.png into a File title."""
+    text = text_or_none(raw)
+    if not text:
+        return None
+    match = FILE_RE.search(text)
+    if match:
+        return match.group(1).strip()
+    if re.search(r"\.(png|jpe?g|webp|gif|svg)$", text, re.I):
+        return text.strip()
+    return None
+
+
+def wikitext_after_heading(wikitext: str, *needles: str) -> str:
+    """Slice after the first heading whose title contains one of the needles."""
+    wanted = [n.lower() for n in needles]
+    for match in HEADING_RE.finditer(wikitext):
+        title = match.group(1).strip().lower()
+        if any(n in title for n in wanted):
+            return wikitext[match.end() :]
+    return ""
+
+
+def first_wikitable(text: str) -> str | None:
+    """First {| ... |} table after a heading (TTK / spread)."""
+    start = text.find("{|")
+    if start < 0:
+        return None
+    end = text.find("|}", start)
+    if end < 0:
+        return None
+    return text[start : end + 2]
+
+
+def _table_cell_text(part: str) -> str:
+    """Drop rowspan/style attributes and keep the visible cell value."""
+    chunk = part.strip()
+    if re.search(r"\b(rowspan|colspan|style|class|scope|width|align|data-sort)\s*=", chunk, re.I):
+        _, _, chunk = chunk.partition("|")
+        chunk = chunk.strip()
+    return strip_wiki(chunk) or chunk.strip()
+
+
+def wikitable_rows(table: str) -> list[list[str]]:
+    """Split a wikitable into rows of cell strings (headers included)."""
+    rows: list[list[str]] = []
+    current: list[str] = []
+    body = table.strip()
+    if body.startswith("{|"):
+        body = body[2:]
+    if body.endswith("|}"):
+        body = body[:-2]
+    for raw_line in body.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("|+") or line.startswith("{|"):
+            continue
+        if line.startswith("|-"):
+            if current:
+                rows.append(current)
+                current = []
+            continue
+        if line.startswith("!") or line.startswith("|"):
+            marker = "!!" if line.startswith("!") else "||"
+            payload = line.lstrip("!|").strip()
+            parts = re.split(rf"\s*{re.escape(marker)}\s*", payload) if marker in payload else [payload]
+            if marker == "||" and "||" not in payload and line.startswith("|"):
+                parts = re.split(r"\s*\|\|\s*", payload)
+            current.extend(_table_cell_text(p) for p in parts if p.strip())
+    if current:
+        rows.append(current)
+    return rows
+
+
 def template_fields(block: str) -> dict[str, str]:
     """Parse |key=value fields, including several on one Infobox line."""
     fields: dict[str, str] = {}
