@@ -366,6 +366,9 @@ def flatten_kit_columns(abilities: list[dict[str, Any]]) -> dict[str, Any]:
         "ultimate_orbs": (x_row or {}).get("ultimate_orbs"),
         "abilities_json": abilities,
     }
+
+
+def _release_date(api_agent: dict[str, Any], lp: dict[str, Any]) -> str | None:
     """Prefer Liquipedia; valorant-api uses 1970-01-01 for launch roster."""
     lp_date = text_or_none(lp.get("release_date"))
     if lp_date:
