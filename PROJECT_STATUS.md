@@ -68,3 +68,4 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 |------|-----------------|
 | 2026-09-15 | dim_weapons Fandom catalog |
 | 2026-09-15 | Dims marked done. `LATER.md` + daily nudge. Fact backend (`vlr_facts`) coded, not run |
+| 2026-09-15 | Fact unique keys → composite (not concat). Performance table left on `fact_key` while its load runs |
