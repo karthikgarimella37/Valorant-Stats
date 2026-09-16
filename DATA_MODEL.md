@@ -363,7 +363,7 @@ One row per playable agent. Kit catalog (abilities, costs, portraits) plus any e
 
 ### `dim_maps` — Required (static)
 
-One row per map **name** seen on VLR.  
+One row per playable map. Location / lore from Liquipedia; radar x/y from valorant-api.com. Extra names seen on VLR scoreboards stay as thin rows until the catalog job runs.  
 **PK:** `row_number`  
 **Business key:** `map_name`  
 **Sequence:** `seq_dim_maps_row_number`
@@ -371,14 +371,35 @@ One row per map **name** seen on VLR.
 | Column | Type | Notes |
 |--------|------|--------|
 | `map_name` | `TEXT` | Split, Ascent, … |
-| `image_url` | `TEXT` | If VLR provides |
+| `country_name` | `TEXT` | Liquipedia Infobox (`Morocco`) |
+| `location_name` | `TEXT` | e.g. `MA Rabat, Rabat-Salé-Kénitra, Morocco` |
+| `earth_name` | `TEXT` | `Alpha Earth` or `Omega Earth` |
+| `coordinates_text` | `TEXT` | Lore string (`34°2'A" N 6°51'Z" W`) |
+| `latitude` | `DOUBLE PRECISION` | Decimal degrees; lore A/Z seconds → 0 |
+| `longitude` | `DOUBLE PRECISION` | Decimal degrees |
+| `spike_sites` | `TEXT` | `A/B` or `A/B/C` |
+| `map_features` | `TEXT` | Teleporters, one-way doors, … |
+| `description` | `TEXT` | Official blurb (`Two sites. No middle…`) from LP Quote or valorant-api `narrativeDescription` |
+| `release_date` | `TEXT` | Liquipedia |
+| `minimap_url` | `TEXT` | valorant-api `displayIcon` |
+| `splash_url` | `TEXT` | valorant-api splash |
+| `list_view_icon_url` | `TEXT` | |
+| `x_multiplier` | `DOUBLE PRECISION` | Radar math (valorant-api) |
+| `y_multiplier` | `DOUBLE PRECISION` | |
+| `x_scalar` | `DOUBLE PRECISION` | `xScalarToAdd` |
+| `y_scalar` | `DOUBLE PRECISION` | `yScalarToAdd` |
+| `min_x` / `min_y` / `max_x` / `max_y` | `DOUBLE PRECISION` | Callout world-coordinate bounds (map size) |
+| `valorant_api_uuid` | `TEXT` | |
+| `liquipedia_url` | `TEXT` | |
+| `callouts_json` | `JSONB` | `[{region_name, super_region_name, x, y}]` |
+| `features_json` | `JSONB` | Feature list |
+| `infobox_json` | `JSONB` | Remaining Liquipedia Infobox keys |
 | `row_number` | `BIGINT` PK | |
 | `insert_date` | `TIMESTAMPTZ` | |
 | `update_date` | `TIMESTAMPTZ` | |
 
-No world x/y catalog without valorant-api.com. rib replay `bounds` stay on replay facts only.  
-**Insert from:** distinct `maps[].name` on VLR match detail.  
-**Dagster:** upsert new names as they appear.
+**Insert from:** AWS-rotated GET `https://valorant-api.com/v1/maps` + Liquipedia `Infobox map` / `Quote`. Host IP is never used.  
+**Dagster:** job `vlr_maps` (also in `vlr_dims`). Rematerialize when Riot ships a new map. `dims_from_landings` only inserts new scoreboard names.
 
 ---
 
