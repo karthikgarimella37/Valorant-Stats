@@ -1,0 +1,15 @@
+---
+description: Once per calendar day, remind about deferred economy / watermark / KG work
+alwaysApply: true
+---
+
+# Later-work daily nudge
+
+Read `LATER.md` and `PROJECT_STATUS.md` (field **Later nudge date**).
+
+If **Later nudge date** is missing or is not **today** (user_info date):
+
+1. In the first user-facing reply, add a short **Later (daily)** block with the three items in `LATER.md`: `dim_economy` rewrite, incremental watermarks + always-on watermark step + step logs, KG column-description agent for the chatbot MCP.
+2. Set **Later nudge date** in `PROJECT_STATUS.md` to today so this fires at most once per day.
+
+Do not start those projects unless the user asks. Leave current focus as written in `PROJECT_STATUS.md`.

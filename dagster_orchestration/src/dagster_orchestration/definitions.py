@@ -27,6 +27,7 @@ from backend.vlr.dim.static import load_static
 from backend.vlr.dim.teams import apply_teams_schema, extract_teams, load_teams
 from backend.vlr.dim.weapons import run_weapons
 from backend.vlr.extract import VlrExtractPipeline
+from backend.vlr.fact.pipeline import extract_facts, load_facts
 
 load_project_env(REPO_ROOT)
 
@@ -509,6 +510,26 @@ def dims_maps(context: AssetExecutionContext) -> dict[str, int]:
     return counts
 
 
+@asset(group_name="vlr_facts")
+def facts_extract(context: AssetExecutionContext) -> dict[str, int]:
+    """Parse matches.jsonl into fact jsonl. No VLR HTTP."""
+    context.log.info("=== STEP facts_extract: parse matches.jsonl into fact jsonl ===")
+    counts = extract_facts(REPO_ROOT)
+    context.add_output_metadata({"row_counts": MetadataValue.json(counts)})
+    context.log.info("Fact jsonl landed=%s", counts)
+    return counts
+
+
+@asset(group_name="vlr_facts", deps=[facts_extract])
+def facts_load(context: AssetExecutionContext) -> dict[str, int]:
+    """Upsert fact jsonl into vlr.fact_* on composite grain unique (tables in parallel)."""
+    context.log.info("=== STEP facts_load: upsert vlr.fact_* from jsonl ===")
+    counts = load_facts(REPO_ROOT)
+    context.add_output_metadata({"row_counts": MetadataValue.json(counts)})
+    context.log.info("Facts upserted=%s", counts)
+    return counts
+
+
 @asset(group_name="vlr_hist")
 def evt_schema(context: AssetExecutionContext) -> str:
     """Create or alter vlr.dim_events so extract rows match warehouse columns."""
@@ -899,6 +920,11 @@ vlr_weapons = define_asset_job(
     selection=[dims_weapons],
 )
 
+vlr_facts = define_asset_job(
+    "vlr_facts",
+    selection=[facts_extract, facts_load],
+)
+
 defs = Definitions(
     assets=[
         dbt_build_select_one_plus_ten,
@@ -918,6 +944,8 @@ defs = Definitions(
         dims_weapons,
         dims_agents,
         dims_maps,
+        facts_extract,
+        facts_load,
         evt_schema,
         evt_extract,
         evt_load,
@@ -952,5 +980,6 @@ defs = Definitions(
         vlr_agents,
         vlr_maps,
         vlr_weapons,
+        vlr_facts,
     ],
 )

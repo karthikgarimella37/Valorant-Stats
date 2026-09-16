@@ -2,7 +2,7 @@
 
 > Always-on reference for this repo. Every Cursor chat must follow this file when writing or changing code. Prefer simple technical English. Keep chat replies short.
 
-**Last updated:** 2026-09-08
+**Last updated:** 2026-09-15
 
 **Pipeline goal:** Fast, scalable extract → transform → load → dbt into **Supabase**, so analytics read from the warehouse. Prefer **parallel work** and **optimized functions** everywhere they help.
 
@@ -152,6 +152,7 @@ data/vlr/matches.jsonl                  # dim_matches row + listing + full match
 data/vlr/dim_agents.jsonl               # kit catalog (valorant-api + Liquipedia)
 data/vlr/dim_maps.jsonl                 # map catalog (valorant-api + Liquipedia)
 data/vlr/dim_weapons.jsonl              # gun catalog (valorant.fandom.com)
+data/vlr/facts/<stem>.jsonl             # fact landings from matches.jsonl
 data/vlr/dim_date.parquet               # generated calendar for vlr.dim_date
 data/vlr/watermarks.json                # incremental fetch cursor
 ```
@@ -196,6 +197,7 @@ data/vlr/watermarks.json                # incremental fetch cursor
 - Catalog HTTP (valorant-api.com, liquipedia.net, valorant.fandom.com) also uses AWS API Gateway (`rotating_session`). Never the host IP.
 - Every public extract/connector function: docstring with **why** + process logs when the function runs a real pipeline step.
 - Large multi-record fetches **must** use a worker pool unless a written comment explains why serial is required.
+- Fact upsert keys are a **composite unique** on the grain columns (`ON CONFLICT (vlr_match_id, vlr_team_id, …)`). Do not concatenate keys into one `fact_key` string.
 
 ### Naming examples
 - `RibsConnector.fetch_resource_pages` — why: page through a list endpoint without loading all into one call site.
