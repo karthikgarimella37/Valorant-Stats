@@ -436,6 +436,8 @@ class SupabaseConnector:
                     elapsed = time.monotonic() - started
                     rate = total / elapsed if elapsed else 0
                     pause = batch_sec * (1.0 - duty) / duty if duty else 0.0
+                    if min_sleep_sec:
+                        pause = max(pause, min_sleep_sec)
                     logger.info(
                         "[upsert] %s.%s upserted=%s/%s batch_sec=%.2f sleep=%.2f rate=%.0f/s",
                         schema,
