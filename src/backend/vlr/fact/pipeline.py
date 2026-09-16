@@ -16,7 +16,7 @@ from backend.vlr.dim.util import matches_jsonl_path
 from backend.vlr.fact.parse import parse_match_facts
 from backend.vlr.fact.player_ids import load_player_id_lookup
 from backend.vlr.fact.tables import FACT_SPECS, FactSpec
-from backend.vlr.fact.util import REPO_ROOT, fact_jsonl_path, facts_dir
+from backend.vlr.fact.util import REPO_ROOT, coalesce_id, fact_jsonl_path, facts_dir
 
 logger = logging.getLogger(__name__)
 

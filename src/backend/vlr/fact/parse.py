@@ -7,6 +7,7 @@ from typing import Any
 from backend.vlr.dim.util import canonical_agent_name
 from backend.vlr.fact.player_ids import PlayerIdLookup
 from backend.vlr.fact.util import (
+    coalesce_id,
     duration_sec,
     match_advanced,
     other_team_id,
