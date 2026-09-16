@@ -306,8 +306,9 @@ if __name__ == "__main__":
     parser.add_argument("--upsert", action="store_true", help="Use ON CONFLICT upsert instead of COPY")
     parser.add_argument("--insert-only", action="store_true", help="ON CONFLICT DO NOTHING (fill remaining rows)")
     parser.add_argument("--no-schema", action="store_true", help="Skip DDL; table must already exist")
-    parser.add_argument("--batch-size", type=int, default=5000, help="COPY rows per commit")
-    parser.add_argument("--max-cpu-pct", type=int, default=60, help="Sleep after each batch to keep work under this duty cycle")
+    parser.add_argument("--batch-size", type=int, default=500, help="Rows per commit (keep small to cap CPU spikes)")
+    parser.add_argument("--max-cpu-pct", type=int, default=40, help="Target average duty cycle; peak during a batch can still spike")
+    parser.add_argument("--min-sleep-sec", type=float, default=5.0, help="Minimum idle seconds after every batch")
     args = parser.parse_args()
     use_copy = not args.upsert and not args.insert_only
     table, count = load_one_fact_table(
@@ -317,5 +318,6 @@ if __name__ == "__main__":
         batch_size=args.batch_size,
         max_cpu_pct=args.max_cpu_pct,
         on_conflict="nothing" if args.insert_only else "update",
+        min_sleep_sec=args.min_sleep_sec,
     )
     print(f"{table} rows={count}")
