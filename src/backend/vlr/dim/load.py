@@ -47,16 +47,17 @@ def upsert_dim_rows(
     *,
     table: str,
     columns: tuple[str, ...],
-    conflict_column: str,
+    conflict_column: str | tuple[str, ...],
     jsonb_columns: tuple[str, ...] = (),
     batch_size: int = 1000,
 ) -> int:
-    """Batch upsert on the business key; keep row_number on re-run."""
+    """Batch upsert on one column or a composite unique key; keep row_number on re-run."""
     if not rows:
         logger.info("[dims] Load skip empty table=%s", table)
         return 0
     connector = SupabaseConnector()
-    update_columns = [c for c in columns if c not in {conflict_column, "insert_date"}]
+    conflict_cols = (conflict_column,) if isinstance(conflict_column, str) else tuple(conflict_column)
+    update_columns = [c for c in columns if c not in {*conflict_cols, "insert_date"}]
     total = 0
     logger.info("[dims] Load start table=%s rows=%s", table, len(rows))
     for start in range(0, len(rows), batch_size):

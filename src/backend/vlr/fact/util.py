@@ -42,7 +42,7 @@ def fact_jsonl_path(repo_root: Path, stem: str) -> Path:
 
 
 def fact_key(*parts: Any) -> str:
-    """Stable unique grain key for ON CONFLICT (dims use one TEXT business key)."""
+    """Concat grain for fact_player_match_performance only while that load is in flight."""
     return "|".join("" if p is None else str(p) for p in parts)
 
 
