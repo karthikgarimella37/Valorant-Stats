@@ -272,7 +272,17 @@ def format_map_row(api_map: dict[str, Any], lp: dict[str, Any]) -> dict[str, Any
     location = lp.get("location_name")
     earth = lp.get("earth_name") or earth_from_text(location, coord_text)
     features = lp.get("map_features")
-    feature_list = [p.strip() for p in (features or "").split(",") if p.strip()]
+    feature_list = [p.strip() for p in (features or "").split(",") if _useful_feature(p.strip())]
+    spike = lp.get("spike_sites")
+    tactical = text_or_none(api_map.get("tacticalDescription"))
+    if not spike and tactical and "site" in tactical.lower():
+        spike = tactical.replace("Sites", "").replace("sites", "").strip()
+        if spike and " " not in spike:
+            spike = tactical.replace(" Sites", "").replace(" sites", "").strip()
+        if tactical.upper() in {"A/B SITES", "A/B"}:
+            spike = "A/B"
+        elif tactical.upper() in {"A/B/C SITES", "A/B/C"}:
+            spike = "A/B/C"
     return {
         "map_name": name,
         "country_name": lp.get("country_name"),
@@ -281,10 +291,9 @@ def format_map_row(api_map: dict[str, Any], lp: dict[str, Any]) -> dict[str, Any
         "coordinates_text": coord_text,
         "latitude": lat,
         "longitude": lon,
-        "spike_sites": lp.get("spike_sites"),
+        "spike_sites": spike,
         "map_features": features,
-        "description": lp.get("description")
-        or text_or_none(api_map.get("narrativeDescription") or api_map.get("tacticalDescription")),
+        "description": lp.get("description") or text_or_none(api_map.get("narrativeDescription")),
         "release_date": lp.get("release_date"),
         "minimap_url": text_or_none(api_map.get("displayIcon")),
         "splash_url": text_or_none(api_map.get("splash") or api_map.get("listViewIconTall")),
