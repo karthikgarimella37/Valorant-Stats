@@ -238,9 +238,10 @@ def load_one_fact_table(
     *,
     use_copy: bool = True,
     apply_schema: bool = True,
-    batch_size: int = 5000,
+    batch_size: int = 1000,
     max_cpu_pct: int = 60,
     on_conflict: str = "update",
+    min_sleep_sec: float = 4.0,
 ) -> tuple[str, int]:
     """Schema for one fact table, then COPY (default) or upsert that jsonl only."""
     load_project_env(repo_root)
@@ -255,13 +256,20 @@ def load_one_fact_table(
         _ensure_grain_unique(connector, spec)
     _retire_concat_key(connector, spec.table)
     if use_copy:
-        return _copy_one_table(spec, root, batch_size=batch_size, max_cpu_pct=max_cpu_pct)
+        return _copy_one_table(
+            spec,
+            root,
+            batch_size=batch_size,
+            max_cpu_pct=max_cpu_pct,
+            min_sleep_sec=min_sleep_sec,
+        )
     return _load_one_table(
         spec,
         root,
         on_conflict=on_conflict,
         batch_size=min(batch_size, 1000),
         max_cpu_pct=max_cpu_pct,
+        min_sleep_sec=min_sleep_sec,
     )
 
 

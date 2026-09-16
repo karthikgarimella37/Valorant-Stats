@@ -73,6 +73,7 @@ def upsert_dim_rows(
         batch_size=batch_size,
         on_conflict=on_conflict,
         max_cpu_pct=max_cpu_pct,
+        min_sleep_sec=min_sleep_sec,
     )
     logger.info("[dims] Load done table=%s upserted=%s", table, total)
     return total
