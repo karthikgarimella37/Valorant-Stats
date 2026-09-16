@@ -83,7 +83,7 @@ CREATE SEQUENCE valorant.seq_<table>_row_number
 | `dim_agents` | dim | Job `vlr_agents` (also in `vlr_dims`) | Rare (new agent) | valorant-api.com kit + Liquipedia AbilityCard (AWS rotator) |
 | `dim_maps` | dim | Job `vlr_maps` (also in `vlr_dims`) | Rare (new map) | valorant-api.com radar + Liquipedia Infobox map (AWS rotator) |
 | `dim_economy` | dim | Seed job `vlr_dims` | Rare | Seed buy types |
-| `dim_weapons` | dim | Seed job `vlr_dims` | Rare | rib.gg `/v1/weapons` (not VLR) |
+| `dim_weapons` | dim | Job `vlr_weapons` (also in `vlr_dims`) | Rare (new gun) | valorant.fandom.com Infobox + TTK (AWS rotator) |
 | `dim_date` | dim | Seed job `vlr_date` | Rare (extend range) | Generated calendar 2020–2030 |
 | `fact_match_overall_stats` | fact | Landed (parquet) | Yes | VLR `/v2/match/details` map `players[]` |
 | `fact_round_results` | fact | Landed (parquet) | Yes | VLR map `rounds[]` (winner, side t/ct; **no win method**) |
