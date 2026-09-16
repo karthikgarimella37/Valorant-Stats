@@ -15,38 +15,6 @@ logger = logging.getLogger(__name__)
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 
-# VLR scoreboard has no agent role; fill known names so the dim is usable now.
-AGENT_ROLES: dict[str, str] = {
-    "Jett": "Duelist",
-    "Phoenix": "Duelist",
-    "Reyna": "Duelist",
-    "Raze": "Duelist",
-    "Yoru": "Duelist",
-    "Neon": "Duelist",
-    "Iso": "Duelist",
-    "Waylay": "Duelist",
-    "Sova": "Initiator",
-    "Breach": "Initiator",
-    "Skye": "Initiator",
-    "KAY/O": "Initiator",
-    "KAYO": "Initiator",
-    "Fade": "Initiator",
-    "Gekko": "Initiator",
-    "Tejo": "Initiator",
-    "Brimstone": "Controller",
-    "Omen": "Controller",
-    "Viper": "Controller",
-    "Astra": "Controller",
-    "Harbor": "Controller",
-    "Clove": "Controller",
-    "Sage": "Sentinel",
-    "Cypher": "Sentinel",
-    "Killjoy": "Sentinel",
-    "Chamber": "Sentinel",
-    "Deadlock": "Sentinel",
-    "Vyse": "Sentinel",
-}
-
 # VLR roster flags look like mod-us. Names are display labels, not ISO official names.
 FLAG_TO_COUNTRY: dict[str, str] = {
     "us": "United States",
