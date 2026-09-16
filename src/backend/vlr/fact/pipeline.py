@@ -65,10 +65,34 @@ def _fill_null_grain_ids(connector: SupabaseConnector, spec: FactSpec) -> None:
     logger.info("[facts] Fill null ids table=%s cols=%s", spec.table, cols)
     sets = ", ".join(f"{col} = COALESCE(NULLIF(BTRIM({col}), ''), '-1')" for col in cols)
     where = " OR ".join(f"{col} IS NULL OR BTRIM({col}) = ''" for col in cols)
+    grain_eq = " AND ".join(
+        (
+            f"COALESCE(NULLIF(BTRIM(a.{col}), ''), '-1') IS NOT DISTINCT FROM "
+            f"COALESCE(NULLIF(BTRIM(b.{col}), ''), '-1')"
+            if col.endswith("_id")
+            else f"a.{col} IS NOT DISTINCT FROM b.{col}"
+        )
+        for col in spec.unique_cols
+    )
     with connector._connect() as conn:
         with conn.cursor() as cur:
             cur.execute("SET statement_timeout = '10min'")
-            cur.execute(f"UPDATE vlr.{spec.table} SET {sets} WHERE {where}")
+            try:
+                cur.execute(f"UPDATE vlr.{spec.table} SET {sets} WHERE {where}")
+            except UniqueViolation:
+                conn.rollback()
+                cur.execute("SET statement_timeout = '10min'")
+                logger.info("[facts] Fill null ids dedupe table=%s", spec.table)
+                cur.execute(
+                    f"""
+                    DELETE FROM vlr.{spec.table} a
+                    USING vlr.{spec.table} b
+                    WHERE a.row_number > b.row_number
+                      AND {grain_eq}
+                      AND ({where.replace(col, f'a.{col}') if False else " OR ".join(f"a.{col} IS NULL OR BTRIM(a.{col}) = ''" for col in cols)})
+                    """
+                )
+                cur.execute(f"UPDATE vlr.{spec.table} SET {sets} WHERE {where}")
             updated = cur.rowcount
             for col in cols:
                 cur.execute(f"ALTER TABLE vlr.{spec.table} ALTER COLUMN {col} SET NOT NULL")
