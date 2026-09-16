@@ -205,12 +205,9 @@ def _drop_fact_key_column(connector: SupabaseConnector, table: str) -> None:
     connector.execute(f"ALTER TABLE vlr.{table} DROP COLUMN IF EXISTS fact_key")
 
 
-def migrate_table(connector: SupabaseConnector, spec, root: Path) -> None:
-    """One table: columns, backfill if needed, drop concat unique, add composite unique."""
+def migrate_table(connector: SupabaseConnector, spec) -> None:
+    """One table: drop incomplete/dup grains, drop concat unique, add composite unique, drop fact_key."""
     logger.info("[migrate] Table start %s unique=%s", spec.table, spec.unique_cols)
-    apply_dim_schema(root, spec.sql_name, spec.table, spec.types)
-    if spec.table in PLAYER_ID_TABLES:
-        pass
     _drop_null_grain(connector, spec.table, spec.unique_cols)
     _dedupe_grain(connector, spec.table, spec.unique_cols)
     _retire_concat_key(connector, spec.table)
