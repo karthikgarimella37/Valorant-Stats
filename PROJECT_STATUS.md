@@ -13,7 +13,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 
 ## Current focus
 
-- Run job `vlr_players` after `vlr_teams` (full name, socials, current team, `teams_json` with leave dates)
+- Materialize job `vlr_agents` (kit catalog). Then `vlr_teams` schema+load, then `vlr_players` after vlrggapi rebuild
 
 ## Status
 
