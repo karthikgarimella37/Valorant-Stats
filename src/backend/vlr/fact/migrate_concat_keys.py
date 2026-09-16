@@ -38,7 +38,7 @@ def _active_fact_queries(connector: SupabaseConnector) -> int:
         FROM pg_stat_activity
         WHERE pid <> pg_backend_pid()
           AND state <> 'idle'
-          AND query ILIKE '%vlr%fact_%'
+          AND query ILIKE '%%vlr%%fact_%%'
         """
     )
     return int(row[0]) if row else 0
