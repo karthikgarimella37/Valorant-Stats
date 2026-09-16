@@ -455,7 +455,15 @@ class SupabaseConnector:
 
         started = time.monotonic()
         total = 0
-        logger.info("[copy] Start %s.%s rows=%s batch=%s", schema, table, len(rows), batch_size)
+        duty = max(10, min(90, max_cpu_pct)) / 100.0
+        logger.info(
+            "[copy] Start %s.%s rows=%s batch=%s max_cpu_pct=%s",
+            schema,
+            table,
+            len(rows),
+            batch_size,
+            max_cpu_pct,
+        )
         with self._connect() as conn:
             with conn.cursor() as cur:
                 cur.execute("SET statement_timeout = 0")
@@ -473,15 +481,19 @@ class SupabaseConnector:
                     batch_sec = time.monotonic() - batch_started
                     elapsed = time.monotonic() - started
                     rate = total / elapsed if elapsed else 0
+                    pause = batch_sec * (1.0 - duty) / duty if duty < 1 else 0.0
                     logger.info(
-                        "[copy] %s.%s copied=%s/%s batch_sec=%.2f rate=%.0f/s",
+                        "[copy] %s.%s copied=%s/%s batch_sec=%.2f sleep=%.2f rate=%.0f/s",
                         schema,
                         table,
                         total,
                         len(rows),
                         batch_sec,
+                        pause,
                         rate,
                     )
+                    if pause > 0:
+                        time.sleep(pause)
         logger.info("[copy] Done %s.%s rows=%s", schema, table, total)
         return total
 
