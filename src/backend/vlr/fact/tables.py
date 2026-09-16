@@ -4,23 +4,13 @@ from __future__ import annotations
 
 STAMP = ("insert_date", "update_date")
 STAMP_TYPES = {"insert_date": "TIMESTAMPTZ", "update_date": "TIMESTAMPTZ"}
-KEY_TYPES = {
+BASE_TYPES = {
     "row_number": "BIGINT",
     "fact_key": "TEXT",
     "vlr_match_id": "TEXT",
     "vlr_event_id": "TEXT",
     "match_date": "TEXT",
-    "map_name": "TEXT",
-    "map_game_number": "INTEGER",
-    "player_name": "TEXT",
-    "vlr_team_id": "TEXT",
-    "agent_name": "TEXT",
-    "round_number": "INTEGER",
-    "team_tag": "TEXT",
-    "action_order": "INTEGER",
-    "winning_vlr_team_id": "TEXT",
-    "losing_vlr_team_id": "TEXT",
-    "economy_code": "TEXT",
+    **STAMP_TYPES,
 }
 
 OVERALL_COLS = (
