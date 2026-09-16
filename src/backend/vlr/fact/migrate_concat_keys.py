@@ -175,8 +175,6 @@ def _dedupe_grain(connector: SupabaseConnector, table: str, unique_cols: tuple[s
           AND {eqs}
     """
     logger.info("[migrate] Dedupe start table=%s", table)
-    connector.execute("SET statement_timeout = 0")
-    before = connector.fetch_one("SELECT 1")
     with connector._connect() as conn:
         with conn.cursor() as cur:
             cur.execute("SET statement_timeout = 0")
