@@ -368,6 +368,7 @@ def run_backfill(
     max_cpu_pct: int = 70,
     min_sleep_sec: float = 1.0,
     batch_size: int = 4000,
+    players_only: bool = False,
 ) -> dict[str, Any]:
     """Team ids from dim_matches + matches.jsonl, then player ids from landings."""
     load_project_env(repo_root)
@@ -376,16 +377,19 @@ def run_backfill(
     except OSError:
         pass
     root = _root(repo_root)
-    logger.info("[backfill] Start max_cpu_pct=%s batch=%s", max_cpu_pct, batch_size)
+    logger.info("[backfill] Start max_cpu_pct=%s batch=%s players_only=%s", max_cpu_pct, batch_size, players_only)
     connector = SupabaseConnector()
-    team_counts = backfill_team_ids(connector)
-    eco = backfill_economy_from_matches(
-        connector,
-        root,
-        max_cpu_pct=max_cpu_pct,
-        min_sleep_sec=min_sleep_sec,
-        batch_size=batch_size,
-    )
+    team_counts: dict[str, int] = {}
+    eco = 0
+    if not players_only:
+        team_counts = backfill_team_ids(connector)
+        eco = backfill_economy_from_matches(
+            connector,
+            root,
+            max_cpu_pct=max_cpu_pct,
+            min_sleep_sec=min_sleep_sec,
+            batch_size=batch_size,
+        )
     player_counts = backfill_player_ids(
         connector,
         root,
