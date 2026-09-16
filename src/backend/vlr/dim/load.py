@@ -58,19 +58,15 @@ def upsert_dim_rows(
     connector = SupabaseConnector()
     conflict_cols = (conflict_column,) if isinstance(conflict_column, str) else tuple(conflict_column)
     update_columns = [c for c in columns if c not in {*conflict_cols, "insert_date"}]
-    total = 0
     logger.info("[dims] Load start table=%s rows=%s", table, len(rows))
-    for start in range(0, len(rows), batch_size):
-        chunk = rows[start : start + batch_size]
-        total += connector.upsert_rows(
-            chunk,
-            schema="vlr",
-            table=table,
-            columns=columns,
-            conflict_column=conflict_column,
-            update_columns=update_columns,
-            jsonb_columns=jsonb_columns,
-        )
-        logger.info("[dims] Load progress table=%s upserted=%s/%s", table, total, len(rows))
+    total = connector.upsert_rows(
+        rows,
+        schema="vlr",
+        table=table,
+        columns=columns,
+        conflict_column=conflict_column,
+        update_columns=update_columns,
+        jsonb_columns=jsonb_columns,
+    )
     logger.info("[dims] Load done table=%s upserted=%s", table, total)
     return total

@@ -404,13 +404,85 @@ class SupabaseConnector:
             ON CONFLICT ({conflict_sql}) DO UPDATE SET {update_sql}
         '''
         tuples = [tuple(row.get(col) for col in columns) for row in rows]
+        batch_size = 1000
+        total = 0
         logger.info("[upsert] Start %s.%s rows=%s", schema, table, len(tuples))
         with self._connect() as conn:
             with conn.cursor() as cur:
-                execute_values(cur, insert_sql, tuples, template=template, page_size=500)
-            conn.commit()
-        logger.info("[upsert] Done %s.%s rows=%s", schema, table, len(tuples))
-        return len(tuples)
+                cur.execute("SET statement_timeout = 0")
+                for start in range(0, len(tuples), batch_size):
+                    chunk = tuples[start : start + batch_size]
+                    execute_values(cur, insert_sql, chunk, template=template, page_size=500)
+                    conn.commit()
+                    total += len(chunk)
+                    logger.info("[upsert] Done %s.%s upserted=%s/%s", schema, table, total, len(tuples))
+        return total
+
+    def copy_rows(
+        self,
+        rows: list[dict[str, Any]],
+        *,
+        schema: str,
+        table: str,
+        columns: tuple[str, ...] | list[str],
+        batch_size: int = 20000,
+    ) -> int:
+        """Append rows with COPY. One connection; caller must avoid unique collisions."""
+        import csv
+        import time
+
+        if not rows:
+            return 0
+        schema = _safe_ident(schema)
+        table = _safe_ident(table)
+        cols = [_safe_ident(c) for c in columns]
+        col_list = sql.SQL(", ").join(sql.Identifier(c) for c in cols)
+        copy_sql = sql.SQL("COPY {}.{} ({}) FROM STDIN WITH (FORMAT csv, NULL '')").format(
+            sql.Identifier(schema),
+            sql.Identifier(table),
+            col_list,
+        )
+
+        def cell(value: Any) -> Any:
+            if value is None:
+                return ""
+            if isinstance(value, bool):
+                return "t" if value else "f"
+            if hasattr(value, "isoformat"):
+                return value.isoformat()
+            return value
+
+        started = time.monotonic()
+        total = 0
+        logger.info("[copy] Start %s.%s rows=%s batch=%s", schema, table, len(rows), batch_size)
+        with self._connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SET statement_timeout = 0")
+                for start in range(0, len(rows), batch_size):
+                    chunk = rows[start : start + batch_size]
+                    buf = io.StringIO()
+                    writer = csv.writer(buf, lineterminator="\n")
+                    for row in chunk:
+                        writer.writerow([cell(row.get(col)) for col in columns])
+                    buf.seek(0)
+                    batch_started = time.monotonic()
+                    cur.copy_expert(copy_sql.as_string(conn), buf)
+                    conn.commit()
+                    total += len(chunk)
+                    batch_sec = time.monotonic() - batch_started
+                    elapsed = time.monotonic() - started
+                    rate = total / elapsed if elapsed else 0
+                    logger.info(
+                        "[copy] %s.%s copied=%s/%s batch_sec=%.2f rate=%.0f/s",
+                        schema,
+                        table,
+                        total,
+                        len(rows),
+                        batch_sec,
+                        rate,
+                    )
+        logger.info("[copy] Done %s.%s rows=%s", schema, table, total)
+        return total
 
 
 def main() -> None:
