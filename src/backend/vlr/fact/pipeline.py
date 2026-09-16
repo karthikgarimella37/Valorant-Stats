@@ -85,7 +85,7 @@ def _fill_null_grain_ids(connector: SupabaseConnector, spec: FactSpec) -> None:
                     SELECT row_number,
                            ROW_NUMBER() OVER (PARTITION BY {partition} ORDER BY row_number) AS rn
                     FROM vlr.{spec.table}
-                    WHERE {where}
+                    WHERE {dup_where}
                 ) d
                 WHERE t.row_number = d.row_number AND d.rn > 1
                 """
