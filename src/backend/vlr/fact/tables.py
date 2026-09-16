@@ -129,6 +129,7 @@ PERFORMANCE_TYPES = {
 }
 
 ROUND_COLS = (
+    "fact_key",
     "vlr_match_id",
     "vlr_event_id",
     "match_date",
