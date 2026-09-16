@@ -208,7 +208,8 @@ ECONOMY_COLS = (
     *STAMP,
 )
 ECONOMY_TYPES = {
-    **KEY_TYPES,
+    **BASE_TYPES,
+    "vlr_team_id": "TEXT",
     "pistol_played": "INTEGER",
     "pistol_won": "INTEGER",
     "eco_played": "INTEGER",
