@@ -464,17 +464,7 @@ def extract_agents(repo_root: Path | None = None) -> list[dict[str, Any]]:
             rows.append(row)
     rows = stamp_rows(rows)
     path = agents_jsonl_path(root)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as handle:
-        for row in rows:
-            payload = dict(row)
-            for key in ("insert_date", "update_date"):
-                stamp = payload.get(key)
-                if hasattr(stamp, "isoformat"):
-                    payload[key] = stamp.isoformat()
-            payload["abilities_json"] = json_dumps(payload.get("abilities_json"))
-            payload["tags_json"] = json_dumps(payload.get("tags_json"))
-            handle.write(json.dumps(payload, ensure_ascii=False) + "\n")
+    _write_agents_jsonl(path, rows)
     logger.info(
         "[agents] Extract done agents=%s liquipedia_miss=%s path=%s",
         len(rows),
