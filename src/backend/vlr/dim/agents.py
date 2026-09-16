@@ -281,12 +281,20 @@ def _merge_abilities(agent: dict[str, Any], lp: dict[str, Any]) -> list[dict[str
     return merged
 
 
-def _hotkey_row(abilities: list[dict[str, Any]], hotkey: str) -> dict[str, Any] | None:
-    """Pick C/Q/E/X from merged kit so flattened cost columns stay in sync."""
+def _hotkey_row(
+    abilities: list[dict[str, Any]], hotkey: str, kind: str | None = None
+) -> dict[str, Any] | None:
+    """Pick C/Q/E/X from merged kit; Ultimate wins when X is also a signature (Astra)."""
+    fallback = None
     for row in abilities:
-        if str(row.get("hotkey") or "").upper() == hotkey:
+        if str(row.get("hotkey") or "").upper() != hotkey:
+            continue
+        row_kind = str(row.get("kind") or "")
+        if kind and row_kind.lower() == kind.lower():
             return row
-    return None
+        if fallback is None:
+            fallback = row
+    return fallback
 
 
 def _release_date(api_agent: dict[str, Any], lp: dict[str, Any]) -> str | None:
