@@ -253,20 +253,19 @@ def parse_match_facts(
                             "is_winner": is_winner,
                         }
                     )
-                # Keep concat fact_key: in-flight performance load upserts on that column.
-                key = fact_key(match_id, map_game_number, ign)
                 adv = match_advanced(ign, series_advanced) if map_game_number == 1 else {}
-                buckets["performance"].append(
-                    {
-                        "fact_key": key,
-                        "vlr_match_id": match_id,
-                        "vlr_event_id": event_id,
-                        "match_date": match_date,
-                        "map_name": map_name,
-                        "map_game_number": map_game_number,
-                        "player_name": ign,
-                        "vlr_team_id": team_id,
-                        "agent_name": agent,
+                if team_id and player_id:
+                    buckets["performance"].append(
+                        {
+                            "vlr_match_id": match_id,
+                            "vlr_event_id": event_id,
+                            "match_date": match_date,
+                            "map_name": map_name,
+                            "map_game_number": map_game_number,
+                            "player_name": ign,
+                            "vlr_team_id": team_id,
+                            "vlr_player_id": player_id,
+                            "agent_name": agent,
                         "kast": to_float(player.get("kast")),
                         "hs_pct": to_float(player.get("hs_pct")),
                         "first_kills": to_int(player.get("fk")),
