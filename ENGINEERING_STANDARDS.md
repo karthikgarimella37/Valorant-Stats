@@ -150,6 +150,7 @@ data/vlr/events.jsonl                   # historical dim_events insert rows
 data/vlr/event_matches.jsonl            # per-event match list cache
 data/vlr/matches.jsonl                  # dim_matches row + listing + full match detail
 data/vlr/dim_agents.jsonl               # kit catalog (valorant-api + Liquipedia)
+data/vlr/dim_maps.jsonl                 # map catalog (valorant-api + Liquipedia)
 data/vlr/dim_date.parquet               # generated calendar for vlr.dim_date
 data/vlr/watermarks.json                # incremental fetch cursor
 ```
