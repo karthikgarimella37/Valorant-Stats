@@ -177,6 +177,7 @@ MAP_GAME_COLS = (
 MAP_GAME_UNIQUE = ("vlr_match_id", "map_game_number", "vlr_team_id")
 MAP_GAME_TYPES = {
     **BASE_TYPES,
+    "fact_key": "TEXT",
     "map_name": "TEXT",
     "map_game_number": "INTEGER",
     "vlr_team_id": "TEXT",
