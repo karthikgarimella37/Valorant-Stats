@@ -367,22 +367,30 @@ class SupabaseConnector:
         schema: str,
         table: str,
         columns: tuple[str, ...] | list[str],
-        conflict_column: str,
+        conflict_column: str | tuple[str, ...] | list[str],
         update_columns: list[str] | None = None,
         jsonb_columns: tuple[str, ...] = ("prizes_json", "teams_json", "standings_json"),
     ) -> int:
-        """Insert/update dim rows in batches; keep existing row_number on conflict."""
+        """Insert/update rows in batches; keep existing row_number on conflict (one col or composite)."""
         from psycopg2.extras import execute_values
 
         if not rows:
             return 0
         schema = _safe_ident(schema)
         table = _safe_ident(table)
-        conflict_column = _safe_ident(conflict_column)
+        conflict_cols = (
+            [_safe_ident(conflict_column)]
+            if isinstance(conflict_column, str)
+            else [_safe_ident(c) for c in conflict_column]
+        )
+        if not conflict_cols:
+            raise RuntimeError("ON CONFLICT needs at least one column")
         cols = [_safe_ident(c) for c in columns]
-        update_columns = update_columns or [c for c in cols if c != conflict_column]
+        conflict_set = set(conflict_cols)
+        update_columns = update_columns or [c for c in cols if c not in conflict_set]
         update_sql = ", ".join(f'"{c}" = EXCLUDED."{c}"' for c in update_columns)
         col_sql = ", ".join(f'"{c}"' for c in cols)
+        conflict_sql = ", ".join(f'"{c}"' for c in conflict_cols)
         template_parts = []
         for col in cols:
             if col in jsonb_columns:
@@ -393,7 +401,7 @@ class SupabaseConnector:
         insert_sql = f'''
             INSERT INTO "{schema}"."{table}" ({col_sql})
             VALUES %s
-            ON CONFLICT ("{conflict_column}") DO UPDATE SET {update_sql}
+            ON CONFLICT ({conflict_sql}) DO UPDATE SET {update_sql}
         '''
         tuples = [tuple(row.get(col) for col in columns) for row in rows]
         logger.info("[upsert] Start %s.%s rows=%s", schema, table, len(tuples))
