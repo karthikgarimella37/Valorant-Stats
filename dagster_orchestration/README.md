@@ -153,6 +153,7 @@ Optional env vars:
 - `VLR_PLAYER_SKIP_EXISTING=1` — skip ids already in `players.jsonl`
 - `VLR_REQUIRE_ROTATOR=0` — only for local debug; do not use for a full scrape
 - `VLR_LIQUIPEDIA_WORKERS` (default `1`) / `VLR_LIQUIPEDIA_INTERVAL_SEC` (default `1.1`) — kit catalog only
+- `VLR_CATALOG_ROTATOR_REGIONS` — AWS region list for valorant-api / Liquipedia gateways (default: first of `VLR_IP_ROTATOR_REGIONS`)
 
 ## Run the VLR.gg extract → parquet → Supabase job
 
