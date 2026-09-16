@@ -4,6 +4,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from typing import Any
 
+import requests
+
 from backend.api_connectors.rotating_http import rotating_session
 
 BASE_URL = "https://be-prod.rib.gg/v1"
