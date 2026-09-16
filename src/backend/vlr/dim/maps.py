@@ -355,6 +355,7 @@ def extract_maps(repo_root: Path | None = None) -> list[dict[str, Any]]:
 def load_maps(rows: list[dict[str, Any]] | None = None, repo_root: Path | None = None) -> int:
     """Upsert map catalog on map_name; keep row_number on re-run."""
     load_project_env(repo_root)
+    logger.info("[maps] Load start")
     apply_maps_schema(repo_root)
     if rows is None:
         path = maps_jsonl_path(_root(repo_root))
