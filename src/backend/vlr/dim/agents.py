@@ -194,17 +194,6 @@ def parse_liquipedia_agent(wikitext: str) -> dict[str, Any]:
 
 def _api_ability_index(agent: dict[str, Any]) -> dict[str, dict[str, Any]]:
     """Index valorant-api abilities by lowercase name for icon/description merge."""
-    out: dict[str, dict[str, Any]] = {}
-    for ability in agent.get("abilities") or []:
-        if not isinstance(ability, dict):
-            continue
-        name = text_or_none(ability.get("displayName"))
-        if name:
-            out[name.lower()] = ability
-    return out
-
-
-def _name_key(name: str | None) -> str:
     """Compare ability names so 'Nebula / Dissipate' still matches Liquipedia 'Nebula'."""
     return "".join(ch for ch in (name or "").lower() if ch.isalnum())
 
