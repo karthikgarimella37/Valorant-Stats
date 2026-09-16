@@ -333,6 +333,7 @@ def parse_match_facts(
                 side_code = _s(cell.get("side"))
                 buckets["round_economy"].append(
                     {
+                        "fact_key": fact_key(match_id, map_game_number, round_number, team_id),
                         "vlr_match_id": match_id,
                         "vlr_event_id": event_id,
                         "match_date": match_date,
