@@ -50,6 +50,8 @@ def upsert_dim_rows(
     conflict_column: str | tuple[str, ...],
     jsonb_columns: tuple[str, ...] = (),
     batch_size: int = 1000,
+    on_conflict: str = "update",
+    max_cpu_pct: int | None = None,
 ) -> int:
     """Batch upsert on one column or a composite unique key; keep row_number on re-run."""
     if not rows:
@@ -68,6 +70,8 @@ def upsert_dim_rows(
         update_columns=update_columns,
         jsonb_columns=jsonb_columns,
         batch_size=batch_size,
+        on_conflict=on_conflict,
+        max_cpu_pct=max_cpu_pct,
     )
     logger.info("[dims] Load done table=%s upserted=%s", table, total)
     return total
