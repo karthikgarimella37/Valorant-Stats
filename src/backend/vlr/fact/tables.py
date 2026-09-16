@@ -270,6 +270,7 @@ ROUND_ECO_COLS = (
 ROUND_ECO_UNIQUE = ("vlr_match_id", "map_game_number", "round_number", "vlr_team_id")
 ROUND_ECO_TYPES = {
     **BASE_TYPES,
+    "fact_key": "TEXT",
     "map_name": "TEXT",
     "map_game_number": "INTEGER",
     "round_number": "INTEGER",
