@@ -253,8 +253,8 @@ def load_one_fact_table(
     connector = SupabaseConnector()
     if apply_schema:
         apply_dim_schema(root, spec.sql_name, spec.table, spec.types)
-        _ensure_grain_unique(connector, spec)
     _retire_concat_key(connector, spec.table)
+    _ensure_grain_unique(connector, spec)
     if use_copy:
         return _copy_one_table(
             spec,
