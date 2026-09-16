@@ -41,6 +41,7 @@ __all__ = [
     "load_players",
     "load_static",
     "load_teams",
+    "load_weapons",
     "rows_from_dates_landing",
     "rows_from_event_json_dir",
     "rows_from_events_landing",
