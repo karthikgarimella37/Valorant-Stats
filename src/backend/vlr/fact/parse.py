@@ -192,7 +192,7 @@ def parse_match_facts(
                     "match_date": match_date,
                     "map_name": map_name,
                     "map_game_number": map_game_number,
-                    "vlr_team_id": team_id,
+                    "vlr_team_id": coalesce_id(team_id),
                     "rounds_won": won,
                     "rounds_lost": lost,
                     "attack_rounds_won": atk,
