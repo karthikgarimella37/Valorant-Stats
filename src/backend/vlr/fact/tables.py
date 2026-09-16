@@ -181,7 +181,8 @@ SERIES_COLS = (
     *STAMP,
 )
 SERIES_TYPES = {
-    **KEY_TYPES,
+    **BASE_TYPES,
+    "vlr_team_id": "TEXT",
     "maps_won": "INTEGER",
     "maps_lost": "INTEGER",
     "is_winner": "BOOLEAN",
