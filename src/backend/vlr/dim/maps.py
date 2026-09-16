@@ -94,6 +94,8 @@ MAP_TYPES = {
 }
 
 SKIP_MAP_NAMES = {"The Range", "Basic Training"}
+# Wiki chrome already stored as map_name / splash; keep infobox_json for extra lore fields.
+_SKIP_INFOBOX = {"name", "image", "_extra_lines"}
 
 
 def is_catalog_map(name: str | None) -> bool:
