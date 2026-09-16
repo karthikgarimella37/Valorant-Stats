@@ -275,6 +275,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Load one vlr fact table from jsonl (no Dagster UI).")
     parser.add_argument("--table", required=True, help="Warehouse table, e.g. fact_map_veto")
     parser.add_argument("--upsert", action="store_true", help="Use ON CONFLICT upsert instead of COPY")
+    parser.add_argument("--no-schema", action="store_true", help="Skip DDL; table must already exist")
+    parser.add_argument("--batch-size", type=int, default=5000, help="COPY rows per commit")
+    parser.add_argument("--max-cpu-pct", type=int, default=60, help="Sleep after each batch to keep work under this duty cycle")
     args = parser.parse_args()
-    table, count = load_one_fact_table(args.table, use_copy=not args.upsert)
+    table, count = load_one_fact_table(
+        args.table,
+        use_copy=not args.upsert,
+        apply_schema=not args.no_schema,
+        batch_size=args.batch_size,
+        max_cpu_pct=args.max_cpu_pct,
+    )
     print(f"{table} rows={count}")
