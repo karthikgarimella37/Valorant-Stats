@@ -43,6 +43,14 @@ def fact_jsonl_path(repo_root: Path, stem: str) -> Path:
     return facts_dir(repo_root) / f"{stem}.jsonl"
 
 
+def coalesce_id(value: Any) -> str:
+    """Grain ids never null: COALESCE(NULLIF(trim(value), ''), '-1') marks anomalies."""
+    if value is None:
+        return UNKNOWN_ID
+    text = str(value).strip()
+    return text or UNKNOWN_ID
+
+
 def to_int(value: Any) -> int | None:
     """Scoreboard strings like '+9' or '24' into ints."""
     if value is None or value == "":
