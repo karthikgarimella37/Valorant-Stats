@@ -24,6 +24,7 @@ __all__ = [
     "apply_matches_schema",
     "apply_players_schema",
     "apply_teams_schema",
+    "apply_weapons_schema",
     "extract_agents",
     "extract_events",
     "extract_maps",
