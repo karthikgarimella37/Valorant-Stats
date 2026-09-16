@@ -241,7 +241,12 @@ ROUND_ECO_COLS = (
     *STAMP,
 )
 ROUND_ECO_TYPES = {
-    **KEY_TYPES,
+    **BASE_TYPES,
+    "map_name": "TEXT",
+    "map_game_number": "INTEGER",
+    "round_number": "INTEGER",
+    "vlr_team_id": "TEXT",
+    "economy_code": "TEXT",
     "bank": "INTEGER",
     "loadout": "INTEGER",
     "is_pistol_round": "BOOLEAN",
