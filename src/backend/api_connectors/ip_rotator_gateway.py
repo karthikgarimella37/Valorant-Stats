@@ -155,9 +155,9 @@ class VlrIpRotator:
             "access_key_secret": access_key_secret,
             "verbose": os.getenv("VLR_IP_ROTATOR_VERBOSE", "1") not in ("0", "false", "False"),
         }
-        regions = _regions()
-        if regions:
-            kwargs["regions"] = regions
+        use_regions = regions if regions is not None else _regions()
+        if use_regions:
+            kwargs["regions"] = use_regions
 
         logger.info("Starting AWS ApiGateway IP rotator for %s regions=%s", site, regions or "DEFAULT")
         gateway = ApiGateway(site, **kwargs)
