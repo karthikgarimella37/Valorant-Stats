@@ -273,6 +273,7 @@ def _merge_abilities(agent: dict[str, Any], lp: dict[str, Any]) -> list[dict[str
 
 
 def _hotkey_row(abilities: list[dict[str, Any]], hotkey: str) -> dict[str, Any] | None:
+    """Pick C/Q/E/X from merged kit so flattened cost columns stay in sync."""
     for row in abilities:
         if str(row.get("hotkey") or "").upper() == hotkey:
             return row
