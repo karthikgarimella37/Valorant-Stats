@@ -98,13 +98,29 @@ def apply_agents_schema(repo_root: Path | None = None) -> Path:
 
 
 def _text(value: Any) -> str | None:
+    """Blank strings become null so upsert does not store empty kit fields."""
     if value is None:
         return None
     text = str(value).strip()
     return text or None
 
 
+def _strip_wiki(value: Any) -> str | None:
+    """Drop [[links]], {{templates}}, and '''bold''' from Infobox / AbilityCard text."""
+    text = _text(value)
+    if not text:
+        return None
+    text = re.sub(r"\[\[(?:[^|\]]*\|)?([^\]]+)\]\]", r"\1", text)
+    text = re.sub(r"\{\{[^}|]*\|([^}]+)\}\}", r"\1", text)
+    text = re.sub(r"\{\{[^}]+\}\}", " ", text)
+    text = text.replace("'''", "").replace("''", "")
+    text = re.sub(r"<[^>]+>", "", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text or None
+
+
 def _as_int(value: Any) -> int | None:
+    """Credits/orbs from AbilityCard; Free/none map to 0."""
     if value is None or value == "":
         return None
     text = str(value).strip()
@@ -118,11 +134,12 @@ def _as_int(value: Any) -> int | None:
 
 def _iter_templates(wikitext: str, name: str) -> list[str]:
     """Yield raw {{Name ...}} blocks, including nested {{ }} inside AbilityCard."""
-    start_token = "{{" + name
+    needle = "{{" + name.lower()
+    lower = wikitext.lower()
     out: list[str] = []
     i = 0
     while True:
-        i = wikitext.find(start_token, i)
+        i = lower.find(needle, i)
         if i < 0:
             break
         depth = 0
@@ -147,7 +164,7 @@ def _iter_templates(wikitext: str, name: str) -> list[str]:
 
 
 def _template_fields(block: str) -> dict[str, str]:
-    """Parse |key=value lines from a MediaWiki template body."""
+    """Parse |key=value fields, including several on one Infobox line."""
     fields: dict[str, str] = {}
     body = block.strip()
     if body.startswith("{{"):
@@ -156,10 +173,13 @@ def _template_fields(block: str) -> dict[str, str]:
         body = body[:-2]
     for raw_line in body.splitlines()[1:]:
         line = raw_line.strip()
-        if not line.startswith("|") or "=" not in line:
+        if not line.startswith("|"):
             continue
-        key, value = line[1:].split("=", 1)
-        fields[key.strip().lower()] = value.strip()
+        for part in line[1:].split("|"):
+            if "=" not in part:
+                continue
+            key, value = part.split("=", 1)
+            fields[key.strip().lower()] = value.strip()
     return fields
 
 
