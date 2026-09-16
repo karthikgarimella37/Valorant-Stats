@@ -90,17 +90,6 @@ def agents_jsonl_path(repo_root: Path) -> Path:
     return repo_root / "data" / "vlr" / "dim_agents.jsonl"
 
 
-def canonical_agent_name(name: str | None) -> str | None:
-    """VLR sometimes writes KAYO; warehouse key is KAY/O."""
-    text = str(name or "").strip()
-    if not text:
-        return None
-    compact = text.upper().replace("-", "").replace(" ", "")
-    if compact in {"KAYO", "KAY/O"}:
-        return "KAY/O"
-    return text
-
-
 def apply_agents_schema(repo_root: Path | None = None) -> Path:
     """Create dim_agents if missing; ADD kit columns (no DROP)."""
     load_project_env(repo_root)
