@@ -256,13 +256,13 @@ def quote_from_wikitext(wikitext: str) -> str | None:
     """Official blurb from {{Quote1|...}} (Fandom weapons) or {{Quote|...}} (maps)."""
     for name in ("Quote1", "Quote"):
         for block in iter_templates(wikitext, name):
-        body = block.strip()
-        if body.startswith("{{"):
-            body = body[2:]
-        if body.endswith("}}"):
-            body = body[:-2]
-        parts = [p.strip() for p in body.split("|")]
-        texts = [p for p in parts[1:] if p and "=" not in p]
-        if texts:
-            return strip_wiki(texts[0])
+            body = block.strip()
+            if body.startswith("{{"):
+                body = body[2:]
+            if body.endswith("}}"):
+                body = body[:-2]
+            parts = [p.strip() for p in body.split("|")]
+            texts = [p for p in parts[1:] if p and "=" not in p]
+            if texts:
+                return strip_wiki(texts[0])
     return None
