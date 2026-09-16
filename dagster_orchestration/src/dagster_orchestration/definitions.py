@@ -488,6 +488,16 @@ def dims_weapons(context: AssetExecutionContext) -> dict[str, int]:
     return counts
 
 
+@asset(group_name="vlr_seed")
+def dims_agents(context: AssetExecutionContext) -> dict[str, int]:
+    """Kit catalog: valorant-api.com + Liquipedia costs. Rematerialize when Riot ships a new agent."""
+    context.log.info("=== STEP dims_agents: valorant-api.com + liquipedia AbilityCard ===")
+    counts = run_agents(REPO_ROOT)
+    context.add_output_metadata({"row_counts": MetadataValue.json(counts)})
+    context.log.info("Agents catalog upserted=%s", counts)
+    return counts
+
+
 @asset(group_name="vlr_hist")
 def evt_schema(context: AssetExecutionContext) -> str:
     """Create or alter vlr.dim_events so extract rows match warehouse columns."""
