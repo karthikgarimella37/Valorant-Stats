@@ -861,7 +861,7 @@ vlr_date = define_asset_job(
 
 vlr_dims = define_asset_job(
     "vlr_dims",
-    selection=[dims_static, dims_from_landings, dims_weapons, dims_agents],
+    selection=[dims_static, dims_from_landings, dims_weapons, dims_agents, dims_maps],
 )
 
 vlr_events = define_asset_job(
