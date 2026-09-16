@@ -8,7 +8,10 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
+from backend.api_connectors.rotating_http import rotating_session
+
 BASE_URL = "https://be-prod.rib.gg/v1"
+RIB_SITE = "https://be-prod.rib.gg"
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
