@@ -154,7 +154,10 @@ MAP_GAME_COLS = (
     *STAMP,
 )
 MAP_GAME_TYPES = {
-    **KEY_TYPES,
+    **BASE_TYPES,
+    "map_name": "TEXT",
+    "map_game_number": "INTEGER",
+    "vlr_team_id": "TEXT",
     "rounds_won": "INTEGER",
     "rounds_lost": "INTEGER",
     "attack_rounds_won": "INTEGER",
