@@ -350,7 +350,7 @@ One row per playable agent. Kit catalog (abilities, costs, portraits) plus any e
 | `ability_e_cost` | `INTEGER` | Credits; `0` = Free |
 | `ultimate_name` | `TEXT` | X ultimate name |
 | `ultimate_orbs` | `INTEGER` | Ult points (Liquipedia `ultimatecost`) |
-| `abilities_json` | `JSONB` | Full kit: hotkey, kind, name, cost_credits, ultimate_orbs, charges, description, icon_url, api_slot. Includes Passive when the API has one. |
+| `abilities_json` | `JSONB` | Liquipedia AbilityCard + API icons. Keys: `kind` (Passive/Basic/Signature/Ultimate), `name`, `hotkey` / `hotkey_pc` / `hotkey_ps` / `hotkey_xbox`, `cost_credits`, `ultimate_orbs`, `uses`, `charges`, `windup`, `duration`, `cooldown`, `debuff`, `regain`, `description`, `icon_url`, `stats`. |
 | `tags_json` | `JSONB` | valorant-api `characterTags` (string list; often empty) |
 | `row_number` | `BIGINT` PK | |
 | `insert_date` | `TIMESTAMPTZ` | |
