@@ -927,5 +927,6 @@ defs = Definitions(
         vlr_matches,
         vlr_teams,
         vlr_players,
+        vlr_agents,
     ],
 )
