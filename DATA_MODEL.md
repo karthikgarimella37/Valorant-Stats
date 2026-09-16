@@ -85,14 +85,16 @@ CREATE SEQUENCE valorant.seq_<table>_row_number
 | `dim_economy` | dim | Seed job `vlr_dims` | Rare | Seed buy types |
 | `dim_weapons` | dim | Job `vlr_weapons` (also in `vlr_dims`) | Rare (new gun) | valorant.fandom.com Infobox + TTK (AWS rotator) |
 | `dim_date` | dim | Seed job `vlr_date` | Rare (extend range) | Generated calendar 2020–2030 |
-| `fact_match_overall_stats` | fact | Landed (parquet) | Yes | VLR `/v2/match/details` map `players[]` |
-| `fact_round_results` | fact | Landed (parquet) | Yes | VLR map `rounds[]` (winner, side t/ct; **no win method**) |
-| `vlr_watermarks` | ops | JSON landing | Yes | Last successful fetch per match/event/team/player (`data/vlr/watermarks.json`) |
-| `fact_match_half_round_stats` | **view** | dbt view | n/a (dbt view) | Aggregate `vlr.fact_round_results` by match/map/team/side |
-| `fact_player_match_performance` | fact | Landed (parquet) | Yes | Scoreboard kast/hs/fk + series `advanced_stats` on map 1 |
-| `fact_player_vs_player_kills` | fact | Not started | Yes (rib only) | rib.gg replay-data; empty for historical VLR-only matches |
-| `fact_match_economy` | fact | Landed (parquet) | Yes | VLR team pistol/eco/full **win %** (not player spend) |
-| `fact_round_economy_detail` | fact | JSON landing | Yes | VLR economy tab `.bank` + `.rnd-sq` via `scrape_economy` (not /v2) |
+| `fact_match_overall_stats` | fact | Job `vlr_facts` (code ready, not run) | Yes | `matches.jsonl` player box score |
+| `fact_player_match_performance` | fact | Job `vlr_facts` | Yes | KAST/HS/FK + series 2K/1vX on map 1 |
+| `fact_round_results` | fact | Job `vlr_facts` | Yes | `maps[].rounds[]` |
+| `fact_map_game_results` | fact | Job `vlr_facts` | Yes | Team-map rounds + attack/defense halves |
+| `fact_series_team_result` | fact | Job `vlr_facts` | Yes | Team series W/L |
+| `fact_match_economy` | fact | Job `vlr_facts` | Yes | Pistol/eco/full played vs won |
+| `fact_round_economy_detail` | fact | Job `vlr_facts` | Yes | Bank/loadout when `round_economy` is on the landing |
+| `fact_map_veto` | fact | Job `vlr_facts` | Yes | Ban/pick/decider from `map_vetos` |
+| `fact_match_half_round_stats` | **view** | dbt later | n/a | Aggregate `fact_round_results` |
+| `fact_player_vs_player_kills` | fact | Later (rib) | Yes (rib only) | Replay kills |
 
 VLR does **not** have replay (kills/positions). It **does** have round winners + attack/defense side on the match page. That is enough for the half-round **view**.
 
