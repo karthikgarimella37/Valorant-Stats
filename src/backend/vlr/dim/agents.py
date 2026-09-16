@@ -209,7 +209,7 @@ def parse_liquipedia_agent(wikitext: str) -> dict[str, Any]:
                 "cost_credits": _as_int(fields.get("cost")),
                 "ultimate_orbs": _as_int(fields.get("ultimatecost") or fields.get("ultimate_cost")),
                 "charges": _as_int(fields.get("charges")),
-                "description": _text(fields.get("description")),
+                "description": _strip_wiki(fields.get("description")),
             }
         )
     info["cards"] = cards
