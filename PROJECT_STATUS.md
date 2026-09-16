@@ -3,7 +3,8 @@
 > Session-agnostic source of truth. Updated by agents via the `session-continuity` skill. Commit and push this file so every new Cursor chat starts with current context.
 
 **Last updated:** 2026-09-15  
-**Updated by:** dim_weapons from valorant.fandom.com (quote, images, TTK JSON)
+**Updated by:** fact backend from matches.jsonl (not run); later-work files  
+**Later nudge date:** 2026-09-15
 
 ---
 
@@ -13,103 +14,55 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 
 ## Current focus
 
-- Materialize `vlr_teams` (schema+load from existing `teams.jsonl`). Then `vlr_players` after vlrggapi rebuild
+- Fact tables in schema `vlr`: backend is ready (`vlr_facts`). Discuss then run. Do **not** run until the user says so.
 
 ## Status
 
 | Area | State | Notes |
 |------|--------|-------|
-| Overall | In progress | Events done. Match lists done. Match details still scraping |
+| Overall | In progress | Dims catalog done. Match details still scraping. Facts coded, not loaded |
 | Data sources | Validated | Self-hosted vlrggapi `/v2` via AWS IP rotator overlay |
-| Orchestration | In progress | Jobs `vlr_events`, `vlr_matches`, `vlr_teams`, `vlr_players` |
-| Dim tables | In progress | `vlr_teams` orgs. `vlr_players` people. `vlr_agents` / `vlr_maps` kit catalogs |
-| Fact tables | Blocked on matches | Parse `matches.jsonl` after details finish |
-| Frontend / viz | Not started | Graphs and dashboards listed in `Valorant API.md` |
-| Session process | Done | Status + standards markdown; always-on Cursor rules/skills; auto-commit hook |
+| Orchestration | In progress | Job `vlr_facts` added (extract jsonl → load). Not executed |
+| Dim tables | **Done** (catalog). Teams/players jsonl exist; rematerialize later if needed |
+| Fact tables | Code ready, not run | Parse `matches.jsonl` → `data/vlr/facts/*.jsonl` → `vlr.fact_*` |
+| Frontend / viz | Not started | Graphs in `DATA_MODEL.md` |
+| Deferred | Documented | `LATER.md` (economy dim, watermarks, KG agent) |
 
 ## Done
 
 - [x] Repo scaffolding (Dagster, src, notebooks, schemas)
-- [x] rib.gg endpoint discovery (`rib_discovery_results.json`, notes in `Valorant API.md`)
-- [x] Session continuity + engineering standards
+- [x] Session continuity + engineering standards + `LATER.md` daily nudge
 - [x] `DATA_MODEL.md` snowflake contract
-- [x] vlrggapi probe, JSON landings, watermarks, economy bank scrape
-- [x] Regions split: VCT circuits vs local ranking codes
-- [x] `src/backend/vlr/dim/` + `fact/` extract layout
-- [x] Historical events: `extract_events` / `load_events` / job `vlr_events`
-- [x] `vlr.dim_events` DDL is create-if-missing (no DROP); Python ADD/ALTER columns
-- [x] Single landing file `data/vlr/events.jsonl` (2980 events)
-- [x] Historical matches: `extract_matches` / `load_matches` / job `vlr_matches`
-- [x] `data/vlr/matches.jsonl` stores dim row + listing + full match detail for later facts
-- [x] Extracts fail unless vlrggapi rotator `Ready endpoints=` > 0
-- [x] Project calendar dates: `YYYY/M/D` no pad (example `2026/7/8`)
-- [x] `vlr.dim_date` generated calendar (2020–2030) + job `vlr_date`
-- [x] Job `vlr_dims`: seed vct/regions/economy; parse maps/agents/teams/players/country; rib weapons
-- [x] Job `vlr_teams` code: `/v2/team?q=profile` → `data/vlr/teams.jsonl` → upsert `vlr.dim_teams`
-- [x] Job `vlr_players` code: `/v2/player?q=profile` → `data/vlr/players.jsonl` → upsert `vlr.dim_players`
-- [x] Job `vlr_agents` code: valorant-api.com kit + Liquipedia AbilityCard → `data/vlr/dim_agents.jsonl` → upsert `vlr.dim_agents` (AWS rotator). Hotkeys from API slots; E/signature cost always 0 (Harbor Q High Tide / E Cove)
-- [x] Job `vlr_weapons` code: valorant.fandom.com Infobox + TTK → `data/vlr/dim_weapons.jsonl` → upsert `vlr.dim_weapons` (AWS rotator)
+- [x] Historical events / matches extract jobs; match details still filling
+- [x] Dim catalogs: date, regions, economy seed, agents, maps, weapons
+- [x] Dim teams/players **code** + `teams.jsonl` / player extract job
+- [x] Fact **backend** (DDL + parse + load + job `vlr_facts`) — not executed
 
 ## Next up
 
-- [x] Seed `vlr.dim_date` (job `vlr_date`, 2020–2030, range-filter columns)
-- [x] Seed remaining static tables: `dim_vct_regions`, `dim_regions`, `dim_economy`, `dim_agents`, `dim_maps`, `dim_weapons`
-- [x] Optional no-API parse: unique teams/players from `events.jsonl` `teams_json`
-- [ ] Let `vlr_matches` finish; then upsert `vlr.dim_matches` and refetch empty-detail 429 rows
-- [ ] Parse facts from `matches.jsonl` (overall / rounds / performance / economy)
-- [x] Materialize `vlr_agents` (29 agents)
-- [x] Materialize `vlr_maps` (18 maps; skip Range/Skirmish; unique `map_name` before upsert)
-- [x] Materialize `vlr_weapons` (20 guns from Fandom; job `vlr_weapons`)
-- [ ] Materialize `vlr_teams` (schema+load from existing `teams.jsonl` for roster/socials)
-- [ ] Materialize `vlr_players` (~28k `/v2/player` calls; rebuild vlrggapi first for twitter + team href ids)
-- [ ] Incremental extract via `vlr_watermarks` after historical
-- [ ] Fork/patch vlrggapi: Attack/Defend, event_id on match, labeled performance
-- [ ] rib overlay: replay kills when `vlr_match_id` can join
+- [ ] Discuss fact grains; then run `vlr_facts` when the user says so
+- [ ] Let `vlr_matches` finish; upsert `vlr.dim_matches`; refetch empty-detail 429 rows
+- [ ] Optional: rematerialize `vlr_teams` / `vlr_players` from existing jsonl
+- [ ] Incremental watermarks — see `LATER.md` (not now)
+- [ ] Rewrite `dim_economy` — see `LATER.md` (not now)
+- [ ] KG column-description agent — see `LATER.md` (after facts have rows)
+- [ ] dbt view `fact_match_half_round_stats`
+- [ ] rib overlay: `fact_player_vs_player_kills`
 - [ ] Build viz
 
 ## Open questions / blockers
 
+- **Do not run** `vlr_facts` until discussed
 - Keep `docker compose up -d --build vlrggapi` running before `vlr_events` / `vlr_matches`
-- Matches list phase: **2980/2980** events in `event_matches.jsonl` (**107,429** series)
-- Match details (~21:34): **~3,800 / 107,429** in `matches.jsonl` (~3.5%); ~164 list-only after 429
-- Matches: 6 in-flight `/v2` calls, ≥0.4s between starts; 429 pause 30s
-- JSONL append is not the bottleneck; each match detail scrapes several vlr.gg pages
-- Rotator: `VLR_IP_ROTATOR_REGIONS` in `src/config/.env` (comma list). `AWS_DEFAULT_REGION` must stay one region
-- Pace knobs live in `src/config/.env` (`VLR_API_CONCURRENCY`, `VLR_MATCH_WORKERS`, `VLR_API_INTERVAL_SEC`); Dagster has no separate YAML for them
-- Inbound vlrggapi limiter: official image is **20 match-details/min per client IP**. Compose sets `VLR_RL_DISABLE=1` after rebuild
-- **API gaps:** Attack/Defend player stats; labeled 2K/1vX/ECON; prize points/note; match `event_id` on detail
-- rib.gg weapons: `be-prod.rib.gg` did not resolve; `dim_weapons` now uses valorant.fandom.com instead
+- Match details still incomplete in `matches.jsonl` (~3.5% when last noted)
+- Scoreboard facts use `player_name` (no VLR player id on the map scoreboard)
+- `round_economy` is usually empty until economy-tab scrape is on the landing
+- Round `win_method_code` is null on current `/v2` rounds
+- Series 2K/1vX only attach to **map 1** (VLR does not split them per map)
 
 ## Session log
 
 | Date | Session summary |
 |------|-----------------|
-| 2026-08-17 | Created `PROJECT_STATUS.md` and session-continuity skill/rule |
-| 2026-08-17 | Added `ENGINEERING_STANDARDS.md` + always-on rule/skill |
-| 2026-08-18 | Added `DATA_MODEL.md` snowflake contract |
-| 2026-08-27 | VLR-primary + rib overlay; vlrggapi extract; facts + half-round view |
-| 2026-08-29 | Probed match 742485; JSON + watermarks; economy bank scrape; smarter auto-commit |
-| 2026-09-04 | Split VCT circuits from local ranking codes |
-| 2026-09-07 | Historical events Dagster job: schema, per-id JSON, upsert `vlr.dim_events` |
-| 2026-09-07 | Events jsonl + date format + schema ensure + env/rotator (no extract run) |
-| 2026-09-07 | Documented Dagster as the run path for historical events |
-| 2026-09-07 | Extract failed: no vlrggapi on :3001; started `docker compose up -d vlrggapi` |
-| 2026-09-07 | Catalog 503: serial pages + long backoff on 502/503 |
-| 2026-09-07 | Dropped AWS IP rotator; official vlrggapi + serial scrape (free) |
-| 2026-09-08 | Matches pipeline + short names (`vlr_events`, `vlr_matches`); require AWS rotator |
-| 2026-09-08 | Match lists complete; details ~3.5% + 429s. Next parallel: static seed dims |
-| 2026-09-08 | `vlr.dim_date` seed job `vlr_date` with year/quarter/month/week range columns |
-| 2026-09-09 | Match extract speed: 32 workers, 256 vlrggapi conns, short retries, skip queued futures |
-| 2026-09-09 | 429 flood: cap 3 in-flight calls, global cooldown, do not land empty detail |
-| 2026-09-09 | vlr_v2 logs GET/429/wait with match_id, attempt, elapsed; rematerialize to see them |
-| 2026-09-09 | 429 was vlrggapi inbound 20/min, not vlr.gg; overlay disables inbound cap |
-| 2026-09-09 | Pace 6/0.4s in src/config/.env; regions moved to VLR_IP_ROTATOR_REGIONS |
-| 2026-09-09 | match_load CardinalityViolation: duplicate vlr_match_id in one INSERT; load now unique |
-| 2026-09-14 | Job `vlr_dims` for remaining dims; weapons from rib.gg `/v1/weapons` |
-| 2026-09-14 | dim_players socials are `{twitter, twitch}` URL keys (null if missing) |
-| 2026-09-15 | dim_agents kit: valorant-api.com + Liquipedia costs; job `vlr_agents` |
-| 2026-09-15 | dim_maps location/bounds + fuller AbilityCard; catalog HTTP via AWS rotator |
-| 2026-09-15 | vlr_maps failed CardinalityViolation on two The Range rows; unique + skip training maps |
-| 2026-09-15 | dim_agents: E cost always 0; Harbor Q/E follow valorant-api slots not Liquipedia hotkeys |
-| 2026-09-15 | vlr_maps NameError `_SKIP_INFOBOX`; restored skip set; load from existing jsonl |
-| 2026-09-15 | dim_weapons: Fandom Infobox + TTK/spread JSON via AWS rotator; job `vlr_weapons` |
+| 2026-09-15 | dim_weapons Fandom catalog |
+| 2026-09-15 | Dims marked done. `LATER.md` + daily nudge. Fact backend (`vlr_facts`) coded, not run |
