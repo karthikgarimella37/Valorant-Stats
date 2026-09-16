@@ -1,20 +1,23 @@
-"""Column lists and types for vlr fact tables (metrics/binary + grain keys)."""
+"""Column lists, types, and composite unique grains for vlr fact tables."""
 
 from __future__ import annotations
+
+from typing import NamedTuple
 
 STAMP = ("insert_date", "update_date")
 STAMP_TYPES = {"insert_date": "TIMESTAMPTZ", "update_date": "TIMESTAMPTZ"}
 BASE_TYPES = {
     "row_number": "BIGINT",
-    "fact_key": "TEXT",
     "vlr_match_id": "TEXT",
     "vlr_event_id": "TEXT",
     "match_date": "TEXT",
     **STAMP_TYPES,
 }
 
+# In-flight load owns this table; keep concat fact_key until that run finishes.
+FROZEN_FACT_TABLES = frozenset({"fact_player_match_performance"})
+
 OVERALL_COLS = (
-    "fact_key",
     "vlr_match_id",
     "vlr_event_id",
     "match_date",
@@ -22,6 +25,7 @@ OVERALL_COLS = (
     "map_game_number",
     "player_name",
     "vlr_team_id",
+    "vlr_player_id",
     "agent_name",
     "kills",
     "deaths",
@@ -34,12 +38,14 @@ OVERALL_COLS = (
     "is_winner",
     *STAMP,
 )
+OVERALL_UNIQUE = ("vlr_match_id", "map_game_number", "vlr_team_id", "vlr_player_id")
 OVERALL_TYPES = {
     **BASE_TYPES,
     "map_name": "TEXT",
     "map_game_number": "INTEGER",
     "player_name": "TEXT",
     "vlr_team_id": "TEXT",
+    "vlr_player_id": "TEXT",
     "agent_name": "TEXT",
     "kills": "INTEGER",
     "deaths": "INTEGER",
@@ -82,8 +88,10 @@ PERFORMANCE_COLS = (
     "defuses",
     *STAMP,
 )
+PERFORMANCE_UNIQUE = ("fact_key",)
 PERFORMANCE_TYPES = {
     **BASE_TYPES,
+    "fact_key": "TEXT",
     "map_name": "TEXT",
     "map_game_number": "INTEGER",
     "player_name": "TEXT",
@@ -110,7 +118,6 @@ PERFORMANCE_TYPES = {
 }
 
 ROUND_COLS = (
-    "fact_key",
     "vlr_match_id",
     "vlr_event_id",
     "match_date",
@@ -123,6 +130,7 @@ ROUND_COLS = (
     "win_method_code",
     *STAMP,
 )
+ROUND_UNIQUE = ("vlr_match_id", "map_game_number", "round_number")
 ROUND_TYPES = {
     **BASE_TYPES,
     "map_name": "TEXT",
@@ -136,7 +144,6 @@ ROUND_TYPES = {
 }
 
 MAP_GAME_COLS = (
-    "fact_key",
     "vlr_match_id",
     "vlr_event_id",
     "match_date",
@@ -153,6 +160,7 @@ MAP_GAME_COLS = (
     "is_map_pick",
     *STAMP,
 )
+MAP_GAME_UNIQUE = ("vlr_match_id", "map_game_number", "vlr_team_id")
 MAP_GAME_TYPES = {
     **BASE_TYPES,
     "map_name": "TEXT",
@@ -170,7 +178,6 @@ MAP_GAME_TYPES = {
 }
 
 SERIES_COLS = (
-    "fact_key",
     "vlr_match_id",
     "vlr_event_id",
     "match_date",
@@ -180,6 +187,7 @@ SERIES_COLS = (
     "is_winner",
     *STAMP,
 )
+SERIES_UNIQUE = ("vlr_match_id", "vlr_team_id")
 SERIES_TYPES = {
     **BASE_TYPES,
     "vlr_team_id": "TEXT",
@@ -190,7 +198,6 @@ SERIES_TYPES = {
 }
 
 ECONOMY_COLS = (
-    "fact_key",
     "vlr_match_id",
     "vlr_event_id",
     "match_date",
@@ -207,6 +214,7 @@ ECONOMY_COLS = (
     "full_buy_won",
     *STAMP,
 )
+ECONOMY_UNIQUE = ("vlr_match_id", "vlr_team_id")
 ECONOMY_TYPES = {
     **BASE_TYPES,
     "vlr_team_id": "TEXT",
@@ -224,7 +232,6 @@ ECONOMY_TYPES = {
 }
 
 ROUND_ECO_COLS = (
-    "fact_key",
     "vlr_match_id",
     "vlr_event_id",
     "match_date",
@@ -240,6 +247,7 @@ ROUND_ECO_COLS = (
     "is_attack",
     *STAMP,
 )
+ROUND_ECO_UNIQUE = ("vlr_match_id", "map_game_number", "round_number", "vlr_team_id")
 ROUND_ECO_TYPES = {
     **BASE_TYPES,
     "map_name": "TEXT",
@@ -256,7 +264,6 @@ ROUND_ECO_TYPES = {
 }
 
 VETO_COLS = (
-    "fact_key",
     "vlr_match_id",
     "vlr_event_id",
     "match_date",
@@ -268,6 +275,7 @@ VETO_COLS = (
     "is_decider",
     *STAMP,
 )
+VETO_UNIQUE = ("vlr_match_id", "action_order")
 VETO_TYPES = {
     **BASE_TYPES,
     "map_name": "TEXT",
@@ -279,14 +287,25 @@ VETO_TYPES = {
     **STAMP_TYPES,
 }
 
-# stem, warehouse table, sql file, columns, types
-FACT_SPECS: tuple[tuple[str, str, str, tuple[str, ...], dict[str, str]], ...] = (
-    ("overall", "fact_match_overall_stats", "vlr_fact_match_overall_stats.sql", OVERALL_COLS, OVERALL_TYPES),
-    ("performance", "fact_player_match_performance", "vlr_fact_player_match_performance.sql", PERFORMANCE_COLS, PERFORMANCE_TYPES),
-    ("rounds", "fact_round_results", "vlr_fact_round_results.sql", ROUND_COLS, ROUND_TYPES),
-    ("map_games", "fact_map_game_results", "vlr_fact_map_game_results.sql", MAP_GAME_COLS, MAP_GAME_TYPES),
-    ("series", "fact_series_team_result", "vlr_fact_series_team_result.sql", SERIES_COLS, SERIES_TYPES),
-    ("economy", "fact_match_economy", "vlr_fact_match_economy.sql", ECONOMY_COLS, ECONOMY_TYPES),
-    ("round_economy", "fact_round_economy_detail", "vlr_fact_round_economy_detail.sql", ROUND_ECO_COLS, ROUND_ECO_TYPES),
-    ("vetos", "fact_map_veto", "vlr_fact_map_veto.sql", VETO_COLS, VETO_TYPES),
+
+class FactSpec(NamedTuple):
+    """One fact table: jsonl stem, warehouse name, DDL, columns, types, composite unique."""
+
+    stem: str
+    table: str
+    sql_name: str
+    columns: tuple[str, ...]
+    types: dict[str, str]
+    unique_cols: tuple[str, ...]
+
+
+FACT_SPECS: tuple[FactSpec, ...] = (
+    FactSpec("overall", "fact_match_overall_stats", "vlr_fact_match_overall_stats.sql", OVERALL_COLS, OVERALL_TYPES, OVERALL_UNIQUE),
+    FactSpec("performance", "fact_player_match_performance", "vlr_fact_player_match_performance.sql", PERFORMANCE_COLS, PERFORMANCE_TYPES, PERFORMANCE_UNIQUE),
+    FactSpec("rounds", "fact_round_results", "vlr_fact_round_results.sql", ROUND_COLS, ROUND_TYPES, ROUND_UNIQUE),
+    FactSpec("map_games", "fact_map_game_results", "vlr_fact_map_game_results.sql", MAP_GAME_COLS, MAP_GAME_TYPES, MAP_GAME_UNIQUE),
+    FactSpec("series", "fact_series_team_result", "vlr_fact_series_team_result.sql", SERIES_COLS, SERIES_TYPES, SERIES_UNIQUE),
+    FactSpec("economy", "fact_match_economy", "vlr_fact_match_economy.sql", ECONOMY_COLS, ECONOMY_TYPES, ECONOMY_UNIQUE),
+    FactSpec("round_economy", "fact_round_economy_detail", "vlr_fact_round_economy_detail.sql", ROUND_ECO_COLS, ROUND_ECO_TYPES, ROUND_ECO_UNIQUE),
+    FactSpec("vetos", "fact_map_veto", "vlr_fact_map_veto.sql", VETO_COLS, VETO_TYPES, VETO_UNIQUE),
 )
