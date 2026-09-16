@@ -421,6 +421,25 @@ def format_agent_row(api_agent: dict[str, Any], lp: dict[str, Any]) -> dict[str,
     }
 
 
+def _write_agents_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
+    """Rewrite landing after extract or kit remap so jsonl matches the warehouse."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as handle:
+        for row in rows:
+            payload = dict(row)
+            for key in ("insert_date", "update_date"):
+                stamp = payload.get(key)
+                if hasattr(stamp, "isoformat"):
+                    payload[key] = stamp.isoformat()
+            abilities = payload.get("abilities_json")
+            if not isinstance(abilities, str):
+                payload["abilities_json"] = json_dumps(abilities)
+            tags = payload.get("tags_json")
+            if not isinstance(tags, str):
+                payload["tags_json"] = json_dumps(tags)
+            handle.write(json.dumps(payload, ensure_ascii=False) + "\n")
+
+
 def extract_agents(repo_root: Path | None = None) -> list[dict[str, Any]]:
     """Fetch kit catalog (~30 agents) through AWS rotator and land jsonl."""
     load_project_env(repo_root)
