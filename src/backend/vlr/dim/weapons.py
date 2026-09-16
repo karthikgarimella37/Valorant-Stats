@@ -170,33 +170,6 @@ def weapon_titles_from_list(wikitext: str) -> list[str]:
     return titles
 
 
-def _damage_from_cell(raw: str | None) -> dict[str, Any]:
-    """Head/body/leg (or melee front/back) from an Infobox range cell."""
-    text = (raw or "").replace("<br>", "\n").replace("<br/>", "\n")
-    out: dict[str, Any] = {}
-    for label, key in (
-        ("head", "head"),
-        ("body", "body"),
-        ("leg", "leg"),
-        ("front", "front"),
-        ("back", "back"),
-    ):
-        match = re.search(rf"{label}\s*[-:]\s*(.+)", text, re.I)
-        if not match:
-            continue
-        value = strip_wiki(match.group(1)) or match.group(1).strip()
-        nums = [int(n) for n in re.findall(r"\d+", value)]
-        if len(nums) == 1:
-            out[key] = nums[0]
-        elif nums:
-            out[key] = value
-        elif value:
-            out[key] = value
-    if not out and text_or_none(strip_wiki(text)):
-        out["raw"] = strip_wiki(text)
-    return out
-
-
 def _damage_ranges(fields: dict[str, str]) -> list[dict[str, Any]]:
     """Infobox 0-30m / 30-50m (and any other Xm-Ym) damage bands."""
     rows: list[dict[str, Any]] = []
