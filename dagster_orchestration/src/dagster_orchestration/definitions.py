@@ -920,6 +920,11 @@ vlr_weapons = define_asset_job(
     selection=[dims_weapons],
 )
 
+vlr_facts = define_asset_job(
+    "vlr_facts",
+    selection=[facts_extract, facts_load],
+)
+
 defs = Definitions(
     assets=[
         dbt_build_select_one_plus_ten,
