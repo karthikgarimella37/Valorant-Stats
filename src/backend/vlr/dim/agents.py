@@ -82,6 +82,7 @@ API_SLOT_TO_HOTKEY = {
 
 
 def _root(repo_root: Path | None) -> Path:
+    """Resolve repo root so CLI and Dagster share one landing path."""
     return Path(repo_root or REPO_ROOT)
 
 
