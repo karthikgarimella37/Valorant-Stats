@@ -226,29 +226,36 @@ def parse_match_facts(
                 if not ign:
                     continue
                 agent = canonical_agent_name(_s(player.get("agent")))
-                key = fact_key(match_id, map_game_number, ign)
-                buckets["overall"].append(
-                    {
-                        "fact_key": key,
-                        "vlr_match_id": match_id,
-                        "vlr_event_id": event_id,
-                        "match_date": match_date,
-                        "map_name": map_name,
-                        "map_game_number": map_game_number,
-                        "player_name": ign,
-                        "vlr_team_id": team_id,
-                        "agent_name": agent,
-                        "kills": to_int(player.get("kills")),
-                        "deaths": to_int(player.get("deaths")),
-                        "assists": to_int(player.get("assists")),
-                        "plus_minus": to_int(player.get("kd_diff") or player.get("plus_minus")),
-                        "acs": to_float(player.get("acs")),
-                        "adr": to_float(player.get("adr")),
-                        "rating": to_float(player.get("rating")),
-                        "rounds_played": rounds_played,
-                        "is_winner": is_winner,
-                    }
+                player_id = (
+                    player_ids.resolve(team_id, ign, player.get("id") or player.get("player_id"))
+                    if player_ids
+                    else _s(player.get("id") or player.get("player_id"))
                 )
+                if team_id and player_id:
+                    buckets["overall"].append(
+                        {
+                            "vlr_match_id": match_id,
+                            "vlr_event_id": event_id,
+                            "match_date": match_date,
+                            "map_name": map_name,
+                            "map_game_number": map_game_number,
+                            "player_name": ign,
+                            "vlr_team_id": team_id,
+                            "vlr_player_id": player_id,
+                            "agent_name": agent,
+                            "kills": to_int(player.get("kills")),
+                            "deaths": to_int(player.get("deaths")),
+                            "assists": to_int(player.get("assists")),
+                            "plus_minus": to_int(player.get("kd_diff") or player.get("plus_minus")),
+                            "acs": to_float(player.get("acs")),
+                            "adr": to_float(player.get("adr")),
+                            "rating": to_float(player.get("rating")),
+                            "rounds_played": rounds_played,
+                            "is_winner": is_winner,
+                        }
+                    )
+                # Keep concat fact_key: in-flight performance load upserts on that column.
+                key = fact_key(match_id, map_game_number, ign)
                 adv = match_advanced(ign, series_advanced) if map_game_number == 1 else {}
                 buckets["performance"].append(
                     {
