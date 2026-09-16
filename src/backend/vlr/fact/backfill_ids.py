@@ -291,18 +291,28 @@ def backfill_player_ids(
                         cur.execute(
                             f"""
                             UPDATE vlr.{table} AS t
-                            SET vlr_player_id = m.vlr_player_id
-                            FROM fact_player_ign_map AS m
-                            WHERE t.row_number >= %s AND t.row_number < %s
-                              AND {_missing_id_sql("t.vlr_player_id")}
-                              AND lower(t.player_name) = m.ign_key
-                              AND NOT EXISTS (
-                                SELECT 1 FROM vlr.{table} AS x
-                                WHERE x.vlr_match_id = t.vlr_match_id
-                                  AND x.map_game_number = t.map_game_number
-                                  AND x.vlr_team_id = t.vlr_team_id
-                                  AND x.vlr_player_id = m.vlr_player_id
-                              )
+                            SET vlr_player_id = s.vlr_player_id
+                            FROM (
+                                SELECT DISTINCT ON (
+                                    t2.vlr_match_id, t2.map_game_number, t2.vlr_team_id, m.vlr_player_id
+                                )
+                                    t2.row_number, m.vlr_player_id
+                                FROM vlr.{table} AS t2
+                                JOIN fact_player_ign_map AS m
+                                  ON lower(t2.player_name) = m.ign_key
+                                WHERE t2.row_number >= %s AND t2.row_number < %s
+                                  AND {_missing_id_sql("t2.vlr_player_id")}
+                                  AND NOT EXISTS (
+                                    SELECT 1 FROM vlr.{table} AS x
+                                    WHERE x.vlr_match_id = t2.vlr_match_id
+                                      AND x.map_game_number = t2.map_game_number
+                                      AND x.vlr_team_id = t2.vlr_team_id
+                                      AND x.vlr_player_id = m.vlr_player_id
+                                  )
+                                ORDER BY t2.vlr_match_id, t2.map_game_number, t2.vlr_team_id,
+                                         m.vlr_player_id, t2.row_number
+                            ) AS s
+                            WHERE t.row_number = s.row_number
                             """,
                             (start, stop),
                         )
