@@ -114,10 +114,11 @@ def parse_match_facts(
                 team_id = team_1_id
             elif t == n2 or n2.startswith(t) or t in n2:
                 team_id = team_2_id
+        if not team_id:
+            continue
         counts = _economy_counts(eco)
         buckets["economy"].append(
             {
-                "fact_key": fact_key(match_id, team_id or tag),
                 "vlr_match_id": match_id,
                 "vlr_event_id": event_id,
                 "match_date": match_date,
