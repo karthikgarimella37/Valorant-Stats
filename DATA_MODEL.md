@@ -634,8 +634,9 @@ Every fact, in this order at the ends:
 | `update_date` | `TIMESTAMPTZ` | Last upsert                 |
 
 
-All fact grain keys are TEXT source ids/names (`vlr_match_id`, `player_name`, …).  
-`map_game_number` and `round_number` are integers (degenerate), not dims.
+All fact grain keys are TEXT source ids (`vlr_match_id`, `vlr_team_id`, `vlr_player_id`, …).  
+`map_game_number` and `round_number` are integers (degenerate), not dims.  
+Upsert is a **composite unique** on those grain columns — not a concatenated `fact_key` string.
 
 ---
 
