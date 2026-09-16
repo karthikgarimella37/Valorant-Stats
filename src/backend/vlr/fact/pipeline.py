@@ -245,11 +245,11 @@ def load_one_fact_table(
         names = ", ".join(item.table for item in FACT_SPECS)
         raise ValueError(f"Unknown fact table {table!r}. Choose one of: {names}")
     root = _root(repo_root)
+    connector = SupabaseConnector()
     if apply_schema:
         apply_dim_schema(root, spec.sql_name, spec.table, spec.types)
-        connector = SupabaseConnector()
-        _retire_concat_key(connector, spec.table)
         _ensure_grain_unique(connector, spec)
+    _retire_concat_key(connector, spec.table)
     if use_copy:
         return _copy_one_table(spec, root, batch_size=batch_size, max_cpu_pct=max_cpu_pct)
     return _load_one_table(
