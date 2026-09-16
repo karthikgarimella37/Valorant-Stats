@@ -93,6 +93,17 @@ def _regions() -> list[str] | None:
     return None
 
 
+def catalog_rotator_regions() -> list[str]:
+    """One region is enough for rare kit catalogs; extra REST APIs cost money."""
+    raw = os.getenv("VLR_CATALOG_ROTATOR_REGIONS", "").strip().strip("\"'")
+    if raw:
+        return [part.strip().strip("\"'") for part in raw.split(",") if part.strip().strip("\"'")]
+    all_regions = _regions()
+    if all_regions:
+        return [all_regions[0]]
+    return ["us-east-1"]
+
+
 class VlrIpRotator:
     """
     Process-wide ApiGateway for a single site (default https://www.vlr.gg).
