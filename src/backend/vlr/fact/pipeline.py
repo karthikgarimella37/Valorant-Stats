@@ -72,6 +72,9 @@ def _fill_null_grain_ids(connector: SupabaseConnector, spec: FactSpec) -> None:
     partition = ", ".join(coalesced.get(col, col) for col in spec.unique_cols)
     sets = ", ".join(f"{col} = COALESCE(NULLIF(BTRIM({col}), ''), '-1')" for col in cols)
     where = " OR ".join(f"{col} IS NULL OR BTRIM({col}) = ''" for col in cols)
+    dup_where = " OR ".join(
+        f"{col} IS NULL OR BTRIM({col}) = '' OR {col} = '-1'" for col in cols
+    )
     with connector._connect() as conn:
         with conn.cursor() as cur:
             cur.execute("SET statement_timeout = '10min'")
