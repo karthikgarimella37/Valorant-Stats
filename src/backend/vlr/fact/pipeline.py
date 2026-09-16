@@ -20,7 +20,7 @@ from backend.vlr.fact.util import REPO_ROOT, fact_jsonl_path, facts_dir
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_LOAD_WORKERS = 8
+DEFAULT_LOAD_WORKERS = 1
 
 
 def _root(repo_root: Path | None) -> Path:
