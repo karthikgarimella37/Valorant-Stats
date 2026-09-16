@@ -3,7 +3,7 @@
 > Session-agnostic source of truth. Updated by agents via the `session-continuity` skill. Commit and push this file so every new Cursor chat starts with current context.
 
 **Last updated:** 2026-09-15  
-**Updated by:** dim_maps + richer dim_agents; catalog HTTP via AWS rotator
+**Updated by:** fix vlr_maps CardinalityViolation on duplicate The Range
 
 ---
 
