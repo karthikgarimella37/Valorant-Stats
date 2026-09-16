@@ -368,6 +368,7 @@ def load_maps(rows: list[dict[str, Any]] | None = None, repo_root: Path | None =
                 if isinstance(obj, dict):
                     rows.append(obj)
         stamp_rows(rows)
+    rows = unique_map_rows(rows)
     for row in rows:
         for key in JSON_COLS:
             if not isinstance(row.get(key), str):
