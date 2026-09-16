@@ -194,7 +194,13 @@ def _load_one_table(spec: FactSpec, root: Path) -> tuple[str, int]:
     return spec.table, count
 
 
-def _copy_one_table(spec: FactSpec, root: Path) -> tuple[str, int]:
+def _copy_one_table(
+    spec: FactSpec,
+    root: Path,
+    *,
+    batch_size: int = 5000,
+    max_cpu_pct: int = 60,
+) -> tuple[str, int]:
     """COPY one empty-or-append fact jsonl. Fails if grain keys already exist."""
     rows = _read_fact_jsonl(spec, root)
     if not rows:
@@ -205,12 +211,22 @@ def _copy_one_table(spec: FactSpec, root: Path) -> tuple[str, int]:
         schema="vlr",
         table=spec.table,
         columns=spec.columns,
+        batch_size=batch_size,
+        max_cpu_pct=max_cpu_pct,
     )
     logger.info("[facts] Copy done table=%s rows=%s", spec.table, count)
     return spec.table, count
 
 
-def load_one_fact_table(table: str, repo_root: Path | None = None, *, use_copy: bool = True) -> tuple[str, int]:
+def load_one_fact_table(
+    table: str,
+    repo_root: Path | None = None,
+    *,
+    use_copy: bool = True,
+    apply_schema: bool = True,
+    batch_size: int = 5000,
+    max_cpu_pct: int = 60,
+) -> tuple[str, int]:
     """Schema for one fact table, then COPY (default) or upsert that jsonl only."""
     load_project_env(repo_root)
     spec = next((item for item in FACT_SPECS if item.table == table), None)
@@ -218,12 +234,13 @@ def load_one_fact_table(table: str, repo_root: Path | None = None, *, use_copy: 
         names = ", ".join(item.table for item in FACT_SPECS)
         raise ValueError(f"Unknown fact table {table!r}. Choose one of: {names}")
     root = _root(repo_root)
-    apply_dim_schema(root, spec.sql_name, spec.table, spec.types)
-    connector = SupabaseConnector()
-    _retire_concat_key(connector, spec.table)
-    _ensure_grain_unique(connector, spec)
+    if apply_schema:
+        apply_dim_schema(root, spec.sql_name, spec.table, spec.types)
+        connector = SupabaseConnector()
+        _retire_concat_key(connector, spec.table)
+        _ensure_grain_unique(connector, spec)
     if use_copy:
-        return _copy_one_table(spec, root)
+        return _copy_one_table(spec, root, batch_size=batch_size, max_cpu_pct=max_cpu_pct)
     return _load_one_table(spec, root)
 
 
