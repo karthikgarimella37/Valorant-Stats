@@ -339,7 +339,33 @@ def _hotkey_row(
     return fallback
 
 
-def _release_date(api_agent: dict[str, Any], lp: dict[str, Any]) -> str | None:
+def _slot_row(abilities: list[dict[str, Any]], slot: str, hotkey: str) -> dict[str, Any] | None:
+    """Prefer the live valorant-api slot so Harbor Q/E follow the current kit."""
+    for row in abilities:
+        if text_or_none(row.get("api_slot")) == slot:
+            return row
+    kind = "Ultimate" if slot == "Ultimate" else ("Signature" if slot == "Ability2" else None)
+    return _hotkey_row(abilities, hotkey, kind=kind)
+
+
+def flatten_kit_columns(abilities: list[dict[str, Any]]) -> dict[str, Any]:
+    """C/Q buy costs, E always 0 (signature), X ult orbs — from live slots."""
+    abilities = _apply_live_slots(abilities)
+    c_row = _slot_row(abilities, "Grenade", "C")
+    q_row = _slot_row(abilities, "Ability1", "Q")
+    e_row = _slot_row(abilities, "Ability2", "E")
+    x_row = _slot_row(abilities, "Ultimate", "X")
+    return {
+        "ability_c_name": (c_row or {}).get("name"),
+        "ability_c_cost": (c_row or {}).get("cost_credits"),
+        "ability_q_name": (q_row or {}).get("name"),
+        "ability_q_cost": (q_row or {}).get("cost_credits"),
+        "ability_e_name": (e_row or {}).get("name"),
+        "ability_e_cost": 0 if e_row else None,
+        "ultimate_name": (x_row or {}).get("name"),
+        "ultimate_orbs": (x_row or {}).get("ultimate_orbs"),
+        "abilities_json": abilities,
+    }
     """Prefer Liquipedia; valorant-api uses 1970-01-01 for launch roster."""
     lp_date = text_or_none(lp.get("release_date"))
     if lp_date:
