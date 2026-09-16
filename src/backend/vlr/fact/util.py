@@ -10,6 +10,8 @@ from backend.vlr.field_maps import PERFORMANCE_ADV_KEYS
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 
+UNKNOWN_ID = "-1"
+
 WIN_METHOD_CODES = {
     "elim": 1,
     "elimination": 1,
