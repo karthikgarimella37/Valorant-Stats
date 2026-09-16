@@ -360,7 +360,7 @@ def _slot_row(abilities: list[dict[str, Any]], slot: str, hotkey: str) -> dict[s
 
 def flatten_kit_columns(abilities: list[dict[str, Any]]) -> dict[str, Any]:
     """C/Q buy costs, E always 0 (signature), X ult orbs — from live slots."""
-    abilities = _apply_live_slots(abilities)
+    abilities = _drop_stale_lp_dupes(_apply_live_slots(abilities))
     c_row = _slot_row(abilities, "Grenade", "C")
     q_row = _slot_row(abilities, "Ability1", "Q")
     e_row = _slot_row(abilities, "Ability2", "E")
