@@ -298,8 +298,8 @@ def parse_match_facts(
                     "map_name": map_name,
                     "map_game_number": map_game_number,
                     "round_number": round_number,
-                    "winning_vlr_team_id": winning_team_id,
-                    "losing_vlr_team_id": other_team_id(winning_team_id, team_1_id, team_2_id),
+                    "winning_vlr_team_id": coalesce_id(winning_team_id),
+                    "losing_vlr_team_id": coalesce_id(other_team_id(winning_team_id, team_1_id, team_2_id)),
                     "is_attack_win": side in {"t", "attack", "atk"},
                     "win_method_code": win_method_code(round_row.get("method")),
                 }
