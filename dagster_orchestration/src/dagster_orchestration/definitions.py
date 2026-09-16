@@ -491,11 +491,21 @@ def dims_weapons(context: AssetExecutionContext) -> dict[str, int]:
 
 @asset(group_name="vlr_seed")
 def dims_agents(context: AssetExecutionContext) -> dict[str, int]:
-    """Kit catalog: valorant-api.com + Liquipedia costs. Rematerialize when Riot ships a new agent."""
-    context.log.info("=== STEP dims_agents: valorant-api.com + liquipedia AbilityCard ===")
+    """Kit catalog: valorant-api.com + Liquipedia AbilityCard via AWS rotator."""
+    context.log.info("=== STEP dims_agents: valorant-api + liquipedia via AWS rotator ===")
     counts = run_agents(REPO_ROOT)
     context.add_output_metadata({"row_counts": MetadataValue.json(counts)})
     context.log.info("Agents catalog upserted=%s", counts)
+    return counts
+
+
+@asset(group_name="vlr_seed")
+def dims_maps(context: AssetExecutionContext) -> dict[str, int]:
+    """Map catalog: valorant-api radar x/y + Liquipedia location/earth via AWS rotator."""
+    context.log.info("=== STEP dims_maps: valorant-api + liquipedia via AWS rotator ===")
+    counts = run_maps(REPO_ROOT)
+    context.add_output_metadata({"row_counts": MetadataValue.json(counts)})
+    context.log.info("Maps catalog upserted=%s", counts)
     return counts
 
 
