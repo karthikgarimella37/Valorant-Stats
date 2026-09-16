@@ -212,6 +212,7 @@ def _copy_one_table(
     *,
     batch_size: int = 1000,
     max_cpu_pct: int = 60,
+    min_sleep_sec: float = 4.0,
 ) -> tuple[str, int]:
     """COPY one empty-or-append fact jsonl. Fails if grain keys already exist."""
     rows = _read_fact_jsonl(spec, root)

@@ -52,6 +52,7 @@ def upsert_dim_rows(
     batch_size: int = 1000,
     on_conflict: str = "update",
     max_cpu_pct: int | None = None,
+    min_sleep_sec: float = 0.0,
 ) -> int:
     """Batch upsert on one column or a composite unique key; keep row_number on re-run."""
     if not rows:
