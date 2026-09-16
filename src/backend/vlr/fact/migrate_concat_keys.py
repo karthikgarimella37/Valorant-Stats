@@ -50,6 +50,12 @@ def _table_has_rows(connector: SupabaseConnector, table: str) -> bool:
     return bool(row and row[0])
 
 
+def _jsonl_has_rows(root: Path, stem: str) -> bool:
+    """True when this fact jsonl exists and is not empty."""
+    path = fact_jsonl_path(root, stem)
+    return path.exists() and path.stat().st_size > 0
+
+
 def load_still_running(connector: SupabaseConnector, root: Path) -> bool:
     """True until every non-empty fact jsonl has rows in the warehouse and inserts have stopped."""
     active = _active_fact_queries(connector)
