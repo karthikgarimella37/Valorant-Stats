@@ -1,4 +1,4 @@
-"""Liquipedia Valorant MediaWiki API — ability costs live in AbilityCard wikitext."""
+"""Liquipedia Valorant MediaWiki API via AWS IP rotator (AbilityCard + Infobox)."""
 
 from __future__ import annotations
 
@@ -8,18 +8,17 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-import requests
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
+from backend.api_connectors.rotating_http import rotating_session
 
 logger = logging.getLogger(__name__)
 
 BASE_URL = "https://liquipedia.net/valorant/api.php"
+SITE = "https://liquipedia.net"
 USER_AGENT = "Valorant-Stats/1.0 (esports warehouse catalog; gzip MediaWiki API)"
 
 
 class LiquipediaValorantConnector:
-    """Fetch agent wikitext so we can parse credit costs and ult orbs (not on valorant-api.com)."""
+    """Fetch agent/map wikitext through AWS so Liquipedia never sees the host IP."""
 
     def __init__(
         self,
@@ -37,16 +36,13 @@ class LiquipediaValorantConnector:
         )
         self._gate = threading.Lock()
         self._last_start = 0.0
-        self.session = requests.Session()
-        retry = Retry(total=3, backoff_factor=0.8, status_forcelist=(500, 502, 503, 504))
-        adapter = HTTPAdapter(max_retries=retry)
-        self.session.mount("https://", adapter)
-        self.session.headers.update(
-            {
+        self.session = rotating_session(
+            SITE,
+            headers={
                 "User-Agent": USER_AGENT,
                 "Accept": "application/json",
                 "Accept-Encoding": "gzip",
-            }
+            },
         )
 
     def _wait_turn(self) -> None:
@@ -58,10 +54,10 @@ class LiquipediaValorantConnector:
             self._last_start = time.monotonic()
 
     def get_page_wikitext(self, title: str) -> str | None:
-        """One agent page as wikitext (Infobox + AbilityCard)."""
+        """One agent or map page as wikitext (Infobox + AbilityCard / Quote)."""
         for attempt in range(1, 6):
             self._wait_turn()
-            logger.info("[liquipedia] GET parse page=%s attempt=%s", title, attempt)
+            logger.info("[liquipedia] GET parse page=%s attempt=%s via_rotator=1", title, attempt)
             resp = self.session.get(
                 BASE_URL,
                 params={"action": "parse", "page": title, "prop": "wikitext", "format": "json"},
@@ -90,11 +86,16 @@ class LiquipediaValorantConnector:
         return None
 
     def get_pages_wikitext(self, titles: list[str]) -> dict[str, str]:
-        """Fetch agent pages. Serial unless VLR_LIQUIPEDIA_WORKERS > 1."""
+        """Fetch pages. Serial unless VLR_LIQUIPEDIA_WORKERS > 1 (Liquipedia 429s)."""
         out: dict[str, str] = {}
         if not titles:
             return out
-        logger.info("[liquipedia] Fetch pages=%s workers=%s interval=%s", len(titles), self.max_workers, self.interval_sec)
+        logger.info(
+            "[liquipedia] Fetch pages=%s workers=%s interval=%s via_rotator=1",
+            len(titles),
+            self.max_workers,
+            self.interval_sec,
+        )
         if self.max_workers <= 1:
             for done, title in enumerate(titles, start=1):
                 try:
