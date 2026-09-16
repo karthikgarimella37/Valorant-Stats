@@ -44,23 +44,10 @@ def _active_fact_queries(connector: SupabaseConnector) -> int:
     return int(row[0]) if row else 0
 
 
-def _live_tuples(connector: SupabaseConnector, table: str) -> int:
-    """Estimator so wait does not COUNT(*) a 5M-row table every poll."""
-    row = connector.fetch_one(
-        """
-        SELECT COALESCE(n_live_tup, 0)
-        FROM pg_stat_user_tables
-        WHERE schemaname = 'vlr' AND relname = %s
-        """,
-        (table,),
-    )
-    return int(row[0]) if row else 0
-
-
-def _jsonl_has_rows(root: Path, stem: str) -> bool:
-    """True when this fact jsonl exists and is not empty."""
-    path = fact_jsonl_path(root, stem)
-    return path.exists() and path.stat().st_size > 0
+def _table_has_rows(connector: SupabaseConnector, table: str) -> bool:
+    """Cheap existence check so wait does not COUNT(*) large facts."""
+    row = connector.fetch_one(f"SELECT EXISTS (SELECT 1 FROM vlr.{table} LIMIT 1)")
+    return bool(row and row[0])
 
 
 def load_still_running(connector: SupabaseConnector, root: Path) -> bool:
@@ -73,7 +60,7 @@ def load_still_running(connector: SupabaseConnector, root: Path) -> bool:
     for spec in FACT_SPECS:
         if not _jsonl_has_rows(root, spec.stem):
             continue
-        if _live_tuples(connector, spec.table) <= 0:
+        if not _table_has_rows(connector, spec.table):
             pending.append(spec.table)
     if pending:
         logger.info("[migrate] Wait tables with jsonl but no rows yet=%s", pending)
@@ -84,17 +71,21 @@ def load_still_running(connector: SupabaseConnector, root: Path) -> bool:
 def wait_for_load(connector: SupabaseConnector, root: Path, *, idle_sec: int, poll_sec: int) -> None:
     """Block until the in-flight concat load is finished, then idle a bit to avoid a jsonl-read gap."""
     logger.info("[migrate] Wait start idle_sec=%s poll_sec=%s", idle_sec, poll_sec)
-    while load_still_running(connector, root):
-        time.sleep(poll_sec)
-    logger.info("[migrate] Warehouse looks complete; idle %ss to confirm load exited", idle_sec)
-    deadline = time.monotonic() + idle_sec
-    while time.monotonic() < deadline:
-        if load_still_running(connector, root):
-            logger.info("[migrate] Load still moving; reset idle wait")
-            wait_for_load(connector, root, idle_sec=idle_sec, poll_sec=poll_sec)
+    while True:
+        while load_still_running(connector, root):
+            time.sleep(poll_sec)
+        logger.info("[migrate] Warehouse looks complete; idle %ss to confirm load exited", idle_sec)
+        deadline = time.monotonic() + idle_sec
+        interrupted = False
+        while time.monotonic() < deadline:
+            if load_still_running(connector, root):
+                logger.info("[migrate] Load still moving; reset idle wait")
+                interrupted = True
+                break
+            time.sleep(min(poll_sec, 15))
+        if not interrupted:
+            logger.info("[migrate] Wait done")
             return
-        time.sleep(min(poll_sec, 15))
-    logger.info("[migrate] Wait done")
 
 
 def _backfill_player_ids(connector: SupabaseConnector, root: Path) -> None:
