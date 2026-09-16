@@ -197,6 +197,7 @@ data/vlr/watermarks.json                # incremental fetch cursor
 - Catalog HTTP (valorant-api.com, liquipedia.net, valorant.fandom.com) also uses AWS API Gateway (`rotating_session`). Never the host IP.
 - Every public extract/connector function: docstring with **why** + process logs when the function runs a real pipeline step.
 - Large multi-record fetches **must** use a worker pool unless a written comment explains why serial is required.
+- Fact upsert keys are a **composite unique** on the grain columns (`ON CONFLICT (vlr_match_id, vlr_team_id, …)`). Do not concatenate keys into one `fact_key` string.
 
 ### Naming examples
 - `RibsConnector.fetch_resource_pages` — why: page through a list endpoint without loading all into one call site.
