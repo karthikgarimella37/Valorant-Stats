@@ -640,6 +640,7 @@ Run extract + dbt from the **Dockerfile / compose**, not a laptop venv. Order:
 Jobs (existing names, source flip):
 
 - `vlr_star_schema_job` — **main daily** (events → matches → facts)
+- `vlr_facts` — parse `matches.jsonl` → `vlr.fact_*` (do not run until discussed)
 - `rib_gg_star_schema_job` — **overlay** replay/kills only
 
 Upsert rule: business key = VLR id. New row → next `row_number`. Never change `row_number`.
