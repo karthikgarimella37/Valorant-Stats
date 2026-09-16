@@ -206,6 +206,7 @@ SERIES_COLS = (
 SERIES_UNIQUE = ("vlr_match_id", "vlr_team_id")
 SERIES_TYPES = {
     **BASE_TYPES,
+    "fact_key": "TEXT",
     "vlr_team_id": "TEXT",
     "maps_won": "INTEGER",
     "maps_lost": "INTEGER",
