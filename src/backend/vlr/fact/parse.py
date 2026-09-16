@@ -130,7 +130,6 @@ def parse_match_facts(
     for action in parse_veto_actions(_s(row.get("map_vetos")) or _s(detail.get("map_vetos"))):
         buckets["vetos"].append(
             {
-                "fact_key": fact_key(match_id, action["action_order"]),
                 "vlr_match_id": match_id,
                 "vlr_event_id": event_id,
                 "match_date": match_date,
