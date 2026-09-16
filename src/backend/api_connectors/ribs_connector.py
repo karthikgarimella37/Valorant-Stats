@@ -43,7 +43,7 @@ class RibsSessionFactory:
         self.backoff_factor = backoff_factor
 
     def create(self) -> requests.Session:
-        session = requests.Session()
+        session = rotating_session(RIB_SITE)
         retry = Retry(
             total=self.total_retries,
             backoff_factor=self.backoff_factor,
@@ -51,8 +51,8 @@ class RibsSessionFactory:
             allowed_methods=["GET"],
         )
         adapter = HTTPAdapter(max_retries=retry)
-        session.mount("https://", adapter)
-        session.mount("http://", adapter)
+        # Retry wrapper is unused for outbound; rotator prefix handles https://be-prod.rib.gg.
+        session.mount(RIB_SITE, adapter)
         return session
 
 
