@@ -91,14 +91,16 @@ def template_fields_lines(block: str) -> dict[str, str]:
         body = body[2:]
     if body.endswith("}}"):
         body = body[:-2]
+    last_key: str | None = None
     for raw_line in body.splitlines()[1:]:
         line = raw_line.strip()
-        if not line.startswith("|") or "=" not in line:
-            continue
-        key, value = line[1:].split("=", 1)
-        key = key.strip().lower()
-        if key:
-            fields[key] = value.strip()
+        if line.startswith("|") and "=" in line:
+            key, value = line[1:].split("=", 1)
+            last_key = key.strip().lower()
+            if last_key:
+                fields[last_key] = value.strip()
+        elif last_key and line and not line.startswith("|"):
+            fields[last_key] = f"{fields[last_key]}\n{line}"
     return fields
 
 
