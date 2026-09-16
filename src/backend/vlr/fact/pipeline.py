@@ -179,7 +179,14 @@ def _read_fact_jsonl(spec: FactSpec, root: Path) -> list[dict[str, Any]]:
     return stamp_rows(rows)
 
 
-def _load_one_table(spec: FactSpec, root: Path) -> tuple[str, int]:
+def _load_one_table(
+    spec: FactSpec,
+    root: Path,
+    *,
+    on_conflict: str = "update",
+    batch_size: int = 1000,
+    max_cpu_pct: int | None = 60,
+) -> tuple[str, int]:
     """Upsert one fact jsonl onto its composite unique. Independent of other fact tables."""
     rows = _read_fact_jsonl(spec, root)
     if not rows:
@@ -189,6 +196,9 @@ def _load_one_table(spec: FactSpec, root: Path) -> tuple[str, int]:
         table=spec.table,
         columns=spec.columns,
         conflict_column=spec.unique_cols,
+        batch_size=batch_size,
+        on_conflict=on_conflict,
+        max_cpu_pct=max_cpu_pct,
     )
     logger.info("[facts] Load progress table=%s upserted=%s", spec.table, count)
     return spec.table, count
