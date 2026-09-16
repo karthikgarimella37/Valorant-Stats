@@ -1,10 +1,9 @@
-"""Load vlr.dim_agents kit catalog: valorant-api.com + Liquipedia ability costs."""
+"""Load vlr.dim_agents kit catalog: valorant-api.com + Liquipedia AbilityCard (AWS rotator)."""
 
 from __future__ import annotations
 
 import json
 import logging
-import re
 from pathlib import Path
 from typing import Any
 
@@ -13,11 +12,20 @@ from backend.api_connectors.valorant_api_connector import ValorantApiConnector
 from backend.config.env import load_project_env
 from backend.vlr.dim.load import apply_dim_schema, stamp_rows, upsert_dim_rows
 from backend.vlr.dim.util import canonical_agent_name, json_dumps
+from backend.vlr.dim.wikitext import as_int, extra_stat_lines, iter_templates, strip_wiki, template_fields, text_or_none
 
 logger = logging.getLogger(__name__)
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 LP_AGENT_URL = "https://liquipedia.net/valorant/{name}"
+
+# Standard Valorant binds when Liquipedia only stores the PC hotkey.
+CONSOLE_BINDS = {
+    "C": {"ps": "L1", "xbox": "LB"},
+    "Q": {"ps": "R1", "xbox": "RB"},
+    "E": {"ps": "Circle", "xbox": "B"},
+    "X": {"ps": "L1+R1", "xbox": "LB+RB"},
+}
 
 AGENT_COLS = (
     "agent_name",
@@ -26,7 +34,10 @@ AGENT_COLS = (
     "real_name",
     "country_name",
     "release_date",
+    "face_url",
     "image_url",
+    "bust_url",
+    "killfeed_portrait_url",
     "portrait_url",
     "role_icon_url",
     "valorant_api_uuid",
@@ -53,7 +64,10 @@ AGENT_TYPES = {
     "real_name": "TEXT",
     "country_name": "TEXT",
     "release_date": "TEXT",
+    "face_url": "TEXT",
     "image_url": "TEXT",
+    "bust_url": "TEXT",
+    "killfeed_portrait_url": "TEXT",
     "portrait_url": "TEXT",
     "role_icon_url": "TEXT",
     "valorant_api_uuid": "TEXT",
@@ -80,6 +94,25 @@ API_SLOT_TO_HOTKEY = {
     "Passive": "Passive",
 }
 
+_SKIP_STAT_KEYS = {
+    "name",
+    "image",
+    "hotkey",
+    "hotkeyps",
+    "hotkeyps5",
+    "hotkeyxbox",
+    "hotkey_ps",
+    "hotkey_xbox",
+    "ability",
+    "cost",
+    "ultimatecost",
+    "ultimate_cost",
+    "charges",
+    "uses",
+    "description",
+    "_extra_lines",
+}
+
 
 def _root(repo_root: Path | None) -> Path:
     """Resolve repo root so CLI and Dagster share one landing path."""
@@ -97,119 +130,62 @@ def apply_agents_schema(repo_root: Path | None = None) -> Path:
     return apply_dim_schema(_root(repo_root), "vlr_dim_agents.sql", "dim_agents", AGENT_TYPES)
 
 
-def _text(value: Any) -> str | None:
-    """Blank strings become null so upsert does not store empty kit fields."""
-    if value is None:
-        return None
-    text = str(value).strip()
-    return text or None
-
-
-def _strip_wiki(value: Any) -> str | None:
-    """Drop [[links]], {{templates}}, and '''bold''' from Infobox / AbilityCard text."""
-    text = _text(value)
-    if not text:
-        return None
-    text = re.sub(r"\[\[(?:[^|\]]*\|)?([^\]]+)\]\]", r"\1", text)
-    text = re.sub(r"\{\{[^}|]*\|([^}]+)\}\}", r"\1", text)
-    text = re.sub(r"\{\{[^}]+\}\}", " ", text)
-    text = text.replace("'''", "").replace("''", "")
-    text = re.sub(r"<[^>]+>", "", text)
-    text = re.sub(r"\s+", " ", text).strip()
-    return text or None
-
-
-def _as_int(value: Any) -> int | None:
-    """Credits/orbs from AbilityCard; Free/none map to 0."""
-    if value is None or value == "":
-        return None
-    text = str(value).strip()
-    if text.lower() in {"free", "none", "n/a", "-"}:
-        return 0
-    match = re.search(r"\d+", text.replace(",", ""))
-    if not match:
-        return None
-    return int(match.group(0))
-
-
-def _iter_templates(wikitext: str, name: str) -> list[str]:
-    """Yield raw {{Name ...}} blocks, including nested {{ }} inside AbilityCard."""
-    needle = "{{" + name.lower()
-    lower = wikitext.lower()
-    out: list[str] = []
-    i = 0
-    while True:
-        i = lower.find(needle, i)
-        if i < 0:
-            break
-        depth = 0
-        j = i
-        while j < len(wikitext) - 1:
-            if wikitext.startswith("{{", j):
-                depth += 1
-                j += 2
-                continue
-            if wikitext.startswith("}}", j):
-                depth -= 1
-                j += 2
-                if depth == 0:
-                    out.append(wikitext[i:j])
-                    i = j
-                    break
-                continue
-            j += 1
-        else:
-            break
-    return out
-
-
-def _template_fields(block: str) -> dict[str, str]:
-    """Parse |key=value fields, including several on one Infobox line."""
-    fields: dict[str, str] = {}
-    body = block.strip()
-    if body.startswith("{{"):
-        body = body[2:]
-    if body.endswith("}}"):
-        body = body[:-2]
-    for raw_line in body.splitlines()[1:]:
-        line = raw_line.strip()
-        if not line.startswith("|"):
-            continue
-        for part in line[1:].split("|"):
-            if "=" not in part:
-                continue
-            key, value = part.split("=", 1)
-            fields[key.strip().lower()] = value.strip()
-    return fields
+def _console_binds(hotkey: str | None, fields: dict[str, str]) -> tuple[str | None, str | None]:
+    """PC hotkey plus PS5 / Xbox from Liquipedia, else the standard Valorant mapping."""
+    ps = strip_wiki(fields.get("hotkeyps") or fields.get("hotkeyps5") or fields.get("hotkey_ps"))
+    xbox = strip_wiki(fields.get("hotkeyxbox") or fields.get("hotkey_xbox"))
+    defaults = CONSOLE_BINDS.get((hotkey or "").upper(), {})
+    return ps or defaults.get("ps"), xbox or defaults.get("xbox")
 
 
 def parse_liquipedia_agent(wikitext: str) -> dict[str, Any]:
-    """Infobox (real name, country, release) + AbilityCard costs/charges/hotkeys."""
+    """Infobox identity + full AbilityCard (costs, uses, windup, duration, cooldown, binds)."""
     info: dict[str, Any] = {}
-    boxes = _iter_templates(wikitext, "Infobox agent")
+    boxes = iter_templates(wikitext, "Infobox agent")
     if boxes:
-        fields = _template_fields(boxes[0])
-        info["real_name"] = _strip_wiki(fields.get("realname") or fields.get("real_name"))
-        info["country_name"] = _strip_wiki(fields.get("country") or fields.get("nationality"))
-        info["release_date"] = _text(fields.get("releasedate") or fields.get("release_date"))
-        info["role_name"] = _strip_wiki(fields.get("class"))
+        fields = template_fields(boxes[0])
+        info["real_name"] = strip_wiki(fields.get("realname") or fields.get("real_name"))
+        info["country_name"] = strip_wiki(fields.get("country") or fields.get("nationality"))
+        info["release_date"] = text_or_none(fields.get("releasedate") or fields.get("release_date"))
+        info["role_name"] = strip_wiki(fields.get("class"))
     cards: list[dict[str, Any]] = []
-    for block in _iter_templates(wikitext, "AbilityCard"):
-        fields = _template_fields(block)
-        name = _text(fields.get("name"))
+    for block in iter_templates(wikitext, "AbilityCard"):
+        fields = template_fields(block)
+        name = text_or_none(fields.get("name"))
         if not name:
             continue
-        kind = _text(fields.get("ability"))
-        hotkey = (_text(fields.get("hotkey")) or "").upper() or None
+        kind = text_or_none(fields.get("ability"))
+        hotkey = (text_or_none(fields.get("hotkey")) or "").upper() or None
+        extra = extra_stat_lines(fields.get("_extra_lines"))
+        stats: dict[str, str] = dict(extra)
+        for key, value in fields.items():
+            if key in _SKIP_STAT_KEYS or not value:
+                continue
+            cleaned = strip_wiki(value)
+            if cleaned:
+                stats[key] = cleaned
+        ps_bind, xbox_bind = _console_binds(hotkey, fields)
         cards.append(
             {
                 "name": name,
                 "kind": kind,
                 "hotkey": hotkey,
-                "cost_credits": _as_int(fields.get("cost")),
-                "ultimate_orbs": _as_int(fields.get("ultimatecost") or fields.get("ultimate_cost")),
-                "charges": _as_int(fields.get("charges")),
-                "description": _strip_wiki(fields.get("description")),
+                "hotkey_pc": hotkey,
+                "hotkey_ps": ps_bind,
+                "hotkey_xbox": xbox_bind,
+                "cost_credits": as_int(fields.get("cost")),
+                "ultimate_orbs": as_int(fields.get("ultimatecost") or fields.get("ultimate_cost")),
+                "uses": as_int(fields.get("uses") or fields.get("charges") or extra.get("uses")),
+                "charges": as_int(fields.get("charges") or extra.get("uses")),
+                "windup": strip_wiki(fields.get("windup") or extra.get("windup")),
+                "duration": strip_wiki(fields.get("duration") or extra.get("duration")),
+                "cooldown": strip_wiki(fields.get("cooldown") or extra.get("cooldown")),
+                "debuff": strip_wiki(fields.get("debuff") or extra.get("debuff")),
+                "regain": strip_wiki(fields.get("regain")),
+                "affects": strip_wiki(fields.get("affects")),
+                "description": strip_wiki(fields.get("description")),
+                "lp_image": text_or_none(fields.get("image")),
+                "stats": stats,
             }
         )
     info["cards"] = cards
@@ -222,14 +198,14 @@ def _api_ability_index(agent: dict[str, Any]) -> dict[str, dict[str, Any]]:
     for ability in agent.get("abilities") or []:
         if not isinstance(ability, dict):
             continue
-        name = _text(ability.get("displayName"))
+        name = text_or_none(ability.get("displayName"))
         if name:
             out[name.lower()] = ability
     return out
 
 
 def _merge_abilities(agent: dict[str, Any], lp: dict[str, Any]) -> list[dict[str, Any]]:
-    """Liquipedia costs + valorant-api icons/text; include Passive from the API only."""
+    """Liquipedia AbilityCard stats + valorant-api icons/text; include Passive from the API."""
     api_by_name = _api_ability_index(agent)
     merged: list[dict[str, Any]] = []
     seen: set[str] = set()
@@ -237,36 +213,69 @@ def _merge_abilities(agent: dict[str, Any], lp: dict[str, Any]) -> list[dict[str
         name = card["name"]
         api = api_by_name.get(name.lower()) or {}
         slot = API_SLOT_TO_HOTKEY.get(str(api.get("slot") or ""), card.get("hotkey"))
-        row = {
-            "hotkey": card.get("hotkey") or slot,
-            "kind": card.get("kind") or ("Ultimate" if card.get("ultimate_orbs") else None),
-            "name": name,
-            "cost_credits": card.get("cost_credits"),
-            "ultimate_orbs": card.get("ultimate_orbs"),
-            "charges": card.get("charges"),
-            "description": _text(api.get("description")) or card.get("description"),
-            "icon_url": _text(api.get("displayIcon")),
-            "api_slot": _text(api.get("slot")),
-        }
-        merged.append(row)
+        hotkey = card.get("hotkey") or slot
+        ps_bind, xbox_bind = card.get("hotkey_ps"), card.get("hotkey_xbox")
+        if not ps_bind or not xbox_bind:
+            defaults = CONSOLE_BINDS.get(str(hotkey or "").upper(), {})
+            ps_bind = ps_bind or defaults.get("ps")
+            xbox_bind = xbox_bind or defaults.get("xbox")
+        merged.append(
+            {
+                "hotkey": hotkey,
+                "hotkey_pc": hotkey,
+                "hotkey_ps": ps_bind,
+                "hotkey_xbox": xbox_bind,
+                "kind": card.get("kind") or ("Ultimate" if card.get("ultimate_orbs") else None),
+                "name": name,
+                "cost_credits": card.get("cost_credits"),
+                "ultimate_orbs": card.get("ultimate_orbs"),
+                "uses": card.get("uses"),
+                "charges": card.get("charges"),
+                "windup": card.get("windup"),
+                "duration": card.get("duration"),
+                "cooldown": card.get("cooldown"),
+                "debuff": card.get("debuff"),
+                "regain": card.get("regain"),
+                "affects": card.get("affects"),
+                "description": text_or_none(api.get("description")) or card.get("description"),
+                "icon_url": text_or_none(api.get("displayIcon")),
+                "lp_image": card.get("lp_image"),
+                "api_slot": text_or_none(api.get("slot")),
+                "stats": card.get("stats") or {},
+            }
+        )
         seen.add(name.lower())
     for ability in agent.get("abilities") or []:
         if not isinstance(ability, dict):
             continue
-        name = _text(ability.get("displayName"))
+        name = text_or_none(ability.get("displayName"))
         if not name or name.lower() in seen:
             continue
+        hotkey = API_SLOT_TO_HOTKEY.get(str(ability.get("slot") or ""), None)
+        defaults = CONSOLE_BINDS.get(str(hotkey or "").upper(), {})
         merged.append(
             {
-                "hotkey": API_SLOT_TO_HOTKEY.get(str(ability.get("slot") or ""), None),
-                "kind": _text(ability.get("slot")),
+                "hotkey": hotkey,
+                "hotkey_pc": hotkey,
+                "hotkey_ps": defaults.get("ps"),
+                "hotkey_xbox": defaults.get("xbox"),
+                "kind": text_or_none(ability.get("slot")),
                 "name": name,
                 "cost_credits": None,
                 "ultimate_orbs": None,
+                "uses": None,
                 "charges": None,
-                "description": _text(ability.get("description")),
-                "icon_url": _text(ability.get("displayIcon")),
-                "api_slot": _text(ability.get("slot")),
+                "windup": None,
+                "duration": None,
+                "cooldown": None,
+                "debuff": None,
+                "regain": None,
+                "affects": None,
+                "description": text_or_none(ability.get("description")),
+                "icon_url": text_or_none(ability.get("displayIcon")),
+                "lp_image": None,
+                "api_slot": text_or_none(ability.get("slot")),
+                "stats": {},
             }
         )
     return merged
@@ -282,17 +291,17 @@ def _hotkey_row(abilities: list[dict[str, Any]], hotkey: str) -> dict[str, Any] 
 
 def _release_date(api_agent: dict[str, Any], lp: dict[str, Any]) -> str | None:
     """Prefer Liquipedia; valorant-api uses 1970-01-01 for launch roster."""
-    lp_date = _text(lp.get("release_date"))
+    lp_date = text_or_none(lp.get("release_date"))
     if lp_date:
         return lp_date[:10]
-    raw = _text(api_agent.get("releaseDate"))
+    raw = text_or_none(api_agent.get("releaseDate"))
     if not raw or raw.startswith("1970-01-01"):
         return None
     return raw[:10]
 
 
 def format_agent_row(api_agent: dict[str, Any], lp: dict[str, Any]) -> dict[str, Any] | None:
-    """One dim_agents row: identity from valorant-api, costs from Liquipedia."""
+    """One dim_agents row: identity/face from valorant-api, AbilityCard stats from Liquipedia."""
     name = canonical_agent_name(api_agent.get("displayName"))
     if not name:
         return None
@@ -304,17 +313,21 @@ def format_agent_row(api_agent: dict[str, Any], lp: dict[str, Any]) -> dict[str,
     x_row = _hotkey_row(abilities, "X")
     tags = api_agent.get("characterTags")
     tags = tags if isinstance(tags, list) else []
+    face = text_or_none(api_agent.get("displayIcon"))
     return {
         "agent_name": name,
-        "role_name": _text(role.get("displayName")) or lp.get("role_name"),
-        "description": _text(api_agent.get("description")),
+        "role_name": text_or_none(role.get("displayName")) or lp.get("role_name"),
+        "description": text_or_none(api_agent.get("description")),
         "real_name": lp.get("real_name"),
         "country_name": lp.get("country_name"),
         "release_date": _release_date(api_agent, lp),
-        "image_url": _text(api_agent.get("displayIcon")),
-        "portrait_url": _text(api_agent.get("fullPortrait") or api_agent.get("fullPortraitV2")),
-        "role_icon_url": _text(role.get("displayIcon")),
-        "valorant_api_uuid": _text(api_agent.get("uuid")),
+        "face_url": face,
+        "image_url": face,
+        "bust_url": text_or_none(api_agent.get("bustPortrait")),
+        "killfeed_portrait_url": text_or_none(api_agent.get("killfeedPortrait")),
+        "portrait_url": text_or_none(api_agent.get("fullPortrait") or api_agent.get("fullPortraitV2")),
+        "role_icon_url": text_or_none(role.get("displayIcon")),
+        "valorant_api_uuid": text_or_none(api_agent.get("uuid")),
         "liquipedia_url": LP_AGENT_URL.format(name=name.replace(" ", "_")),
         "ability_c_name": (c_row or {}).get("name"),
         "ability_c_cost": (c_row or {}).get("cost_credits"),
@@ -330,10 +343,10 @@ def format_agent_row(api_agent: dict[str, Any], lp: dict[str, Any]) -> dict[str,
 
 
 def extract_agents(repo_root: Path | None = None) -> list[dict[str, Any]]:
-    """Fetch kit catalog (~30 agents) and land jsonl."""
+    """Fetch kit catalog (~30 agents) through AWS rotator and land jsonl."""
     load_project_env(repo_root)
     root = _root(repo_root)
-    logger.info("[agents] Extract start sources=valorant-api.com + liquipedia.net/valorant")
+    logger.info("[agents] Extract start sources=valorant-api.com + liquipedia.net via AWS rotator")
     api_agents = ValorantApiConnector().get_playable_agents()
     titles = [canonical_agent_name(a.get("displayName")) for a in api_agents]
     titles = [t for t in titles if t]
