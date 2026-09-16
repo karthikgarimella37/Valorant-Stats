@@ -6,9 +6,10 @@ import re
 from typing import Any
 
 STAT_LINE_RE = re.compile(r"'''([^':]+)(?::)?'''\s*(.*)$")
+# Lore coords use letters instead of seconds: 45°26'BF'N,12°20'Q'E
 COORD_RE = re.compile(
-    r"(\d+)°\s*(\d+)['′]\s*(?:(\d+|[AZ])[\"″])?\s*([NS])[, ]+\s*"
-    r"(\d+)°\s*(\d+)['′]\s*(?:(\d+|[AZ])[\"″])?\s*([EW])",
+    r"(\d+)°\s*(\d+)['′]\s*(?:([0-9A-Za-z]+)[\"′″']?)?\s*([NS])\s*,?\s*"
+    r"(\d+)°\s*(\d+)['′]\s*(?:([0-9A-Za-z]+)[\"′″']?)?\s*([EW])",
     re.I,
 )
 
