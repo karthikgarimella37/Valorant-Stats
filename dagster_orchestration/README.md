@@ -70,7 +70,8 @@ Job: `vlr_dims`
 - `dims_static` — `dim_vct_regions`, `dim_regions`, `dim_economy`
 - `dims_from_landings` — `dim_maps`, thin `dim_agents` names, `dim_country`, `dim_teams`, `dim_players` from `events.jsonl` + `matches.jsonl`
 - `dims_weapons` — rib.gg `/v1/weapons` into `dim_weapons`
-- `dims_agents` — valorant-api.com kit + Liquipedia AbilityCard costs into `dim_agents`
+- `dims_agents` — valorant-api.com kit + Liquipedia AbilityCard into `dim_agents` (AWS rotator)
+- `dims_maps` — valorant-api.com radar + Liquipedia Infobox map into `dim_maps` (AWS rotator)
 
 ```bash
 cd dagster_orchestration
