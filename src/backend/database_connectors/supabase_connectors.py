@@ -458,8 +458,9 @@ class SupabaseConnector:
         columns: tuple[str, ...] | list[str],
         batch_size: int = 5000,
         max_cpu_pct: int = 60,
+        min_sleep_sec: float = 4.0,
     ) -> int:
-        """Append rows with COPY. Sleeps after each batch so server work stays near max_cpu_pct."""
+        """Append rows with COPY. Sleeps after each batch so average load stays under max_cpu_pct."""
         import csv
         import time
 
