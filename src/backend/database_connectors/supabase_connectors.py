@@ -425,9 +425,10 @@ class SupabaseConnector:
         schema: str,
         table: str,
         columns: tuple[str, ...] | list[str],
-        batch_size: int = 20000,
+        batch_size: int = 5000,
+        max_cpu_pct: int = 60,
     ) -> int:
-        """Append rows with COPY. One connection; caller must avoid unique collisions."""
+        """Append rows with COPY. Sleeps after each batch so server work stays near max_cpu_pct."""
         import csv
         import time
 
