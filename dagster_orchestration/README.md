@@ -100,6 +100,17 @@ cd dagster_orchestration
 uv run dagster job execute -m dagster_orchestration.definitions -j vlr_maps
 ```
 
+## Weapon catalog (rare rematerialize)
+
+Job: `vlr_weapons`
+
+Does **not** call vlr.gg. Fandom MediaWiki `Weapons` list + each gun page + file URLs, **through AWS IP rotator**. Re-run when Riot ships a new gun.
+
+```bash
+cd dagster_orchestration
+uv run dagster job execute -m dagster_orchestration.definitions -j vlr_weapons
+```
+
 ## Historical VLR jobs (Dagster)
 
 Jobs: `vlr_events` then `vlr_matches`. After matches ids exist, `vlr_teams` enriches `vlr.dim_teams` from `/v2/team`.
