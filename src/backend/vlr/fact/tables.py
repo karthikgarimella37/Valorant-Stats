@@ -14,8 +14,19 @@ BASE_TYPES = {
     **STAMP_TYPES,
 }
 
-# In-flight load owns this table; keep concat fact_key until that run finishes.
-FROZEN_FACT_TABLES = frozenset({"fact_player_match_performance"})
+# facts_load is mid-run: performance is writing now; these still upsert on fact_key after it.
+# Unfreeze all but performance after that job finishes, then drop concat keys.
+FROZEN_FACT_TABLES = frozenset(
+    {
+        "fact_player_match_performance",
+        "fact_round_results",
+        "fact_map_game_results",
+        "fact_series_team_result",
+        "fact_match_economy",
+        "fact_round_economy_detail",
+        "fact_map_veto",
+    }
+)
 
 OVERALL_COLS = (
     "vlr_match_id",
