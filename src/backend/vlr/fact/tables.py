@@ -145,6 +145,7 @@ ROUND_COLS = (
 ROUND_UNIQUE = ("vlr_match_id", "map_game_number", "round_number")
 ROUND_TYPES = {
     **BASE_TYPES,
+    "fact_key": "TEXT",
     "map_name": "TEXT",
     "map_game_number": "INTEGER",
     "round_number": "INTEGER",
