@@ -14,6 +14,7 @@ from backend.vlr.fact.util import (
     parse_veto_actions,
     played_won,
     remap_advanced,
+    resolve_team_id_from_tag,
     to_float,
     to_int,
     win_method_code,
