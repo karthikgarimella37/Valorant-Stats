@@ -110,3 +110,4 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 | 2026-09-15 | dim_maps location/bounds + fuller AbilityCard; catalog HTTP via AWS rotator |
 | 2026-09-15 | vlr_maps failed CardinalityViolation on two The Range rows; unique + skip training maps |
 | 2026-09-15 | dim_agents: E cost always 0; Harbor Q/E follow valorant-api slots not Liquipedia hotkeys |
+| 2026-09-15 | vlr_maps NameError `_SKIP_INFOBOX`; restored skip set; load from existing jsonl |
