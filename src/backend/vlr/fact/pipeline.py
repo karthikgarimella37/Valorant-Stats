@@ -9,8 +9,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 
-from psycopg2.errors import UniqueViolation
-
 from backend.config.env import load_project_env
 from backend.database_connectors.supabase_connectors import SupabaseConnector
 from backend.vlr.dim.load import apply_dim_schema, stamp_rows, upsert_dim_rows
