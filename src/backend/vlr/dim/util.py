@@ -54,6 +54,17 @@ def utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def canonical_agent_name(name: str | None) -> str | None:
+    """VLR scoreboards sometimes write KAYO; warehouse key is KAY/O."""
+    text = str(name or "").strip()
+    if not text:
+        return None
+    compact = text.upper().replace("-", "").replace(" ", "")
+    if compact in {"KAYO", "KAY/O"}:
+        return "KAY/O"
+    return text
+
+
 def format_project_date(value: date | datetime | None) -> str | None:
     """Render a calendar date as YYYY/M/D so logs, JSON, and warehouse text match."""
     if value is None:
