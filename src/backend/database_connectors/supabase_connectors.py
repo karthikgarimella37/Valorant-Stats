@@ -373,6 +373,7 @@ class SupabaseConnector:
         batch_size: int = 1000,
         on_conflict: str = "update",
         max_cpu_pct: int | None = None,
+        min_sleep_sec: float = 0.0,
     ) -> int:
         """Insert/update rows in batches; keep existing row_number on conflict (one col or composite)."""
         from psycopg2.extras import execute_values
