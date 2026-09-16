@@ -211,14 +211,14 @@ def parse_liquipedia_map(wikitext: str) -> dict[str, Any]:
             fields.get("location"),
         )
         info["coordinates_text"] = strip_wiki(fields.get("coordinates") or fields.get("coords"))
-        info["spike_sites"] = strip_wiki(fields.get("sites") or fields.get("spikesites") or fields.get("spike_sites"))
+        info["spike_sites"] = _spike_sites_from_fields(fields)
         feature_bits = [
             strip_wiki(fields.get("features")),
             strip_wiki(fields.get("teleporters")),
             strip_wiki(fields.get("doors")),
             strip_wiki(fields.get("mechanics")),
         ]
-        info["map_features"] = ", ".join(bit for bit in feature_bits if bit) or None
+        info["map_features"] = ", ".join(bit for bit in feature_bits if _useful_feature(bit)) or None
         info["release_date"] = text_or_none(fields.get("releasedate") or fields.get("release_date"))
         info["infobox"] = {
             key: strip_wiki(value)
