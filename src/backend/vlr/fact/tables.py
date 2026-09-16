@@ -83,7 +83,12 @@ PERFORMANCE_COLS = (
     *STAMP,
 )
 PERFORMANCE_TYPES = {
-    **KEY_TYPES,
+    **BASE_TYPES,
+    "map_name": "TEXT",
+    "map_game_number": "INTEGER",
+    "player_name": "TEXT",
+    "vlr_team_id": "TEXT",
+    "agent_name": "TEXT",
     "kast": "DOUBLE PRECISION",
     "hs_pct": "DOUBLE PRECISION",
     "first_kills": "INTEGER",
