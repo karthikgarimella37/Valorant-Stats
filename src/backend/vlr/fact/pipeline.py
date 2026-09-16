@@ -293,6 +293,7 @@ def load_one_fact_table(
     if apply_schema:
         apply_dim_schema(root, spec.sql_name, spec.table, spec.types)
     _retire_concat_key(connector, spec.table)
+    _fill_null_grain_ids(connector, spec)
     _ensure_grain_unique(connector, spec)
     if use_copy:
         return _copy_one_table(
