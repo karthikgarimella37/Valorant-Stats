@@ -204,28 +204,71 @@ def _api_ability_index(agent: dict[str, Any]) -> dict[str, dict[str, Any]]:
     return out
 
 
+def _name_key(name: str | None) -> str:
+    """Compare ability names so 'Nebula / Dissipate' still matches Liquipedia 'Nebula'."""
+    return "".join(ch for ch in (name or "").lower() if ch.isalnum())
+
+
+def _lp_card_for(name: str, cards: list[dict[str, Any]]) -> dict[str, Any]:
+    """Match Liquipedia stats by live ability name, never by stale hotkey."""
+    key = _name_key(name)
+    if not key:
+        return {}
+    for card in cards:
+        other = _name_key(card.get("name"))
+        if other == key or key.startswith(other) or other.startswith(key):
+            return card
+    return {}
+
+
+def _apply_live_slots(abilities: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Hotkeys follow valorant-api slots (current kit). E/signature is never bought."""
+    for row in abilities:
+        slot = text_or_none(row.get("api_slot"))
+        live = API_SLOT_TO_HOTKEY.get(slot or "")
+        if live:
+            row["hotkey"] = live
+            row["hotkey_pc"] = live
+            defaults = CONSOLE_BINDS.get(live, {})
+            row["hotkey_ps"] = row.get("hotkey_ps") or defaults.get("ps")
+            row["hotkey_xbox"] = row.get("hotkey_xbox") or defaults.get("xbox")
+        if live == "E" or slot == "Ability2":
+            row["cost_credits"] = 0
+            row["kind"] = "Signature"
+        elif live == "X" or slot == "Ultimate":
+            row["kind"] = "Ultimate"
+        elif live in {"C", "Q"}:
+            kind = text_or_none(row.get("kind"))
+            if not kind or kind.lower() in {"ability1", "ability2", "grenade", "signature"}:
+                row["kind"] = "Basic"
+        elif slot == "Passive":
+            row["kind"] = "Passive"
+            row["hotkey"] = row.get("hotkey") or "Passive"
+    return abilities
+
+
 def _merge_abilities(agent: dict[str, Any], lp: dict[str, Any]) -> list[dict[str, Any]]:
-    """Liquipedia AbilityCard stats + valorant-api icons/text; include Passive from the API."""
-    api_by_name = _api_ability_index(agent)
+    """Live binds from valorant-api slots; Liquipedia fills cost/stats by ability name."""
+    cards = [c for c in (lp.get("cards") or []) if isinstance(c, dict) and c.get("name")]
     merged: list[dict[str, Any]] = []
     seen: set[str] = set()
-    for card in lp.get("cards") or []:
-        name = card["name"]
-        api = api_by_name.get(name.lower()) or {}
-        slot = API_SLOT_TO_HOTKEY.get(str(api.get("slot") or ""), card.get("hotkey"))
-        hotkey = card.get("hotkey") or slot
-        ps_bind, xbox_bind = card.get("hotkey_ps"), card.get("hotkey_xbox")
-        if not ps_bind or not xbox_bind:
-            defaults = CONSOLE_BINDS.get(str(hotkey or "").upper(), {})
-            ps_bind = ps_bind or defaults.get("ps")
-            xbox_bind = xbox_bind or defaults.get("xbox")
+    for ability in agent.get("abilities") or []:
+        if not isinstance(ability, dict):
+            continue
+        name = text_or_none(ability.get("displayName"))
+        if not name:
+            continue
+        slot = text_or_none(ability.get("slot"))
+        hotkey = API_SLOT_TO_HOTKEY.get(slot or "", None)
+        card = _lp_card_for(name, cards)
+        defaults = CONSOLE_BINDS.get(str(hotkey or "").upper(), {})
         merged.append(
             {
-                "hotkey": hotkey,
-                "hotkey_pc": hotkey,
-                "hotkey_ps": ps_bind,
-                "hotkey_xbox": xbox_bind,
-                "kind": card.get("kind") or ("Ultimate" if card.get("ultimate_orbs") else None),
+                "hotkey": hotkey or card.get("hotkey"),
+                "hotkey_pc": hotkey or card.get("hotkey"),
+                "hotkey_ps": card.get("hotkey_ps") or defaults.get("ps"),
+                "hotkey_xbox": card.get("hotkey_xbox") or defaults.get("xbox"),
+                "kind": card.get("kind"),
                 "name": name,
                 "cost_credits": card.get("cost_credits"),
                 "ultimate_orbs": card.get("ultimate_orbs"),
@@ -237,48 +280,47 @@ def _merge_abilities(agent: dict[str, Any], lp: dict[str, Any]) -> list[dict[str
                 "debuff": card.get("debuff"),
                 "regain": card.get("regain"),
                 "affects": card.get("affects"),
-                "description": text_or_none(api.get("description")) or card.get("description"),
-                "icon_url": text_or_none(api.get("displayIcon")),
+                "description": text_or_none(ability.get("description")) or card.get("description"),
+                "icon_url": text_or_none(ability.get("displayIcon")),
                 "lp_image": card.get("lp_image"),
-                "api_slot": text_or_none(api.get("slot")),
+                "api_slot": slot,
                 "stats": card.get("stats") or {},
             }
         )
-        seen.add(name.lower())
-    for ability in agent.get("abilities") or []:
-        if not isinstance(ability, dict):
+        seen.add(_name_key(name))
+        if card.get("name"):
+            seen.add(_name_key(card.get("name")))
+    for card in cards:
+        if _name_key(card.get("name")) in seen:
             continue
-        name = text_or_none(ability.get("displayName"))
-        if not name or name.lower() in seen:
-            continue
-        hotkey = API_SLOT_TO_HOTKEY.get(str(ability.get("slot") or ""), None)
+        hotkey = card.get("hotkey")
         defaults = CONSOLE_BINDS.get(str(hotkey or "").upper(), {})
         merged.append(
             {
                 "hotkey": hotkey,
                 "hotkey_pc": hotkey,
-                "hotkey_ps": defaults.get("ps"),
-                "hotkey_xbox": defaults.get("xbox"),
-                "kind": text_or_none(ability.get("slot")),
-                "name": name,
-                "cost_credits": None,
-                "ultimate_orbs": None,
-                "uses": None,
-                "charges": None,
-                "windup": None,
-                "duration": None,
-                "cooldown": None,
-                "debuff": None,
-                "regain": None,
-                "affects": None,
-                "description": text_or_none(ability.get("description")),
-                "icon_url": text_or_none(ability.get("displayIcon")),
-                "lp_image": None,
-                "api_slot": text_or_none(ability.get("slot")),
-                "stats": {},
+                "hotkey_ps": card.get("hotkey_ps") or defaults.get("ps"),
+                "hotkey_xbox": card.get("hotkey_xbox") or defaults.get("xbox"),
+                "kind": card.get("kind"),
+                "name": card["name"],
+                "cost_credits": card.get("cost_credits"),
+                "ultimate_orbs": card.get("ultimate_orbs"),
+                "uses": card.get("uses"),
+                "charges": card.get("charges"),
+                "windup": card.get("windup"),
+                "duration": card.get("duration"),
+                "cooldown": card.get("cooldown"),
+                "debuff": card.get("debuff"),
+                "regain": card.get("regain"),
+                "affects": card.get("affects"),
+                "description": card.get("description"),
+                "icon_url": None,
+                "lp_image": card.get("lp_image"),
+                "api_slot": None,
+                "stats": card.get("stats") or {},
             }
         )
-    return merged
+    return _apply_live_slots(merged)
 
 
 def _hotkey_row(
