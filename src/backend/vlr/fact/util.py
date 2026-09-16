@@ -44,6 +44,70 @@ def fact_jsonl_path(repo_root: Path, stem: str) -> Path:
     return facts_dir(repo_root) / f"{stem}.jsonl"
 
 
+TOKEN_RE = re.compile(r"[a-z]+|\d+")
+
+
+def _fold_tag(value: Any) -> str:
+    """Lowercase ascii so KRÜ and kru match."""
+    if value is None:
+        return ""
+    text = unicodedata.normalize("NFKD", str(value).strip())
+    return "".join(ch for ch in text if not unicodedata.combining(ch)).lower()
+
+
+def team_match_keys(name: Any, tag: Any = None) -> set[str]:
+    """Tags like C9/EG/100T plus full names so economy cells can join team ids."""
+    keys: set[str] = set()
+    folded_name = _fold_tag(name)
+    folded_tag = _fold_tag(tag)
+    if folded_tag:
+        keys.add(folded_tag)
+        keys.add(re.sub(r"[^a-z0-9]", "", folded_tag))
+    if not folded_name:
+        return {k for k in keys if k}
+    keys.add(folded_name)
+    compact = re.sub(r"[^a-z0-9]", "", folded_name)
+    if compact:
+        keys.add(compact)
+    words = folded_name.split()
+    if words:
+        keys.add(re.sub(r"[^a-z0-9]", "", words[0]))
+    tokens = TOKEN_RE.findall(folded_name)
+    if tokens:
+        acro = "".join(tok if tok.isdigit() else tok[0] for tok in tokens)
+        keys.add(acro)
+        if len(tokens) == 1 and tokens[0].isalpha() and len(tokens[0]) >= 3:
+            keys.add(tokens[0][:3])
+        if compact and compact[-1].isdigit():
+            letters = "".join(ch for ch in compact if ch.isalpha())
+            digits = "".join(ch for ch in compact if ch.isdigit())
+            if letters:
+                keys.add(letters[0] + digits)
+    return {k for k in keys if k}
+
+
+def resolve_team_id_from_tag(
+    tag: Any,
+    team_1: dict[str, Any],
+    team_2: dict[str, Any],
+    team_1_id: str | None,
+    team_2_id: str | None,
+) -> str | None:
+    """Map an economy/veto tag onto team 1 or 2. None if it matches neither or both."""
+    needle = re.sub(r"[^a-z0-9]", "", _fold_tag(tag))
+    if not needle:
+        return None
+    keys_1 = team_match_keys(team_1.get("name"), team_1.get("tag") or team_1.get("short_name"))
+    keys_2 = team_match_keys(team_2.get("name"), team_2.get("tag") or team_2.get("short_name"))
+    hit_1 = needle in keys_1
+    hit_2 = needle in keys_2
+    if hit_1 and not hit_2:
+        return team_1_id
+    if hit_2 and not hit_1:
+        return team_2_id
+    return None
+
+
 def coalesce_id(value: Any) -> str:
     """Grain ids never null: COALESCE(NULLIF(trim(value), ''), '-1') marks anomalies."""
     if value is None:
