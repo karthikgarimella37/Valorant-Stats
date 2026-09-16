@@ -31,6 +31,7 @@ __all__ = [
     "extract_matches",
     "extract_players",
     "extract_teams",
+    "extract_weapons",
     "load_agents",
     "load_dates",
     "load_events",
