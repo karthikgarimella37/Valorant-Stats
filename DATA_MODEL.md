@@ -657,7 +657,7 @@ Composite unique: `(vlr_match_id, map_game_number, vlr_team_id, vlr_player_id)`.
 ### `fact_player_match_performance`
 
 Grain: **one player on one map game**. KAST, HS%, FK/FD. Multi-kills / 1vX / econ / plants / defuses from series `advanced_stats` **on map 1 only** (VLR does not split them per map).  
-**Still upserts on concatenated `fact_key` until the in-flight load finishes.** Then switch to the same composite as overall.
+Composite unique: `(vlr_match_id, map_game_number, vlr_team_id, vlr_player_id)` (same as overall).
 
 ### `fact_round_results`
 
