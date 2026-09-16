@@ -244,7 +244,7 @@ def _merge_abilities(agent: dict[str, Any], lp: dict[str, Any]) -> list[dict[str
             "cost_credits": card.get("cost_credits"),
             "ultimate_orbs": card.get("ultimate_orbs"),
             "charges": card.get("charges"),
-            "description": card.get("description") or _text(api.get("description")),
+            "description": _text(api.get("description")) or card.get("description"),
             "icon_url": _text(api.get("displayIcon")),
             "api_slot": _text(api.get("slot")),
         }
