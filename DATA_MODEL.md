@@ -566,7 +566,53 @@ All `*_id` columns on facts are FKs to `dim_*.row_number`.
 
 ## Facts
 
-### `fact_match_overall_stats` — Landed (parquet → `vlr`)
+Facts live in schema `vlr`. Grain keys are **TEXT source ids/names** (same pattern as dims), not `dim_*.row_number` FKs. dbt can join later. Besides keys: **metrics and booleans only**. Every table has `fact_key` (unique upsert), `row_number`, `insert_date`, `update_date`.
+
+Parse from `data/vlr/matches.jsonl` (`detail.maps`). Job `vlr_facts` (`facts_extract` → `facts_load`). **Do not run until we discuss.**
+
+### `fact_match_overall_stats` — **start here** (website)
+
+Grain: **one player on one map game**. Box score. This is the table most graphs read.
+
+### `fact_player_match_performance`
+
+Grain: **one player on one map game**. KAST, HS%, FK/FD. Multi-kills / 1vX / econ / plants / defuses from series `advanced_stats` **on map 1 only** (VLR does not split them per map).
+
+### `fact_round_results`
+
+Grain: **one round of one map game**. Winner team + `is_attack_win`. `win_method_code` is null on current `/v2` rounds.
+
+### `fact_map_game_results`
+
+Grain: **one team on one map game**. Rounds won/lost, T/CT half rounds, duration, map pick.
+
+### `fact_series_team_result`
+
+Grain: **one team on one series**. Maps won/lost, series winner.
+
+### `fact_match_economy`
+
+Grain: **one team on one series**. Pistol/eco/semi/full **played vs won** (`7 (4)` → played 7, won 4).
+
+### `fact_round_economy_detail`
+
+Grain: **one team on one round**. Bank/loadout when `maps[].round_economy` is present (often empty until economy-tab scrape is on the landing).
+
+### `fact_map_veto`
+
+Grain: **one veto action**. Ban / pick / decider from `map_vetos` text.
+
+### `fact_match_half_round_stats` — dbt view (later)
+
+Grain: team × map × attack/defense. Built from `fact_round_results`.
+
+### `fact_player_vs_player_kills` — later (rib)
+
+Grain: one kill. Not in VLR.
+
+See `LATER.md` for watermarks / economy dim / KG agent.
+
+---
 
 Grain: **one player on one map game**. Scoreboard totals.  
 **Sequence:** `seq_fact_match_overall_stats_row_number`  
