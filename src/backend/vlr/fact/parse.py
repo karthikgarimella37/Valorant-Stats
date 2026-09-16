@@ -181,8 +181,6 @@ def parse_match_facts(
             ("team1", team_1_id, t1_rounds, t2_rounds, t1_atk, t1_def, t1_ot),
             ("team2", team_2_id, t2_rounds, t1_rounds, t2_atk, t2_def, t2_ot),
         ):
-            if not team_id:
-                continue
             is_pick = bool(picked_by) and picked_by.lower() in {
                 (_s(team_1.get("name")) or "").lower() if side == "team1" else (_s(team_2.get("name")) or "").lower(),
                 (_s(team_1.get("tag")) or "").lower() if side == "team1" else (_s(team_2.get("tag")) or "").lower(),
