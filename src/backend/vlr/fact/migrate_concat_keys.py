@@ -134,22 +134,23 @@ def _backfill_player_ids(connector: SupabaseConnector, root: Path) -> None:
                     """
                 )
                 logger.info("[migrate] Backfill by team+ign table=%s rows=%s", table, cur.rowcount)
-                ign_pairs = list(lookup.by_ign.items())
-                if ign_pairs:
-                    cur.execute(
-                        """
-                        CREATE TEMP TABLE fact_player_ign_map (
-                            ign_key TEXT PRIMARY KEY,
-                            vlr_player_id TEXT NOT NULL
-                        )
-                        """
+            ign_pairs = list(lookup.by_ign.items())
+            if ign_pairs:
+                cur.execute(
+                    """
+                    CREATE TEMP TABLE fact_player_ign_map (
+                        ign_key TEXT PRIMARY KEY,
+                        vlr_player_id TEXT NOT NULL
                     )
-                    execute_values(
-                        cur,
-                        "INSERT INTO fact_player_ign_map (ign_key, vlr_player_id) VALUES %s",
-                        ign_pairs,
-                        page_size=1000,
-                    )
+                    """
+                )
+                execute_values(
+                    cur,
+                    "INSERT INTO fact_player_ign_map (ign_key, vlr_player_id) VALUES %s",
+                    ign_pairs,
+                    page_size=1000,
+                )
+                for table in PLAYER_ID_TABLES:
                     cur.execute(
                         f"""
                         UPDATE vlr.{table} AS t
@@ -160,7 +161,6 @@ def _backfill_player_ids(connector: SupabaseConnector, root: Path) -> None:
                         """
                     )
                     logger.info("[migrate] Backfill by unique ign table=%s rows=%s", table, cur.rowcount)
-                    cur.execute("DROP TABLE fact_player_ign_map")
         conn.commit()
     logger.info("[migrate] Player-id backfill done")
 
