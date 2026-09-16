@@ -12,7 +12,7 @@ from backend.api_connectors.liquipedia_connector import LiquipediaValorantConnec
 from backend.api_connectors.valorant_api_connector import ValorantApiConnector
 from backend.config.env import load_project_env
 from backend.vlr.dim.load import apply_dim_schema, stamp_rows, upsert_dim_rows
-from backend.vlr.dim.util import json_dumps, utc_now
+from backend.vlr.dim.util import canonical_agent_name, json_dumps
 
 logger = logging.getLogger(__name__)
 
