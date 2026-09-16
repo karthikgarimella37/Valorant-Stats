@@ -20,6 +20,7 @@ from backend.vlr.dim.agents import run_agents
 from backend.vlr.dim.dates import apply_dates_schema, load_dates, rows_from_dates_landing, seed_dates
 from backend.vlr.dim.from_landings import load_from_landings
 from backend.vlr.dim.historical import apply_events_schema, extract_events, load_events, rows_from_events_landing
+from backend.vlr.dim.maps import run_maps
 from backend.vlr.dim.matches import apply_matches_schema, extract_matches, load_matches
 from backend.vlr.dim.players import apply_players_schema, extract_players, load_players
 from backend.vlr.dim.static import load_static
