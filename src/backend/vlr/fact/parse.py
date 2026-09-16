@@ -58,7 +58,11 @@ def _economy_counts(row: dict[str, Any]) -> dict[str, int | None]:
     return out
 
 
-def parse_match_facts(row: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
+def parse_match_facts(
+    row: dict[str, Any],
+    *,
+    player_ids: PlayerIdLookup | None = None,
+) -> dict[str, list[dict[str, Any]]]:
     """One landing line → buckets keyed by jsonl stem. Skip list-only 429 stubs."""
     buckets: dict[str, list[dict[str, Any]]] = {
         "overall": [],
