@@ -13,6 +13,7 @@ from backend.config.env import load_project_env
 from backend.vlr.dim.load import apply_dim_schema, stamp_rows, upsert_dim_rows
 from backend.vlr.dim.util import json_dumps
 from backend.vlr.dim.wikitext import (
+    as_int,
     earth_from_text,
     iter_templates,
     parse_lat_lon,
