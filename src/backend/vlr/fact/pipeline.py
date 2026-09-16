@@ -162,12 +162,12 @@ def extract_facts(repo_root: Path | None = None) -> dict[str, int]:
     return counts
 
 
-def _load_one_table(spec: FactSpec, root: Path) -> tuple[str, int]:
-    """Upsert one fact jsonl onto its composite unique. Independent of other fact tables."""
+def _read_fact_jsonl(spec: FactSpec, root: Path) -> list[dict[str, Any]]:
+    """Load one fact jsonl into stamped rows. Empty file → empty list."""
     path = fact_jsonl_path(root, spec.stem)
     if not path.exists():
         logger.warning("[facts] Load skip missing jsonl table=%s path=%s", spec.table, path)
-        return spec.table, 0
+        return []
     rows: list[dict[str, Any]] = []
     with path.open() as handle:
         for line in handle:
@@ -176,7 +176,14 @@ def _load_one_table(spec: FactSpec, root: Path) -> tuple[str, int]:
             obj = json.loads(line)
             if isinstance(obj, dict):
                 rows.append(obj)
-    stamp_rows(rows)
+    return stamp_rows(rows)
+
+
+def _load_one_table(spec: FactSpec, root: Path) -> tuple[str, int]:
+    """Upsert one fact jsonl onto its composite unique. Independent of other fact tables."""
+    rows = _read_fact_jsonl(spec, root)
+    if not rows:
+        return spec.table, 0
     count = upsert_dim_rows(
         rows,
         table=spec.table,
@@ -185,6 +192,39 @@ def _load_one_table(spec: FactSpec, root: Path) -> tuple[str, int]:
     )
     logger.info("[facts] Load progress table=%s upserted=%s", spec.table, count)
     return spec.table, count
+
+
+def _copy_one_table(spec: FactSpec, root: Path) -> tuple[str, int]:
+    """COPY one empty-or-append fact jsonl. Fails if grain keys already exist."""
+    rows = _read_fact_jsonl(spec, root)
+    if not rows:
+        return spec.table, 0
+    logger.info("[facts] Copy start table=%s rows=%s", spec.table, len(rows))
+    count = SupabaseConnector().copy_rows(
+        rows,
+        schema="vlr",
+        table=spec.table,
+        columns=spec.columns,
+    )
+    logger.info("[facts] Copy done table=%s rows=%s", spec.table, count)
+    return spec.table, count
+
+
+def load_one_fact_table(table: str, repo_root: Path | None = None, *, use_copy: bool = True) -> tuple[str, int]:
+    """Schema for one fact table, then COPY (default) or upsert that jsonl only."""
+    load_project_env(repo_root)
+    spec = next((item for item in FACT_SPECS if item.table == table), None)
+    if spec is None:
+        names = ", ".join(item.table for item in FACT_SPECS)
+        raise ValueError(f"Unknown fact table {table!r}. Choose one of: {names}")
+    root = _root(repo_root)
+    apply_dim_schema(root, spec.sql_name, spec.table, spec.types)
+    connector = SupabaseConnector()
+    _retire_concat_key(connector, spec.table)
+    _ensure_grain_unique(connector, spec)
+    if use_copy:
+        return _copy_one_table(spec, root)
+    return _load_one_table(spec, root)
 
 
 def load_facts(repo_root: Path | None = None) -> dict[str, int]:
