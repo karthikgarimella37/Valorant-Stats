@@ -668,7 +668,7 @@ These read from the warehouse. Frontend not started.
 | Team profile | `dim_teams` + facts |
 | Event prize / standings / agents | `dim_events` + `fact_match_overall_stats` |
 | Map dashboard attack/defense | `fact_match_half_round_stats` |
-| Map-pick losses | `dim_matches` + `fact_match_overall_stats` |
+| Map-pick losses | `fact_map_veto` + `fact_map_game_results` |
 
 ---
 
