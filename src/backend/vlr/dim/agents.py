@@ -329,6 +329,26 @@ def _hotkey_row(
     return fallback
 
 
+def _drop_stale_lp_dupes(abilities: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Drop leftover Liquipedia cards already covered by a live valorant-api slot."""
+    slotted = [_name_key(row.get("name")) for row in abilities if row.get("api_slot")]
+    kept: list[dict[str, Any]] = []
+    for row in abilities:
+        if row.get("api_slot"):
+            kept.append(row)
+            continue
+        key = _name_key(row.get("name"))
+        if not key:
+            continue
+        if any(
+            key == other or (min(len(key), len(other)) >= 5 and (key.startswith(other) or other.startswith(key)))
+            for other in slotted
+        ):
+            continue
+        kept.append(row)
+    return kept
+
+
 def _slot_row(abilities: list[dict[str, Any]], slot: str, hotkey: str) -> dict[str, Any] | None:
     """Prefer the live valorant-api slot so Harbor Q/E follow the current kit."""
     for row in abilities:
