@@ -77,7 +77,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 - Pace knobs live in `src/config/.env` (`VLR_API_CONCURRENCY`, `VLR_MATCH_WORKERS`, `VLR_API_INTERVAL_SEC`); Dagster has no separate YAML for them
 - Inbound vlrggapi limiter: official image is **20 match-details/min per client IP**. Compose sets `VLR_RL_DISABLE=1` after rebuild
 - **API gaps:** Attack/Defend player stats; labeled 2K/1vX/ECON; prize points/note; match `event_id` on detail
-- rib.gg weapons: `be-prod.rib.gg` did not resolve from this host; rematerialize `dims_weapons` later
+- rib.gg weapons: `be-prod.rib.gg` did not resolve; `dim_weapons` now uses valorant.fandom.com instead
 
 ## Session log
 
