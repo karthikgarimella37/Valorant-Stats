@@ -124,11 +124,28 @@ def _num(raw: str | None) -> float | int | None:
 
 
 def _plain(raw: str | None) -> str | None:
-    """Infobox value without wiki markup or <br>."""
-    text = strip_wiki(raw)
-    if not text:
-        return None
-    return re.sub(r"\s+", " ", text.replace("<br>", " ").replace("<br/>", " ")).strip() or None
+    """Infobox value without wiki markup; keep spaces across <br> lines."""
+    text = (raw or "").replace("<br />", " ").replace("<br/>", " ").replace("<br>", " ")
+    return strip_wiki(text)
+
+
+def _damage_from_cell(raw: str | None) -> dict[str, Any]:
+    """Head/body/leg (or melee front/back) from an Infobox range cell."""
+    text = (raw or "").replace("<br />", "\n").replace("<br/>", "\n").replace("<br>", "\n")
+    clean = strip_wiki(text) or ""
+    out: dict[str, Any] = {}
+    for match in re.finditer(
+        r"(head|body|leg|front|back)\s*[-:]\s*(.+?)(?=(?:head|body|leg|front|back)\s*[-:]|$)",
+        clean,
+        re.I | re.S,
+    ):
+        key = match.group(1).lower()
+        value = re.sub(r"\s+", " ", match.group(2)).strip()
+        nums = [int(n) for n in re.findall(r"\d+", value)]
+        out[key] = nums[0] if len(nums) == 1 else value
+    if not out and text_or_none(clean):
+        out["raw"] = clean
+    return out
 
 
 def weapon_titles_from_list(wikitext: str) -> list[str]:
