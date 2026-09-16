@@ -274,15 +274,12 @@ def format_map_row(api_map: dict[str, Any], lp: dict[str, Any]) -> dict[str, Any
     features = lp.get("map_features")
     feature_list = [p.strip() for p in (features or "").split(",") if _useful_feature(p.strip())]
     spike = lp.get("spike_sites")
-    tactical = text_or_none(api_map.get("tacticalDescription"))
-    if not spike and tactical and "site" in tactical.lower():
-        spike = tactical.replace("Sites", "").replace("sites", "").strip()
-        if spike and " " not in spike:
-            spike = tactical.replace(" Sites", "").replace(" sites", "").strip()
-        if tactical.upper() in {"A/B SITES", "A/B"}:
-            spike = "A/B"
-        elif tactical.upper() in {"A/B/C SITES", "A/B/C"}:
+    if not spike:
+        tactical = (text_or_none(api_map.get("tacticalDescription")) or "").upper()
+        if "A/B/C" in tactical:
             spike = "A/B/C"
+        elif "A/B" in tactical:
+            spike = "A/B"
     return {
         "map_name": name,
         "country_name": lp.get("country_name"),
