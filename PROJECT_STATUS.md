@@ -2,8 +2,8 @@
 
 > Session-agnostic source of truth. Updated by agents via the `session-continuity` skill. Commit and push this file so every new Cursor chat starts with current context.
 
-**Last updated:** 2026-09-14  
-**Updated by:** dim_players from `/v2/player` (job `vlr_players`)
+**Last updated:** 2026-09-15  
+**Updated by:** dim_agents kit catalog (job `vlr_agents`)
 
 ---
 
@@ -13,7 +13,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 
 ## Current focus
 
-- Run job `vlr_players` after `vlr_teams` (full name, socials, current team, `teams_json` with leave dates)
+- Materialize job `vlr_agents` (kit catalog). Then `vlr_teams` schema+load, then `vlr_players` after vlrggapi rebuild
 
 ## Status
 
@@ -22,7 +22,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 | Overall | In progress | Events done. Match lists done. Match details still scraping |
 | Data sources | Validated | Self-hosted vlrggapi `/v2` via AWS IP rotator overlay |
 | Orchestration | In progress | Jobs `vlr_events`, `vlr_matches`, `vlr_teams`, `vlr_players` |
-| Dim tables | In progress | `vlr_teams` enriches orgs. `vlr_players` enriches people from `/v2/player` |
+| Dim tables | In progress | `vlr_teams` orgs. `vlr_players` people. `vlr_agents` kit catalog |
 | Fact tables | Blocked on matches | Parse `matches.jsonl` after details finish |
 | Frontend / viz | Not started | Graphs and dashboards listed in `Valorant API.md` |
 | Session process | Done | Status + standards markdown; always-on Cursor rules/skills; auto-commit hook |
@@ -47,6 +47,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 - [x] Job `vlr_dims`: seed vct/regions/economy; parse maps/agents/teams/players/country; rib weapons
 - [x] Job `vlr_teams` code: `/v2/team?q=profile` → `data/vlr/teams.jsonl` → upsert `vlr.dim_teams`
 - [x] Job `vlr_players` code: `/v2/player?q=profile` → `data/vlr/players.jsonl` → upsert `vlr.dim_players`
+- [x] Job `vlr_agents` code: valorant-api.com kit + Liquipedia AbilityCard costs → `data/vlr/dim_agents.jsonl` → upsert `vlr.dim_agents`
 
 ## Next up
 
@@ -55,6 +56,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 - [x] Optional no-API parse: unique teams/players from `events.jsonl` `teams_json`
 - [ ] Let `vlr_matches` finish; then upsert `vlr.dim_matches` and refetch empty-detail 429 rows
 - [ ] Parse facts from `matches.jsonl` (overall / rounds / performance / economy)
+- [ ] Materialize `vlr_agents` (one GET + ~30 Liquipedia pages; rematerialize when Riot ships a new agent)
 - [ ] Materialize `vlr_teams` (schema+load from existing `teams.jsonl` for roster/socials)
 - [ ] Materialize `vlr_players` (~28k `/v2/player` calls; rebuild vlrggapi first for twitter + team href ids)
 - [ ] Incremental extract via `vlr_watermarks` after historical
@@ -102,3 +104,4 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 | 2026-09-09 | match_load CardinalityViolation: duplicate vlr_match_id in one INSERT; load now unique |
 | 2026-09-14 | Job `vlr_dims` for remaining dims; weapons from rib.gg `/v1/weapons` |
 | 2026-09-14 | dim_players socials are `{twitter, twitch}` URL keys (null if missing) |
+| 2026-09-15 | dim_agents kit: valorant-api.com + Liquipedia costs; job `vlr_agents` |

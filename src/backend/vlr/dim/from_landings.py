@@ -9,43 +9,11 @@ from typing import Any
 
 from backend.config.env import load_project_env
 from backend.vlr.dim.load import apply_dim_schema, stamp_rows, upsert_dim_rows
-from backend.vlr.dim.util import events_jsonl_path, matches_jsonl_path
+from backend.vlr.dim.util import canonical_agent_name, events_jsonl_path, matches_jsonl_path
 
 logger = logging.getLogger(__name__)
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
-
-# VLR scoreboard has no agent role; fill known names so the dim is usable now.
-AGENT_ROLES: dict[str, str] = {
-    "Jett": "Duelist",
-    "Phoenix": "Duelist",
-    "Reyna": "Duelist",
-    "Raze": "Duelist",
-    "Yoru": "Duelist",
-    "Neon": "Duelist",
-    "Iso": "Duelist",
-    "Waylay": "Duelist",
-    "Sova": "Initiator",
-    "Breach": "Initiator",
-    "Skye": "Initiator",
-    "KAY/O": "Initiator",
-    "KAYO": "Initiator",
-    "Fade": "Initiator",
-    "Gekko": "Initiator",
-    "Tejo": "Initiator",
-    "Brimstone": "Controller",
-    "Omen": "Controller",
-    "Viper": "Controller",
-    "Astra": "Controller",
-    "Harbor": "Controller",
-    "Clove": "Controller",
-    "Sage": "Sentinel",
-    "Cypher": "Sentinel",
-    "Killjoy": "Sentinel",
-    "Chamber": "Sentinel",
-    "Deadlock": "Sentinel",
-    "Vyse": "Sentinel",
-}
 
 # VLR roster flags look like mod-us. Names are display labels, not ISO official names.
 FLAG_TO_COUNTRY: dict[str, str] = {
@@ -119,11 +87,11 @@ MAP_TYPES = {
     "insert_date": "TIMESTAMPTZ",
     "update_date": "TIMESTAMPTZ",
 }
-AGENT_COLS = ("agent_name", "role_name", "insert_date", "update_date")
+# Thin seed only. Job `vlr_agents` fills kit columns and must not be wiped here.
+AGENT_COLS = ("agent_name", "insert_date", "update_date")
 AGENT_TYPES = {
     "row_number": "BIGINT",
     "agent_name": "TEXT",
-    "role_name": "TEXT",
     "insert_date": "TIMESTAMPTZ",
     "update_date": "TIMESTAMPTZ",
 }
@@ -271,7 +239,7 @@ def collect_from_matches(repo_root: Path) -> tuple[list[dict[str, Any]], list[di
                 if map_name and map_name.lower() not in {"tba", "tbd", "n/a"}:
                     maps.add(map_name)
                 for player in _iter_map_players(game):
-                    agent = str(player.get("agent") or "").strip()
+                    agent = canonical_agent_name(player.get("agent"))
                     if agent:
                         agents.add(agent)
             if scanned % 25000 == 0:
@@ -290,9 +258,7 @@ def collect_from_matches(repo_root: Path) -> tuple[list[dict[str, Any]], list[di
         len(teams),
     )
     map_rows = stamp_rows([{"map_name": name} for name in sorted(maps)])
-    agent_rows = stamp_rows(
-        [{"agent_name": name, "role_name": AGENT_ROLES.get(name)} for name in sorted(agents)]
-    )
+    agent_rows = stamp_rows([{"agent_name": name} for name in sorted(agents)])
     return map_rows, agent_rows, teams
 
 

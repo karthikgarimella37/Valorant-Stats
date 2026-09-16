@@ -16,6 +16,7 @@ from backend.api_connectors.ribs_connector import RibsConnector
 from backend.config.env import load_project_env
 from backend.database_connectors.supabase_connectors import SupabaseConnector
 from backend.rib_gg.extract import RibExtractPipeline, landing_dir_for, read_ndjson
+from backend.vlr.dim.agents import run_agents
 from backend.vlr.dim.dates import apply_dates_schema, load_dates, rows_from_dates_landing, seed_dates
 from backend.vlr.dim.from_landings import load_from_landings
 from backend.vlr.dim.historical import apply_events_schema, extract_events, load_events, rows_from_events_landing
@@ -487,6 +488,16 @@ def dims_weapons(context: AssetExecutionContext) -> dict[str, int]:
     return counts
 
 
+@asset(group_name="vlr_seed")
+def dims_agents(context: AssetExecutionContext) -> dict[str, int]:
+    """Kit catalog: valorant-api.com + Liquipedia costs. Rematerialize when Riot ships a new agent."""
+    context.log.info("=== STEP dims_agents: valorant-api.com + liquipedia AbilityCard ===")
+    counts = run_agents(REPO_ROOT)
+    context.add_output_metadata({"row_counts": MetadataValue.json(counts)})
+    context.log.info("Agents catalog upserted=%s", counts)
+    return counts
+
+
 @asset(group_name="vlr_hist")
 def evt_schema(context: AssetExecutionContext) -> str:
     """Create or alter vlr.dim_events so extract rows match warehouse columns."""
@@ -839,7 +850,7 @@ vlr_date = define_asset_job(
 
 vlr_dims = define_asset_job(
     "vlr_dims",
-    selection=[dims_static, dims_from_landings, dims_weapons],
+    selection=[dims_static, dims_from_landings, dims_weapons, dims_agents],
 )
 
 vlr_events = define_asset_job(
@@ -862,6 +873,11 @@ vlr_players = define_asset_job(
     selection=[player_schema, player_extract, player_load],
 )
 
+vlr_agents = define_asset_job(
+    "vlr_agents",
+    selection=[dims_agents],
+)
+
 defs = Definitions(
     assets=[
         dbt_build_select_one_plus_ten,
@@ -879,6 +895,7 @@ defs = Definitions(
         dims_static,
         dims_from_landings,
         dims_weapons,
+        dims_agents,
         evt_schema,
         evt_extract,
         evt_load,
@@ -910,5 +927,6 @@ defs = Definitions(
         vlr_matches,
         vlr_teams,
         vlr_players,
+        vlr_agents,
     ],
 )

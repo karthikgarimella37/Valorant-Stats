@@ -80,7 +80,7 @@ CREATE SEQUENCE valorant.seq_<table>_row_number
 | `dim_events` | dim | Required | Yes | `/v2/events`, `/v2/event/{id}` |
 | `dim_players` | dim | Job `vlr_players` | Yes | `/v2/player?id=&q=profile`; ids from event + team rosters |
 | `dim_teams` | dim | Job `vlr_teams` | Yes | `/v2/team?id=&q=profile` + rankings overlay; ids from event/match jsonl |
-| `dim_agents` | dim | Seed job `vlr_dims` | Rare | Distinct `agent` on match scoreboards |
+| `dim_agents` | dim | Job `vlr_agents` (also in `vlr_dims`) | Rare (new agent) | valorant-api.com kit + Liquipedia AbilityCard costs |
 | `dim_maps` | dim | Seed job `vlr_dims` | Rare | Distinct `maps[].map_name` on match detail |
 | `dim_economy` | dim | Seed job `vlr_dims` | Rare | Seed buy types |
 | `dim_weapons` | dim | Seed job `vlr_dims` | Rare | rib.gg `/v1/weapons` (not VLR) |
@@ -321,22 +321,40 @@ One row per player.
 
 ### `dim_agents` — Required (static)
 
-One row per agent **name** seen on VLR (no ability catalog).  
+One row per playable agent. Kit catalog (abilities, costs, portraits) plus any extra names seen on VLR scoreboards.  
 **PK:** `row_number`  
 **Business key:** `agent_name`  
 **Sequence:** `seq_dim_agents_row_number`
 
 | Column | Type | Notes |
 |--------|------|--------|
-| `agent_name` | `TEXT` | VLR spelling (`Jett`, `Omen`, …) |
-| `role_name` | `TEXT` | If present on event agents page; else null |
-| `image_url` | `TEXT` | From match agent img |
+| `agent_name` | `TEXT` | Riot / VLR spelling (`Jett`, `KAY/O`). Scoreboard `KAYO` canonicalizes to `KAY/O`. |
+| `role_name` | `TEXT` | Duelist / Initiator / Controller / Sentinel from valorant-api.com |
+| `description` | `TEXT` | Short bio from valorant-api.com |
+| `real_name` | `TEXT` | Liquipedia Infobox (`Sunwoo Han`) |
+| `country_name` | `TEXT` | Liquipedia Infobox (`South Korea`) |
+| `release_date` | `TEXT` | Liquipedia `YYYY-MM-DD` (API uses `1970-01-01` for launch roster) |
+| `image_url` | `TEXT` | valorant-api `displayIcon` |
+| `portrait_url` | `TEXT` | valorant-api `fullPortrait` |
+| `role_icon_url` | `TEXT` | valorant-api role icon |
+| `valorant_api_uuid` | `TEXT` | Riot agent uuid |
+| `liquipedia_url` | `TEXT` | `https://liquipedia.net/valorant/{name}` |
+| `ability_c_name` | `TEXT` | C (grenade) ability name |
+| `ability_c_cost` | `INTEGER` | Credits; `0` = Free |
+| `ability_q_name` | `TEXT` | Q ability name |
+| `ability_q_cost` | `INTEGER` | Credits; `0` = Free |
+| `ability_e_name` | `TEXT` | E (signature) ability name |
+| `ability_e_cost` | `INTEGER` | Credits; `0` = Free |
+| `ultimate_name` | `TEXT` | X ultimate name |
+| `ultimate_orbs` | `INTEGER` | Ult points (Liquipedia `ultimatecost`) |
+| `abilities_json` | `JSONB` | Full kit: hotkey, kind, name, cost_credits, ultimate_orbs, charges, description, icon_url, api_slot. Includes Passive when the API has one. |
+| `tags_json` | `JSONB` | valorant-api `characterTags` (string list; often empty) |
 | `row_number` | `BIGINT` PK | |
 | `insert_date` | `TIMESTAMPTZ` | |
 | `update_date` | `TIMESTAMPTZ` | |
 
-**Insert from:** distinct agents on VLR `/matches/{id}` and `/events/{id}/agents`.  
-**Dagster:** upsert new names as they appear.
+**Insert from:** one GET `https://valorant-api.com/v1/agents?isPlayableCharacter=true` (names, role, ability text/icons, portraits). Credit costs and ult orbs are **not** on that API — merge Liquipedia MediaWiki `parse` wikitext `AbilityCard` (`cost`, `ultimatecost`, `charges`) + Infobox (`realname`, `country`, `releasedate`). Not used for matches.  
+**Dagster:** job `vlr_agents` (also in `vlr_dims`). Full catalog upsert on `agent_name`. Rematerialize when Riot ships a new agent. `dims_from_landings` only inserts new scoreboard names and does not wipe kit columns.
 
 ---
 
@@ -739,7 +757,7 @@ Run extract + dbt from the **Dockerfile / compose**, not a laptop venv. Order:
 2. Parallel VLR catalog:  dim_country (from teams/players), dim_teams, dim_events
 3. dim_players           (needs teams + country)
 4. dim_matches           (needs events + teams + date)
-5. Distinct names:        dim_agents, dim_maps  (from match payloads)
+5. Distinct names:        dim_maps from match payloads; dim_agents kit via `vlr_agents`
 6. Parallel VLR facts for completed matches:
      fact_match_overall_stats
      fact_round_results
@@ -797,6 +815,6 @@ These read from the warehouse. Frontend not started.
 - `/v2/match/details` omits `event_id` (resolve via `/v2/search` or events/matches) and Attack/Defend player splits (`.side.mod-both` only).
 - Performance 2K–1v5 / ECON / PL / DE and economy buy columns arrive as keys `"1"`…`"13"` / `"0"`…`"5"` — remap in `src/backend/vlr/field_maps.py`.
 - Incremental extract cursor: `vlr_watermarks` (`entity_type`, `entity_id`, `last_fetched_at`, `source_url`). JSON first; load to Supabase when Dagster runs.
-- `dim_agents` / `dim_maps` / `dim_weapons` are **name lists**, not ability / coordinate / gun-stat catalogs.
+- `dim_maps` is a **name list**. `dim_agents` is a kit catalog (valorant-api.com + Liquipedia costs). `dim_weapons` is a rib.gg gun catalog.
 - Current dbt dim stubs in schema `valorant` are still dummy; live facts load into schema `vlr`.
 - Do not store API keys in this file. Use `.env` only.

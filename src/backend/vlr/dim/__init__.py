@@ -1,3 +1,4 @@
+from .agents import apply_agents_schema, extract_agents, load_agents, run_agents
 from .dates import apply_dates_schema, load_dates, rows_from_dates_landing, run_dates, seed_dates
 from .from_landings import load_from_landings
 from .historical import (
@@ -15,15 +16,18 @@ from .teams import apply_teams_schema, extract_teams, load_teams, run_teams
 from .weapons import run_weapons
 
 __all__ = [
+    "apply_agents_schema",
     "apply_dates_schema",
     "apply_events_schema",
     "apply_matches_schema",
     "apply_players_schema",
     "apply_teams_schema",
+    "extract_agents",
     "extract_events",
     "extract_matches",
     "extract_players",
     "extract_teams",
+    "load_agents",
     "load_dates",
     "load_events",
     "load_from_landings",
@@ -34,6 +38,7 @@ __all__ = [
     "rows_from_dates_landing",
     "rows_from_event_json_dir",
     "rows_from_events_landing",
+    "run_agents",
     "run_dates",
     "run_events",
     "run_matches",
