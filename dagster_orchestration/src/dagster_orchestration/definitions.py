@@ -481,8 +481,8 @@ def dims_from_landings(context: AssetExecutionContext) -> dict[str, int]:
 
 @asset(group_name="vlr_seed")
 def dims_weapons(context: AssetExecutionContext) -> dict[str, int]:
-    """rib.gg weapon catalog into vlr.dim_weapons (VLR has no gun list)."""
-    context.log.info("=== STEP dims_weapons: GET rib.gg /weapons ===")
+    """Fandom gun catalog into vlr.dim_weapons via AWS rotator."""
+    context.log.info("=== STEP dims_weapons: valorant.fandom.com via AWS rotator ===")
     counts = run_weapons(REPO_ROOT)
     context.add_output_metadata({"row_counts": MetadataValue.json(counts)})
     context.log.info("Weapons upserted=%s", counts)
