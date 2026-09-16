@@ -21,11 +21,12 @@ Keep durable project context in `PROJECT_STATUS.md` at the repo root so every Cu
 ## Session-start protocol
 
 1. Read `PROJECT_STATUS.md` (create it from the template below if missing)
-2. Read `ENGINEERING_STANDARDS.md` (simple English, concise chat, coding rules)
-3. Treat **Aim**, **Current focus**, **Done**, and **Next up** as ground truth
-4. In your first reply for a new chat, briefly acknowledge aim + current focus (1–2 short sentences) before diving into the user's request unless they ask something unrelated
-5. Prefer continuing **Current focus** / **Next up** unless the user redirects
-6. All generated code must follow `ENGINEERING_STANDARDS.md` and the `engineering-standards` skill
+2. Read `LATER.md` when **Later nudge date** in `PROJECT_STATUS.md` is not today
+3. Read `ENGINEERING_STANDARDS.md` (simple English, concise chat, coding rules)
+4. Treat **Aim**, **Current focus**, **Done**, and **Next up** as ground truth
+5. In your first reply for a new chat, briefly acknowledge aim + current focus (1–2 short sentences) before diving into the user's request unless they ask something unrelated
+6. Prefer continuing **Current focus** / **Next up** unless the user redirects
+7. All generated code must follow `ENGINEERING_STANDARDS.md` and the `engineering-standards` skill
 
 ## Update protocol
 
