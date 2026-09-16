@@ -14,20 +14,6 @@ BASE_TYPES = {
     **STAMP_TYPES,
 }
 
-# facts_load is mid-run: performance is writing now; these still upsert on fact_key after it.
-# Unfreeze all but performance after that job finishes, then drop concat keys.
-FROZEN_FACT_TABLES = frozenset(
-    {
-        "fact_player_match_performance",
-        "fact_round_results",
-        "fact_map_game_results",
-        "fact_series_team_result",
-        "fact_match_economy",
-        "fact_round_economy_detail",
-        "fact_map_veto",
-    }
-)
-
 OVERALL_COLS = (
     "vlr_match_id",
     "vlr_event_id",
@@ -71,7 +57,6 @@ OVERALL_TYPES = {
 }
 
 PERFORMANCE_COLS = (
-    "fact_key",
     "vlr_match_id",
     "vlr_event_id",
     "match_date",
@@ -79,6 +64,7 @@ PERFORMANCE_COLS = (
     "map_game_number",
     "player_name",
     "vlr_team_id",
+    "vlr_player_id",
     "agent_name",
     "kast",
     "hs_pct",
@@ -99,14 +85,14 @@ PERFORMANCE_COLS = (
     "defuses",
     *STAMP,
 )
-PERFORMANCE_UNIQUE = ("fact_key",)
+PERFORMANCE_UNIQUE = ("vlr_match_id", "map_game_number", "vlr_team_id", "vlr_player_id")
 PERFORMANCE_TYPES = {
     **BASE_TYPES,
-    "fact_key": "TEXT",
     "map_name": "TEXT",
     "map_game_number": "INTEGER",
     "player_name": "TEXT",
     "vlr_team_id": "TEXT",
+    "vlr_player_id": "TEXT",
     "agent_name": "TEXT",
     "kast": "DOUBLE PRECISION",
     "hs_pct": "DOUBLE PRECISION",
@@ -129,7 +115,6 @@ PERFORMANCE_TYPES = {
 }
 
 ROUND_COLS = (
-    "fact_key",
     "vlr_match_id",
     "vlr_event_id",
     "match_date",
@@ -145,7 +130,6 @@ ROUND_COLS = (
 ROUND_UNIQUE = ("vlr_match_id", "map_game_number", "round_number")
 ROUND_TYPES = {
     **BASE_TYPES,
-    "fact_key": "TEXT",
     "map_name": "TEXT",
     "map_game_number": "INTEGER",
     "round_number": "INTEGER",
@@ -157,7 +141,6 @@ ROUND_TYPES = {
 }
 
 MAP_GAME_COLS = (
-    "fact_key",
     "vlr_match_id",
     "vlr_event_id",
     "match_date",
@@ -177,7 +160,6 @@ MAP_GAME_COLS = (
 MAP_GAME_UNIQUE = ("vlr_match_id", "map_game_number", "vlr_team_id")
 MAP_GAME_TYPES = {
     **BASE_TYPES,
-    "fact_key": "TEXT",
     "map_name": "TEXT",
     "map_game_number": "INTEGER",
     "vlr_team_id": "TEXT",
@@ -193,7 +175,6 @@ MAP_GAME_TYPES = {
 }
 
 SERIES_COLS = (
-    "fact_key",
     "vlr_match_id",
     "vlr_event_id",
     "match_date",
@@ -206,7 +187,6 @@ SERIES_COLS = (
 SERIES_UNIQUE = ("vlr_match_id", "vlr_team_id")
 SERIES_TYPES = {
     **BASE_TYPES,
-    "fact_key": "TEXT",
     "vlr_team_id": "TEXT",
     "maps_won": "INTEGER",
     "maps_lost": "INTEGER",
@@ -215,7 +195,6 @@ SERIES_TYPES = {
 }
 
 ECONOMY_COLS = (
-    "fact_key",
     "vlr_match_id",
     "vlr_event_id",
     "match_date",
@@ -235,7 +214,6 @@ ECONOMY_COLS = (
 ECONOMY_UNIQUE = ("vlr_match_id", "vlr_team_id")
 ECONOMY_TYPES = {
     **BASE_TYPES,
-    "fact_key": "TEXT",
     "vlr_team_id": "TEXT",
     "pistol_played": "INTEGER",
     "pistol_won": "INTEGER",
@@ -251,7 +229,6 @@ ECONOMY_TYPES = {
 }
 
 ROUND_ECO_COLS = (
-    "fact_key",
     "vlr_match_id",
     "vlr_event_id",
     "match_date",
@@ -270,7 +247,6 @@ ROUND_ECO_COLS = (
 ROUND_ECO_UNIQUE = ("vlr_match_id", "map_game_number", "round_number", "vlr_team_id")
 ROUND_ECO_TYPES = {
     **BASE_TYPES,
-    "fact_key": "TEXT",
     "map_name": "TEXT",
     "map_game_number": "INTEGER",
     "round_number": "INTEGER",
@@ -285,7 +261,6 @@ ROUND_ECO_TYPES = {
 }
 
 VETO_COLS = (
-    "fact_key",
     "vlr_match_id",
     "vlr_event_id",
     "match_date",
@@ -300,7 +275,6 @@ VETO_COLS = (
 VETO_UNIQUE = ("vlr_match_id", "action_order")
 VETO_TYPES = {
     **BASE_TYPES,
-    "fact_key": "TEXT",
     "map_name": "TEXT",
     "team_tag": "TEXT",
     "action_order": "INTEGER",
