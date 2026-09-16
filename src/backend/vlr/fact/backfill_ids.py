@@ -408,12 +408,14 @@ def main() -> None:
     parser.add_argument("--max-cpu-pct", type=int, default=70)
     parser.add_argument("--min-sleep-sec", type=float, default=1.0)
     parser.add_argument("--batch-size", type=int, default=4000)
+    parser.add_argument("--players-only", action="store_true", help="Skip team/economy; resume player fill.")
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
     run_backfill(
         max_cpu_pct=args.max_cpu_pct,
         min_sleep_sec=args.min_sleep_sec,
         batch_size=args.batch_size,
+        players_only=args.players_only,
     )
 
 
