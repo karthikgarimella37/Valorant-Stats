@@ -461,6 +461,15 @@ def load_agents(rows: list[dict[str, Any]] | None = None, repo_root: Path | None
                     rows.append(obj)
         stamp_rows(rows)
     for row in rows:
+        abilities = row.get("abilities_json")
+        if isinstance(abilities, str):
+            try:
+                abilities = json.loads(abilities)
+            except json.JSONDecodeError:
+                abilities = []
+        if isinstance(abilities, list):
+            kit = flatten_kit_columns(abilities)
+            row.update(kit)
         if not isinstance(row.get("abilities_json"), str):
             row["abilities_json"] = json_dumps(row.get("abilities_json"))
         if not isinstance(row.get("tags_json"), str):
