@@ -239,7 +239,7 @@ def collect_from_matches(repo_root: Path) -> tuple[list[dict[str, Any]], list[di
                 if map_name and map_name.lower() not in {"tba", "tbd", "n/a"}:
                     maps.add(map_name)
                 for player in _iter_map_players(game):
-                    agent = str(player.get("agent") or "").strip()
+                    agent = canonical_agent_name(player.get("agent"))
                     if agent:
                         agents.add(agent)
             if scanned % 25000 == 0:
