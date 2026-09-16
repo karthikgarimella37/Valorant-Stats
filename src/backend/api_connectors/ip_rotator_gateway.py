@@ -117,14 +117,14 @@ class VlrIpRotator:
     _atexit_registered = False
 
     @classmethod
-    def get_gateway(cls, site: str) -> Any | None:
+    def get_gateway(cls, site: str, regions: list[str] | None = None) -> Any | None:
         if not ip_rotator_enabled():
             return None
         site = site.rstrip("/")
         with cls._lock:
             if site in cls._gateways:
                 return cls._gateways[site]
-            gateway = cls._start_unlocked(site)
+            gateway = cls._start_unlocked(site, regions=regions)
             cls._gateways[site] = gateway
             if not cls._atexit_registered:
                 atexit.register(cls.shutdown_all)
@@ -132,7 +132,7 @@ class VlrIpRotator:
             return gateway
 
     @classmethod
-    def _start_unlocked(cls, site: str) -> Any:
+    def _start_unlocked(cls, site: str, regions: list[str] | None = None) -> Any:
         try:
             from requests_ip_rotator import ApiGateway
         except ImportError as exc:
