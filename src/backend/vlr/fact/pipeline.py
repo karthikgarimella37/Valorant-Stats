@@ -252,5 +252,12 @@ def run_facts(repo_root: Path | None = None) -> dict[str, int]:
 
 
 if __name__ == "__main__":
+    import argparse
+
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
-    print("Fact backend uses composite unique keys. Job: vlr_facts")
+    parser = argparse.ArgumentParser(description="Load one vlr fact table from jsonl (no Dagster UI).")
+    parser.add_argument("--table", required=True, help="Warehouse table, e.g. fact_map_veto")
+    parser.add_argument("--upsert", action="store_true", help="Use ON CONFLICT upsert instead of COPY")
+    args = parser.parse_args()
+    table, count = load_one_fact_table(args.table, use_copy=not args.upsert)
+    print(f"{table} rows={count}")
