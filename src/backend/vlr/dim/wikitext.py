@@ -253,8 +253,9 @@ def earth_from_text(*parts: str | None) -> str | None:
 
 
 def quote_from_wikitext(wikitext: str) -> str | None:
-    """Official map blurb from {{Quote|...}} when present."""
-    for block in iter_templates(wikitext, "Quote"):
+    """Official blurb from {{Quote1|...}} (Fandom weapons) or {{Quote|...}} (maps)."""
+    for name in ("Quote1", "Quote"):
+        for block in iter_templates(wikitext, name):
         body = block.strip()
         if body.startswith("{{"):
             body = body[2:]
