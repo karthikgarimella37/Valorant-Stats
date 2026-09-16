@@ -623,17 +623,18 @@ Run extract + dbt from the **Dockerfile / compose**, not a laptop venv. Order:
 3. dim_players           (needs teams + country)
 4. dim_matches           (needs events + teams + date)
 5. Distinct names:        thin dim_maps / dim_agents from match payloads; kit via `vlr_maps` / `vlr_agents`
-6. Parallel VLR facts for completed matches:
-     fact_match_overall_stats
-     fact_round_results
+6. Job `vlr_facts` (jsonl parse, no HTTP):
+     fact_match_overall_stats (start here)
      fact_player_match_performance
+     fact_round_results
+     fact_map_game_results
+     fact_series_team_result
      fact_match_economy
      fact_round_economy_detail
+     fact_map_veto
 7. rib overlay (only matches with a join to vlr_match_id):
      fact_player_vs_player_kills
-     dim_weapons names
-     has_rib_replay = true
-8. dbt: build view fact_match_half_round_stats + tests
+8. dbt: view fact_match_half_round_stats + tests
 ```
 
 Jobs (existing names, source flip):
