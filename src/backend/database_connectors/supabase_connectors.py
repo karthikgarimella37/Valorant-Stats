@@ -405,7 +405,6 @@ class SupabaseConnector:
             ON CONFLICT ({conflict_sql}) DO UPDATE SET {update_sql}
         '''
         tuples = [tuple(row.get(col) for col in columns) for row in rows]
-        batch_size = 1000
         total = 0
         logger.info("[upsert] Start %s.%s rows=%s", schema, table, len(tuples))
         with self._connect() as conn:
