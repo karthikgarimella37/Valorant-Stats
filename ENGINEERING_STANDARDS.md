@@ -150,6 +150,8 @@ data/vlr/events.jsonl                   # historical dim_events insert rows
 data/vlr/event_matches.jsonl            # per-event match list cache
 data/vlr/matches.jsonl                  # dim_matches row + listing + full match detail
 data/vlr/dim_agents.jsonl               # kit catalog (valorant-api + Liquipedia)
+data/vlr/dim_maps.jsonl                 # map catalog (valorant-api + Liquipedia)
+data/vlr/dim_weapons.jsonl              # gun catalog (valorant.fandom.com)
 data/vlr/dim_date.parquet               # generated calendar for vlr.dim_date
 data/vlr/watermarks.json                # incremental fetch cursor
 ```
@@ -191,6 +193,7 @@ data/vlr/watermarks.json                # incremental fetch cursor
 - Do not commit large parquet/ndjson dumps (already gitignored under `data/`).
 - Rate limits / politeness: use existing gateway/retry helpers; do not hammer APIs.
 - All www.vlr.gg scrapes go through the vlrggapi AWS rotator (`Ready endpoints=` > 0). Host/Dagster only call `127.0.0.1:3001`.
+- Catalog HTTP (valorant-api.com, liquipedia.net, valorant.fandom.com) also uses AWS API Gateway (`rotating_session`). Never the host IP.
 - Every public extract/connector function: docstring with **why** + process logs when the function runs a real pipeline step.
 - Large multi-record fetches **must** use a worker pool unless a written comment explains why serial is required.
 

@@ -3,7 +3,7 @@
 > Session-agnostic source of truth. Updated by agents via the `session-continuity` skill. Commit and push this file so every new Cursor chat starts with current context.
 
 **Last updated:** 2026-09-15  
-**Updated by:** dim_agents kit catalog (job `vlr_agents`)
+**Updated by:** dim_weapons from valorant.fandom.com (quote, images, TTK JSON)
 
 ---
 
@@ -13,7 +13,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 
 ## Current focus
 
-- Materialize job `vlr_agents` (kit catalog). Then `vlr_teams` schema+load, then `vlr_players` after vlrggapi rebuild
+- Materialize `vlr_teams` (schema+load from existing `teams.jsonl`). Then `vlr_players` after vlrggapi rebuild
 
 ## Status
 
@@ -22,7 +22,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 | Overall | In progress | Events done. Match lists done. Match details still scraping |
 | Data sources | Validated | Self-hosted vlrggapi `/v2` via AWS IP rotator overlay |
 | Orchestration | In progress | Jobs `vlr_events`, `vlr_matches`, `vlr_teams`, `vlr_players` |
-| Dim tables | In progress | `vlr_teams` orgs. `vlr_players` people. `vlr_agents` kit catalog |
+| Dim tables | In progress | `vlr_teams` orgs. `vlr_players` people. `vlr_agents` / `vlr_maps` kit catalogs |
 | Fact tables | Blocked on matches | Parse `matches.jsonl` after details finish |
 | Frontend / viz | Not started | Graphs and dashboards listed in `Valorant API.md` |
 | Session process | Done | Status + standards markdown; always-on Cursor rules/skills; auto-commit hook |
@@ -47,7 +47,8 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 - [x] Job `vlr_dims`: seed vct/regions/economy; parse maps/agents/teams/players/country; rib weapons
 - [x] Job `vlr_teams` code: `/v2/team?q=profile` → `data/vlr/teams.jsonl` → upsert `vlr.dim_teams`
 - [x] Job `vlr_players` code: `/v2/player?q=profile` → `data/vlr/players.jsonl` → upsert `vlr.dim_players`
-- [x] Job `vlr_agents` code: valorant-api.com kit + Liquipedia AbilityCard costs → `data/vlr/dim_agents.jsonl` → upsert `vlr.dim_agents`
+- [x] Job `vlr_agents` code: valorant-api.com kit + Liquipedia AbilityCard → `data/vlr/dim_agents.jsonl` → upsert `vlr.dim_agents` (AWS rotator). Hotkeys from API slots; E/signature cost always 0 (Harbor Q High Tide / E Cove)
+- [x] Job `vlr_weapons` code: valorant.fandom.com Infobox + TTK → `data/vlr/dim_weapons.jsonl` → upsert `vlr.dim_weapons` (AWS rotator)
 
 ## Next up
 
@@ -56,7 +57,9 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 - [x] Optional no-API parse: unique teams/players from `events.jsonl` `teams_json`
 - [ ] Let `vlr_matches` finish; then upsert `vlr.dim_matches` and refetch empty-detail 429 rows
 - [ ] Parse facts from `matches.jsonl` (overall / rounds / performance / economy)
-- [ ] Materialize `vlr_agents` (one GET + ~30 Liquipedia pages; rematerialize when Riot ships a new agent)
+- [x] Materialize `vlr_agents` (29 agents)
+- [x] Materialize `vlr_maps` (18 maps; skip Range/Skirmish; unique `map_name` before upsert)
+- [x] Materialize `vlr_weapons` (20 guns from Fandom; job `vlr_weapons`)
 - [ ] Materialize `vlr_teams` (schema+load from existing `teams.jsonl` for roster/socials)
 - [ ] Materialize `vlr_players` (~28k `/v2/player` calls; rebuild vlrggapi first for twitter + team href ids)
 - [ ] Incremental extract via `vlr_watermarks` after historical
@@ -75,7 +78,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 - Pace knobs live in `src/config/.env` (`VLR_API_CONCURRENCY`, `VLR_MATCH_WORKERS`, `VLR_API_INTERVAL_SEC`); Dagster has no separate YAML for them
 - Inbound vlrggapi limiter: official image is **20 match-details/min per client IP**. Compose sets `VLR_RL_DISABLE=1` after rebuild
 - **API gaps:** Attack/Defend player stats; labeled 2K/1vX/ECON; prize points/note; match `event_id` on detail
-- rib.gg weapons: `be-prod.rib.gg` did not resolve from this host; rematerialize `dims_weapons` later
+- rib.gg weapons: `be-prod.rib.gg` did not resolve; `dim_weapons` now uses valorant.fandom.com instead
 
 ## Session log
 
@@ -105,3 +108,8 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 | 2026-09-14 | Job `vlr_dims` for remaining dims; weapons from rib.gg `/v1/weapons` |
 | 2026-09-14 | dim_players socials are `{twitter, twitch}` URL keys (null if missing) |
 | 2026-09-15 | dim_agents kit: valorant-api.com + Liquipedia costs; job `vlr_agents` |
+| 2026-09-15 | dim_maps location/bounds + fuller AbilityCard; catalog HTTP via AWS rotator |
+| 2026-09-15 | vlr_maps failed CardinalityViolation on two The Range rows; unique + skip training maps |
+| 2026-09-15 | dim_agents: E cost always 0; Harbor Q/E follow valorant-api slots not Liquipedia hotkeys |
+| 2026-09-15 | vlr_maps NameError `_SKIP_INFOBOX`; restored skip set; load from existing jsonl |
+| 2026-09-15 | dim_weapons: Fandom Infobox + TTK/spread JSON via AWS rotator; job `vlr_weapons` |

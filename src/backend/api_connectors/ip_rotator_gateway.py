@@ -93,6 +93,17 @@ def _regions() -> list[str] | None:
     return None
 
 
+def catalog_rotator_regions() -> list[str]:
+    """One region is enough for rare kit catalogs; extra REST APIs cost money."""
+    raw = os.getenv("VLR_CATALOG_ROTATOR_REGIONS", "").strip().strip("\"'")
+    if raw:
+        return [part.strip().strip("\"'") for part in raw.split(",") if part.strip().strip("\"'")]
+    all_regions = _regions()
+    if all_regions:
+        return [all_regions[0]]
+    return ["us-east-1"]
+
+
 class VlrIpRotator:
     """
     Process-wide ApiGateway for a single site (default https://www.vlr.gg).
@@ -106,14 +117,14 @@ class VlrIpRotator:
     _atexit_registered = False
 
     @classmethod
-    def get_gateway(cls, site: str) -> Any | None:
+    def get_gateway(cls, site: str, regions: list[str] | None = None) -> Any | None:
         if not ip_rotator_enabled():
             return None
         site = site.rstrip("/")
         with cls._lock:
             if site in cls._gateways:
                 return cls._gateways[site]
-            gateway = cls._start_unlocked(site)
+            gateway = cls._start_unlocked(site, regions=regions)
             cls._gateways[site] = gateway
             if not cls._atexit_registered:
                 atexit.register(cls.shutdown_all)
@@ -121,7 +132,7 @@ class VlrIpRotator:
             return gateway
 
     @classmethod
-    def _start_unlocked(cls, site: str) -> Any:
+    def _start_unlocked(cls, site: str, regions: list[str] | None = None) -> Any:
         try:
             from requests_ip_rotator import ApiGateway
         except ImportError as exc:
@@ -144,11 +155,11 @@ class VlrIpRotator:
             "access_key_secret": access_key_secret,
             "verbose": os.getenv("VLR_IP_ROTATOR_VERBOSE", "1") not in ("0", "false", "False"),
         }
-        regions = _regions()
-        if regions:
-            kwargs["regions"] = regions
+        use_regions = regions if regions is not None else _regions()
+        if use_regions:
+            kwargs["regions"] = use_regions
 
-        logger.info("Starting AWS ApiGateway IP rotator for %s regions=%s", site, regions or "DEFAULT")
+        logger.info("Starting AWS ApiGateway IP rotator for %s regions=%s", site, use_regions or "DEFAULT")
         gateway = ApiGateway(site, **kwargs)
         endpoints = gateway.start()
         count = len(endpoints) if endpoints is not None else 0
@@ -167,9 +178,9 @@ class VlrIpRotator:
         return gateway
 
     @classmethod
-    def mount(cls, session: Any, site: str) -> bool:
+    def mount(cls, session: Any, site: str, regions: list[str] | None = None) -> bool:
         """Mount rotator on session if enabled. Returns True when mounted."""
-        gateway = cls.get_gateway(site)
+        gateway = cls.get_gateway(site, regions=regions)
         if gateway is None:
             return False
         # Prefix must match ApiGateway(site=...) exactly.

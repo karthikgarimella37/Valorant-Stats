@@ -87,6 +87,7 @@ MAP_TYPES = {
     "insert_date": "TIMESTAMPTZ",
     "update_date": "TIMESTAMPTZ",
 }
+# Thin seed only. Job `vlr_maps` fills location / bounds and must not be wiped here.
 # Thin seed only. Job `vlr_agents` fills kit columns and must not be wiped here.
 AGENT_COLS = ("agent_name", "insert_date", "update_date")
 AGENT_TYPES = {

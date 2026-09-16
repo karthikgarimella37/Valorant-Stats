@@ -5,10 +5,11 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import requests
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
+
+from backend.api_connectors.rotating_http import rotating_session
 
 BASE_URL = "https://be-prod.rib.gg/v1"
+RIB_SITE = "https://be-prod.rib.gg"
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -31,26 +32,15 @@ PROBE_CANDIDATES: list[tuple[str, dict[str, Any]]] = [
 
 
 class RibsSessionFactory:
-    """
-    Build requests sessions configured with retry behavior for the RIB.GG API.
-    """
+    """Build rib.gg sessions that leave through AWS API Gateway, never the host IP."""
 
     def __init__(self, total_retries: int = 5, backoff_factor: int = 1):
         self.total_retries = total_retries
         self.backoff_factor = backoff_factor
 
     def create(self) -> requests.Session:
-        session = requests.Session()
-        retry = Retry(
-            total=self.total_retries,
-            backoff_factor=self.backoff_factor,
-            status_forcelist=[429, 500, 502, 503, 504],
-            allowed_methods=["GET"],
-        )
-        adapter = HTTPAdapter(max_retries=retry)
-        session.mount("https://", adapter)
-        session.mount("http://", adapter)
-        return session
+        """rib.gg via AWS rotator so the host IP is never used."""
+        return rotating_session(RIB_SITE)
 
 
 @dataclass
@@ -300,7 +290,7 @@ class RibsConnector:
         """
         results: list[dict[str, Any]] = []
         # No retries: probe should report the raw status quickly.
-        session = requests.Session()
+        session = rotating_session(RIB_SITE)
         total = len(PROBE_CANDIDATES)
         logger.info("Starting endpoint probe against %s (%s candidates)", self.base_url, total)
 

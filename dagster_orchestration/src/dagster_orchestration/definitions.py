@@ -20,6 +20,7 @@ from backend.vlr.dim.agents import run_agents
 from backend.vlr.dim.dates import apply_dates_schema, load_dates, rows_from_dates_landing, seed_dates
 from backend.vlr.dim.from_landings import load_from_landings
 from backend.vlr.dim.historical import apply_events_schema, extract_events, load_events, rows_from_events_landing
+from backend.vlr.dim.maps import run_maps
 from backend.vlr.dim.matches import apply_matches_schema, extract_matches, load_matches
 from backend.vlr.dim.players import apply_players_schema, extract_players, load_players
 from backend.vlr.dim.static import load_static
@@ -480,8 +481,8 @@ def dims_from_landings(context: AssetExecutionContext) -> dict[str, int]:
 
 @asset(group_name="vlr_seed")
 def dims_weapons(context: AssetExecutionContext) -> dict[str, int]:
-    """rib.gg weapon catalog into vlr.dim_weapons (VLR has no gun list)."""
-    context.log.info("=== STEP dims_weapons: GET rib.gg /weapons ===")
+    """Fandom gun catalog into vlr.dim_weapons via AWS rotator."""
+    context.log.info("=== STEP dims_weapons: valorant.fandom.com via AWS rotator ===")
     counts = run_weapons(REPO_ROOT)
     context.add_output_metadata({"row_counts": MetadataValue.json(counts)})
     context.log.info("Weapons upserted=%s", counts)
@@ -490,11 +491,21 @@ def dims_weapons(context: AssetExecutionContext) -> dict[str, int]:
 
 @asset(group_name="vlr_seed")
 def dims_agents(context: AssetExecutionContext) -> dict[str, int]:
-    """Kit catalog: valorant-api.com + Liquipedia costs. Rematerialize when Riot ships a new agent."""
-    context.log.info("=== STEP dims_agents: valorant-api.com + liquipedia AbilityCard ===")
+    """Kit catalog: valorant-api.com + Liquipedia AbilityCard via AWS rotator."""
+    context.log.info("=== STEP dims_agents: valorant-api + liquipedia via AWS rotator ===")
     counts = run_agents(REPO_ROOT)
     context.add_output_metadata({"row_counts": MetadataValue.json(counts)})
     context.log.info("Agents catalog upserted=%s", counts)
+    return counts
+
+
+@asset(group_name="vlr_seed")
+def dims_maps(context: AssetExecutionContext) -> dict[str, int]:
+    """Map catalog: valorant-api radar x/y + Liquipedia location/earth via AWS rotator."""
+    context.log.info("=== STEP dims_maps: valorant-api + liquipedia via AWS rotator ===")
+    counts = run_maps(REPO_ROOT)
+    context.add_output_metadata({"row_counts": MetadataValue.json(counts)})
+    context.log.info("Maps catalog upserted=%s", counts)
     return counts
 
 
@@ -850,7 +861,7 @@ vlr_date = define_asset_job(
 
 vlr_dims = define_asset_job(
     "vlr_dims",
-    selection=[dims_static, dims_from_landings, dims_weapons, dims_agents],
+    selection=[dims_static, dims_from_landings, dims_weapons, dims_agents, dims_maps],
 )
 
 vlr_events = define_asset_job(
@@ -878,6 +889,16 @@ vlr_agents = define_asset_job(
     selection=[dims_agents],
 )
 
+vlr_maps = define_asset_job(
+    "vlr_maps",
+    selection=[dims_maps],
+)
+
+vlr_weapons = define_asset_job(
+    "vlr_weapons",
+    selection=[dims_weapons],
+)
+
 defs = Definitions(
     assets=[
         dbt_build_select_one_plus_ten,
@@ -896,6 +917,7 @@ defs = Definitions(
         dims_from_landings,
         dims_weapons,
         dims_agents,
+        dims_maps,
         evt_schema,
         evt_extract,
         evt_load,
@@ -928,5 +950,7 @@ defs = Definitions(
         vlr_teams,
         vlr_players,
         vlr_agents,
+        vlr_maps,
+        vlr_weapons,
     ],
 )

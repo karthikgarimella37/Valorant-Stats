@@ -69,8 +69,9 @@ Job: `vlr_dims`
 
 - `dims_static` — `dim_vct_regions`, `dim_regions`, `dim_economy`
 - `dims_from_landings` — `dim_maps`, thin `dim_agents` names, `dim_country`, `dim_teams`, `dim_players` from `events.jsonl` + `matches.jsonl`
-- `dims_weapons` — rib.gg `/v1/weapons` into `dim_weapons`
-- `dims_agents` — valorant-api.com kit + Liquipedia AbilityCard costs into `dim_agents`
+- `dims_weapons` — valorant.fandom.com Infobox + TTK into `dim_weapons` (AWS rotator)
+- `dims_agents` — valorant-api.com kit + Liquipedia AbilityCard into `dim_agents` (AWS rotator)
+- `dims_maps` — valorant-api.com radar + Liquipedia Infobox map into `dim_maps` (AWS rotator)
 
 ```bash
 cd dagster_orchestration
@@ -81,11 +82,33 @@ uv run dagster job execute -m dagster_orchestration.definitions -j vlr_dims
 
 Job: `vlr_agents`
 
-Does **not** call vlr.gg. One GET to `valorant-api.com/v1/agents` plus ~30 Liquipedia pages. Re-run when Riot ships a new agent.
+Does **not** call vlr.gg. One GET to `valorant-api.com/v1/agents` plus ~30 Liquipedia pages, **through AWS IP rotator** (never the host IP). Re-run when Riot ships a new agent.
 
 ```bash
 cd dagster_orchestration
 uv run dagster job execute -m dagster_orchestration.definitions -j vlr_agents
+```
+
+## Map catalog (rare rematerialize)
+
+Job: `vlr_maps`
+
+Same rotator rule. One GET to `valorant-api.com/v1/maps` plus one Liquipedia page per map. Re-run when Riot ships a new map.
+
+```bash
+cd dagster_orchestration
+uv run dagster job execute -m dagster_orchestration.definitions -j vlr_maps
+```
+
+## Weapon catalog (rare rematerialize)
+
+Job: `vlr_weapons`
+
+Does **not** call vlr.gg. Fandom MediaWiki `Weapons` list + each gun page + file URLs, **through AWS IP rotator**. Re-run when Riot ships a new gun.
+
+```bash
+cd dagster_orchestration
+uv run dagster job execute -m dagster_orchestration.definitions -j vlr_weapons
 ```
 
 ## Historical VLR jobs (Dagster)
@@ -141,6 +164,7 @@ Optional env vars:
 - `VLR_PLAYER_SKIP_EXISTING=1` — skip ids already in `players.jsonl`
 - `VLR_REQUIRE_ROTATOR=0` — only for local debug; do not use for a full scrape
 - `VLR_LIQUIPEDIA_WORKERS` (default `1`) / `VLR_LIQUIPEDIA_INTERVAL_SEC` (default `1.1`) — kit catalog only
+- `VLR_CATALOG_ROTATOR_REGIONS` — AWS region list for valorant-api / Liquipedia gateways (default: first of `VLR_IP_ROTATOR_REGIONS`)
 
 ## Run the VLR.gg extract → parquet → Supabase job
 
