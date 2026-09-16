@@ -305,6 +305,7 @@ def parse_match_facts(
             side = str(round_row.get("side") or "").lower()
             buckets["rounds"].append(
                 {
+                    "fact_key": fact_key(match_id, map_game_number, round_number),
                     "vlr_match_id": match_id,
                     "vlr_event_id": event_id,
                     "match_date": match_date,

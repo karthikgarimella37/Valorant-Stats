@@ -180,7 +180,7 @@ def load_facts(repo_root: Path | None = None) -> dict[str, int]:
                 if isinstance(obj, dict):
                     rows.append(obj)
         stamp_rows(rows)
-        # String fact_key keeps the in-flight performance upsert contract if this module reloads.
+        # String fact_key keeps the in-flight upsert contract if this module reloads.
         conflict: str | tuple[str, ...]
         if spec.table in FROZEN_FACT_TABLES:
             conflict = "fact_key"
