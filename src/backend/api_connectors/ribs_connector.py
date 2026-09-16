@@ -32,9 +32,7 @@ PROBE_CANDIDATES: list[tuple[str, dict[str, Any]]] = [
 
 
 class RibsSessionFactory:
-    """
-    Build requests sessions configured with retry behavior for the RIB.GG API.
-    """
+    """Build rib.gg sessions that leave through AWS API Gateway, never the host IP."""
 
     def __init__(self, total_retries: int = 5, backoff_factor: int = 1):
         self.total_retries = total_retries
