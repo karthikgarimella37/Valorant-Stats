@@ -54,8 +54,6 @@ def _missing_id_sql(col: str) -> str:
 
 def _fill_other_team(connector: SupabaseConnector, table: str, *, by_map: bool = False) -> int:
     """When a match already has one real team id, the -1 row is the other dim_matches team."""
-    map_join = "AND known.map_game_number = t.map_game_number" if by_map else ""
-    map_exist = "AND x.map_game_number = t.map_game_number" if by_map else ""
     sql = f"""
         UPDATE vlr.{table} AS t
         SET vlr_team_id = CASE
@@ -63,12 +61,11 @@ def _fill_other_team(connector: SupabaseConnector, table: str, *, by_map: bool =
             WHEN known.vlr_team_id = m.vlr_team_2_id THEN m.vlr_team_1_id
             ELSE t.vlr_team_id
         END
-        FROM vlr.dim_matches AS m
-        JOIN vlr.{table} AS known
-          ON known.vlr_match_id = t.vlr_match_id
-         {map_join}
-         AND NOT {_missing_id_sql("known.vlr_team_id")}
+        FROM vlr.dim_matches AS m, vlr.{table} AS known
         WHERE t.vlr_match_id = m.vlr_match_id
+          AND known.vlr_match_id = t.vlr_match_id
+          {map_join.replace("AND known.map_game_number = t.map_game_number", "AND known.map_game_number = t.map_game_number") if by_map else ""}
+          AND NOT {_missing_id_sql("known.vlr_team_id")}
           AND {_missing_id_sql("t.vlr_team_id")}
           AND m.vlr_team_1_id IS NOT NULL
           AND m.vlr_team_2_id IS NOT NULL
