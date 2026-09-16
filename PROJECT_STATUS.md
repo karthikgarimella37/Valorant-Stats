@@ -108,3 +108,4 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 | 2026-09-14 | dim_players socials are `{twitter, twitch}` URL keys (null if missing) |
 | 2026-09-15 | dim_agents kit: valorant-api.com + Liquipedia costs; job `vlr_agents` |
 | 2026-09-15 | dim_maps location/bounds + fuller AbilityCard; catalog HTTP via AWS rotator |
+| 2026-09-15 | vlr_maps failed CardinalityViolation on two The Range rows; unique + skip training maps |
