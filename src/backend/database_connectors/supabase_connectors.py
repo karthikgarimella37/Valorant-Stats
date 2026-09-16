@@ -401,23 +401,52 @@ class SupabaseConnector:
             else:
                 template_parts.append("%s")
         template = "(" + ", ".join(template_parts) + ")"
-        insert_sql = f'''
+        if on_conflict not in {"update", "nothing"}:
+            raise RuntimeError(f"on_conflict must be update or nothing, got {on_conflict!r}")
+        if on_conflict == "nothing":
+            insert_sql = f'''
+            INSERT INTO "{schema}"."{table}" ({col_sql})
+            VALUES %s
+            ON CONFLICT ({conflict_sql}) DO NOTHING
+            '''
+        else:
+            insert_sql = f'''
             INSERT INTO "{schema}"."{table}" ({col_sql})
             VALUES %s
             ON CONFLICT ({conflict_sql}) DO UPDATE SET {update_sql}
-        '''
+            '''
         tuples = [tuple(row.get(col) for col in columns) for row in rows]
         total = 0
-        logger.info("[upsert] Start %s.%s rows=%s", schema, table, len(tuples))
+        import time
+
+        started = time.monotonic()
+        duty = None if max_cpu_pct is None else max(10, min(90, max_cpu_pct)) / 100.0
+        logger.info("[upsert] Start %s.%s rows=%s conflict=%s", schema, table, len(tuples), on_conflict)
         with self._connect() as conn:
             with conn.cursor() as cur:
                 cur.execute("SET statement_timeout = 0")
                 for start in range(0, len(tuples), batch_size):
                     chunk = tuples[start : start + batch_size]
+                    batch_started = time.monotonic()
                     execute_values(cur, insert_sql, chunk, template=template, page_size=500)
                     conn.commit()
                     total += len(chunk)
-                    logger.info("[upsert] Done %s.%s upserted=%s/%s", schema, table, total, len(tuples))
+                    batch_sec = time.monotonic() - batch_started
+                    elapsed = time.monotonic() - started
+                    rate = total / elapsed if elapsed else 0
+                    pause = batch_sec * (1.0 - duty) / duty if duty else 0.0
+                    logger.info(
+                        "[upsert] %s.%s upserted=%s/%s batch_sec=%.2f sleep=%.2f rate=%.0f/s",
+                        schema,
+                        table,
+                        total,
+                        len(tuples),
+                        batch_sec,
+                        pause,
+                        rate,
+                    )
+                    if pause > 0:
+                        time.sleep(pause)
         return total
 
     def copy_rows(
