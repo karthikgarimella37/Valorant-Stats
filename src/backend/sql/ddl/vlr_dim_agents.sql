@@ -1,4 +1,4 @@
--- Why: VLR scoreboard names plus kit catalog (abilities, costs, portraits).
+-- Why: VLR scoreboard names plus kit catalog (abilities, costs, face/portraits).
 CREATE SCHEMA IF NOT EXISTS vlr;
 
 CREATE SEQUENCE IF NOT EXISTS vlr.seq_dim_agents_row_number;
@@ -11,7 +11,10 @@ CREATE TABLE IF NOT EXISTS vlr.dim_agents (
     real_name TEXT,
     country_name TEXT,
     release_date TEXT,
+    face_url TEXT,
     image_url TEXT,
+    bust_url TEXT,
+    killfeed_portrait_url TEXT,
     portrait_url TEXT,
     role_icon_url TEXT,
     valorant_api_uuid TEXT,
