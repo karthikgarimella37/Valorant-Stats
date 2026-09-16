@@ -894,6 +894,11 @@ vlr_maps = define_asset_job(
     selection=[dims_maps],
 )
 
+vlr_weapons = define_asset_job(
+    "vlr_weapons",
+    selection=[dims_weapons],
+)
+
 defs = Definitions(
     assets=[
         dbt_build_select_one_plus_ten,
