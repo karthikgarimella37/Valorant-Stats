@@ -318,7 +318,7 @@ def format_agent_row(api_agent: dict[str, Any], lp: dict[str, Any]) -> dict[str,
     c_row = _hotkey_row(abilities, "C")
     q_row = _hotkey_row(abilities, "Q")
     e_row = _hotkey_row(abilities, "E")
-    x_row = _hotkey_row(abilities, "X")
+    x_row = _hotkey_row(abilities, "X", kind="Ultimate")
     tags = api_agent.get("characterTags")
     tags = tags if isinstance(tags, list) else []
     face = text_or_none(api_agent.get("displayIcon"))
