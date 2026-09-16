@@ -53,11 +53,11 @@ def _grain_tuple(row: dict[str, Any], unique_cols: tuple[str, ...]) -> tuple[Any
 
 def _fill_null_grain_ids(connector: SupabaseConnector, spec: FactSpec) -> None:
     """Replace warehouse null/blank grain ids with -1, then NOT NULL."""
-    id_cols = _grain_id_cols(spec.unique_cols)
+    id_cols = tuple(col for col in _grain_id_cols(spec.unique_cols) if col != "vlr_player_id")
     extra = tuple(
         col
         for col in spec.columns
-        if col.endswith("_id") and col not in id_cols and col != "vlr_event_id"
+        if col.endswith("_id") and col not in {*id_cols, "vlr_event_id", "vlr_player_id"}
     )
     cols = id_cols + extra
     if not cols:
