@@ -196,6 +196,7 @@ def parse_match_facts(
             }
             buckets["map_games"].append(
                 {
+                    "fact_key": fact_key(match_id, map_game_number, team_id),
                     "vlr_match_id": match_id,
                     "vlr_event_id": event_id,
                     "match_date": match_date,
