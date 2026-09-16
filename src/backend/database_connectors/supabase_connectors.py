@@ -370,6 +370,7 @@ class SupabaseConnector:
         conflict_column: str | tuple[str, ...] | list[str],
         update_columns: list[str] | None = None,
         jsonb_columns: tuple[str, ...] = ("prizes_json", "teams_json", "standings_json"),
+        batch_size: int = 1000,
     ) -> int:
         """Insert/update rows in batches; keep existing row_number on conflict (one col or composite)."""
         from psycopg2.extras import execute_values
