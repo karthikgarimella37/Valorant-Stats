@@ -152,9 +152,10 @@ def parse_match_facts(
         is_winner = team_obj.get("is_winner")
         if is_winner is None and maps_won is not None and other is not None:
             is_winner = maps_won > other
+        if not team_id:
+            continue
         buckets["series"].append(
             {
-                "fact_key": fact_key(match_id, team_id or side),
                 "vlr_match_id": match_id,
                 "vlr_event_id": event_id,
                 "match_date": match_date,
