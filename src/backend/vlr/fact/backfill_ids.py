@@ -97,9 +97,9 @@ def backfill_team_ids(connector: SupabaseConnector) -> dict[str, int]:
     counts: dict[str, int] = {}
     counts["fact_match_economy"] = _fill_other_team(connector, "fact_match_economy")
     counts["fact_series_team_result"] = _fill_other_team(connector, "fact_series_team_result")
-    counts["fact_map_game_results"] = _fill_other_team(connector, "fact_map_game_results", extra_eq="map")
+    counts["fact_map_game_results"] = _fill_other_team(connector, "fact_map_game_results", by_map=True)
     counts["fact_round_economy_detail"] = _fill_other_team(
-        connector, "fact_round_economy_detail", extra_eq="map"
+        connector, "fact_round_economy_detail", by_map=True
     )
     return counts
 
