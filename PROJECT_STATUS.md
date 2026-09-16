@@ -47,7 +47,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 - [x] Job `vlr_dims`: seed vct/regions/economy; parse maps/agents/teams/players/country; rib weapons
 - [x] Job `vlr_teams` code: `/v2/team?q=profile` → `data/vlr/teams.jsonl` → upsert `vlr.dim_teams`
 - [x] Job `vlr_players` code: `/v2/player?q=profile` → `data/vlr/players.jsonl` → upsert `vlr.dim_players`
-- [x] Job `vlr_agents` code: valorant-api.com kit + Liquipedia AbilityCard → `data/vlr/dim_agents.jsonl` → upsert `vlr.dim_agents` (AWS rotator)
+- [x] Job `vlr_agents` code: valorant-api.com kit + Liquipedia AbilityCard → `data/vlr/dim_agents.jsonl` → upsert `vlr.dim_agents` (AWS rotator). Hotkeys from API slots; E/signature cost always 0 (Harbor Q High Tide / E Cove)
 - [x] Job `vlr_maps` code: valorant-api.com radar + Liquipedia Infobox map → `data/vlr/dim_maps.jsonl` → upsert `vlr.dim_maps` (AWS rotator)
 
 ## Next up
