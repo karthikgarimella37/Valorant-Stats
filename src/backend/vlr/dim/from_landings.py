@@ -258,9 +258,7 @@ def collect_from_matches(repo_root: Path) -> tuple[list[dict[str, Any]], list[di
         len(teams),
     )
     map_rows = stamp_rows([{"map_name": name} for name in sorted(maps)])
-    agent_rows = stamp_rows(
-        [{"agent_name": name, "role_name": AGENT_ROLES.get(name)} for name in sorted(agents)]
-    )
+    agent_rows = stamp_rows([{"agent_name": name} for name in sorted(agents)])
     return map_rows, agent_rows, teams
 
 
