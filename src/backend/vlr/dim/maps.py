@@ -319,7 +319,7 @@ def extract_maps(repo_root: Path | None = None) -> list[dict[str, Any]]:
     load_project_env(repo_root)
     root = _root(repo_root)
     logger.info("[maps] Extract start sources=valorant-api.com + liquipedia.net via AWS rotator")
-    api_maps = ValorantApiConnector().get_maps()
+    api_maps = unique_api_maps(ValorantApiConnector().get_maps())
     titles = [text_or_none(row.get("displayName")) for row in api_maps]
     titles = [t for t in titles if t]
     lp_pages = LiquipediaValorantConnector().get_pages_wikitext(titles)
