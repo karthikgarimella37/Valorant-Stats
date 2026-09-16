@@ -8,7 +8,6 @@ from backend.vlr.dim.util import canonical_agent_name
 from backend.vlr.fact.player_ids import PlayerIdLookup
 from backend.vlr.fact.util import (
     duration_sec,
-    fact_key,
     match_advanced,
     other_team_id,
     parse_veto_actions,
