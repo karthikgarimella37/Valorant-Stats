@@ -352,6 +352,10 @@ def run_backfill(
 ) -> dict[str, Any]:
     """Team ids from dim_matches + matches.jsonl, then player ids from landings."""
     load_project_env(repo_root)
+    try:
+        os.nice(10)
+    except OSError:
+        pass
     root = _root(repo_root)
     logger.info("[backfill] Start max_cpu_pct=%s batch=%s", max_cpu_pct, batch_size)
     connector = SupabaseConnector()
