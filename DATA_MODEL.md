@@ -80,7 +80,7 @@ CREATE SEQUENCE valorant.seq_<table>_row_number
 | `dim_events` | dim | Required | Yes | `/v2/events`, `/v2/event/{id}` |
 | `dim_players` | dim | Job `vlr_players` | Yes | `/v2/player?id=&q=profile`; ids from event + team rosters |
 | `dim_teams` | dim | Job `vlr_teams` | Yes | `/v2/team?id=&q=profile` + rankings overlay; ids from event/match jsonl |
-| `dim_agents` | dim | Seed job `vlr_dims` | Rare | Distinct `agent` on match scoreboards |
+| `dim_agents` | dim | Job `vlr_agents` (also in `vlr_dims`) | Rare (new agent) | valorant-api.com kit + Liquipedia AbilityCard costs |
 | `dim_maps` | dim | Seed job `vlr_dims` | Rare | Distinct `maps[].map_name` on match detail |
 | `dim_economy` | dim | Seed job `vlr_dims` | Rare | Seed buy types |
 | `dim_weapons` | dim | Seed job `vlr_dims` | Rare | rib.gg `/v1/weapons` (not VLR) |
