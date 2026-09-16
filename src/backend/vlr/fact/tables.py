@@ -124,7 +124,12 @@ ROUND_COLS = (
     *STAMP,
 )
 ROUND_TYPES = {
-    **KEY_TYPES,
+    **BASE_TYPES,
+    "map_name": "TEXT",
+    "map_game_number": "INTEGER",
+    "round_number": "INTEGER",
+    "winning_vlr_team_id": "TEXT",
+    "losing_vlr_team_id": "TEXT",
     "is_attack_win": "BOOLEAN",
     "win_method_code": "INTEGER",
     **STAMP_TYPES,
