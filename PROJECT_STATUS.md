@@ -3,7 +3,7 @@
 > Session-agnostic source of truth. Updated by agents via the `session-continuity` skill. Commit and push this file so every new Cursor chat starts with current context.
 
 **Last updated:** 2026-09-15  
-**Updated by:** fact backend from matches.jsonl (not run); later-work files  
+**Updated by:** fact composite unique keys (performance load frozen)  
 **Later nudge date:** 2026-09-15
 
 ---

@@ -644,41 +644,50 @@ Upsert is a **composite unique** on those grain columns — not a concatenated `
 
 ## Facts
 
-Facts live in schema `vlr`. Grain keys are **TEXT source ids/names** (same pattern as dims), not `dim_*.row_number` FKs. dbt can join later. Besides keys: **metrics and booleans only**. Every table has `fact_key` (unique upsert), `row_number`, `insert_date`, `update_date`.
+Facts live in schema `vlr`. Grain keys are **TEXT source ids** (same pattern as dims), not `dim_*.row_number` FKs. dbt can join later. Besides keys: **metrics and booleans only**. Every table has `row_number`, `insert_date`, `update_date`, and a **composite unique** on the grain columns.
 
-Parse from `data/vlr/matches.jsonl` (`detail.maps`). Job `vlr_facts` (`facts_extract` → `facts_load`). **Do not run until we discuss.**
+Parse from `data/vlr/matches.jsonl` (`detail.maps`). Job `vlr_facts` (`facts_extract` → `facts_load`). **Do not re-run while `fact_player_match_performance` is loading.** Scoreboard has no player id; `vlr_player_id` is joined from `teams.jsonl` / `players.jsonl` / `events.jsonl`.
 
 ### `fact_match_overall_stats` — **start here** (website)
 
-Grain: **one player on one map game**. Box score. This is the table most graphs read.
+Grain: **one player on one map game**. Box score.  
+Composite unique: `(vlr_match_id, map_game_number, vlr_team_id, vlr_player_id)`.  
+`map_game_number` is in the key so a BO3 does not collapse maps. `player_name` is a label, not a key.
 
 ### `fact_player_match_performance`
 
-Grain: **one player on one map game**. KAST, HS%, FK/FD. Multi-kills / 1vX / econ / plants / defuses from series `advanced_stats` **on map 1 only** (VLR does not split them per map).
+Grain: **one player on one map game**. KAST, HS%, FK/FD. Multi-kills / 1vX / econ / plants / defuses from series `advanced_stats` **on map 1 only** (VLR does not split them per map).  
+**Still upserts on concatenated `fact_key` until the in-flight load finishes.** Then switch to the same composite as overall.
 
 ### `fact_round_results`
 
-Grain: **one round of one map game**. Winner team + `is_attack_win`. `win_method_code` is null on current `/v2` rounds.
+Grain: **one round of one map game**. Winner team + `is_attack_win`. `win_method_code` is null on current `/v2` rounds.  
+Composite unique: `(vlr_match_id, map_game_number, round_number)`.
 
 ### `fact_map_game_results`
 
-Grain: **one team on one map game**. Rounds won/lost, T/CT half rounds, duration, map pick.
+Grain: **one team on one map game**. Rounds won/lost, T/CT half rounds, duration, map pick.  
+Composite unique: `(vlr_match_id, map_game_number, vlr_team_id)`.
 
 ### `fact_series_team_result`
 
-Grain: **one team on one series**. Maps won/lost, series winner.
+Grain: **one team on one series**. Maps won/lost, series winner.  
+Composite unique: `(vlr_match_id, vlr_team_id)`.
 
 ### `fact_match_economy`
 
-Grain: **one team on one series**. Pistol/eco/semi/full **played vs won** (`7 (4)` → played 7, won 4).
+Grain: **one team on one series**. Pistol/eco/semi/full **played vs won** (`7 (4)` → played 7, won 4).  
+Composite unique: `(vlr_match_id, vlr_team_id)`.
 
 ### `fact_round_economy_detail`
 
-Grain: **one team on one round**. Bank/loadout when `maps[].round_economy` is present (often empty until economy-tab scrape is on the landing).
+Grain: **one team on one round**. Bank/loadout when `maps[].round_economy` is present (often empty until economy-tab scrape is on the landing).  
+Composite unique: `(vlr_match_id, map_game_number, round_number, vlr_team_id)`.
 
 ### `fact_map_veto`
 
-Grain: **one veto action**. Ban / pick / decider from `map_vetos` text.
+Grain: **one veto action**. Ban / pick / decider from `map_vetos` text.  
+Composite unique: `(vlr_match_id, action_order)`.
 
 ### `fact_match_half_round_stats` — dbt view (later)
 
