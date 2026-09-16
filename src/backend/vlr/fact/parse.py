@@ -314,7 +314,7 @@ def parse_match_facts(
             pistol = bool(eco_round.get("is_pistol_round")) if "is_pistol_round" in eco_round else round_number in {1, 13}
             for side, team_id in (("team1", team_1_id), ("team2", team_2_id)):
                 cell = eco_round.get(side)
-                if not isinstance(cell, dict) or not team_id:
+                if not isinstance(cell, dict):
                     continue
                 side_code = _s(cell.get("side"))
                 buckets["round_economy"].append(
@@ -325,7 +325,7 @@ def parse_match_facts(
                         "map_name": map_name,
                         "map_game_number": map_game_number,
                         "round_number": round_number,
-                        "vlr_team_id": team_id,
+                        "vlr_team_id": coalesce_id(team_id),
                         "economy_code": _s(cell.get("buy_type")),
                         "bank": to_int(cell.get("bank_credits") or cell.get("bank")),
                         "loadout": to_int(cell.get("loadout_credits") or cell.get("loadout")),
