@@ -757,7 +757,7 @@ Run extract + dbt from the **Dockerfile / compose**, not a laptop venv. Order:
 2. Parallel VLR catalog:  dim_country (from teams/players), dim_teams, dim_events
 3. dim_players           (needs teams + country)
 4. dim_matches           (needs events + teams + date)
-5. Distinct names:        dim_agents, dim_maps  (from match payloads)
+5. Distinct names:        dim_maps from match payloads; dim_agents kit via `vlr_agents`
 6. Parallel VLR facts for completed matches:
      fact_match_overall_stats
      fact_round_results
