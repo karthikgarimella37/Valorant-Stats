@@ -294,7 +294,7 @@ class RibsConnector:
         """
         results: list[dict[str, Any]] = []
         # No retries: probe should report the raw status quickly.
-        session = requests.Session()
+        session = rotating_session(RIB_SITE)
         total = len(PROBE_CANDIDATES)
         logger.info("Starting endpoint probe against %s (%s candidates)", self.base_url, total)
 
