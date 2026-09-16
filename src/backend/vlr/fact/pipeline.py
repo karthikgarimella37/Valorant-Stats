@@ -129,6 +129,7 @@ def apply_facts_schema(repo_root: Path | None = None) -> None:
     for spec in FACT_SPECS:
         apply_dim_schema(root, spec.sql_name, spec.table, spec.types)
         _retire_concat_key(connector, spec.table)
+        _fill_null_grain_ids(connector, spec)
         _ensure_grain_unique(connector, spec)
     logger.info("[facts] Schema done")
 
