@@ -14,7 +14,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 
 ## Current focus
 
-- Fact tables in schema `vlr`: backend is ready (`vlr_facts`). Discuss then run. Do **not** run until the user says so.
+- Fact tables: composite unique keys (not concat `fact_key`). `fact_player_match_performance` is still loading — do not rematerialize `vlr_facts` or ALTER that table.
 
 ## Status
 
