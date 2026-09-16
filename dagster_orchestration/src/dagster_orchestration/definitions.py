@@ -16,7 +16,7 @@ from backend.api_connectors.ribs_connector import RibsConnector
 from backend.config.env import load_project_env
 from backend.database_connectors.supabase_connectors import SupabaseConnector
 from backend.rib_gg.extract import RibExtractPipeline, landing_dir_for, read_ndjson
-from backend.vlr.dim.agents import apply_agents_schema, extract_agents, load_agents, run_agents
+from backend.vlr.dim.agents import run_agents
 from backend.vlr.dim.dates import apply_dates_schema, load_dates, rows_from_dates_landing, seed_dates
 from backend.vlr.dim.from_landings import load_from_landings
 from backend.vlr.dim.historical import apply_events_schema, extract_events, load_events, rows_from_events_landing
