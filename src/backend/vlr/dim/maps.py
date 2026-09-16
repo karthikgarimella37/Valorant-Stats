@@ -336,7 +336,7 @@ def extract_maps(repo_root: Path | None = None) -> list[dict[str, Any]]:
         row = format_map_row(api_map, lp)
         if row:
             rows.append(row)
-    rows = stamp_rows(rows)
+    rows = unique_map_rows(stamp_rows(rows))
     path = maps_jsonl_path(root)
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as handle:
