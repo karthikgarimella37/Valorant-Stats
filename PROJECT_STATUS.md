@@ -104,3 +104,4 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 | 2026-09-09 | match_load CardinalityViolation: duplicate vlr_match_id in one INSERT; load now unique |
 | 2026-09-14 | Job `vlr_dims` for remaining dims; weapons from rib.gg `/v1/weapons` |
 | 2026-09-14 | dim_players socials are `{twitter, twitch}` URL keys (null if missing) |
+| 2026-09-15 | dim_agents kit: valorant-api.com + Liquipedia costs; job `vlr_agents` |
