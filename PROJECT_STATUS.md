@@ -24,7 +24,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 | Data sources | Validated | Self-hosted vlrggapi `/v2` via AWS IP rotator overlay |
 | Orchestration | In progress | Job `vlr_facts` added (extract jsonl → load). Not executed |
 | Dim tables | **Done** (catalog). Teams/players jsonl exist; rematerialize later if needed |
-| Fact tables | Code ready, not run | Parse `matches.jsonl` → `data/vlr/facts/*.jsonl` → `vlr.fact_*` |
+| Fact tables | Load in progress | Performance upserts on `fact_key`. Other tables: composite unique on next extract/load |
 | Frontend / viz | Not started | Graphs in `DATA_MODEL.md` |
 | Deferred | Documented | `LATER.md` (economy dim, watermarks, KG agent) |
 
