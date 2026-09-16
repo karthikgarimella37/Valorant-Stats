@@ -178,9 +178,9 @@ class VlrIpRotator:
         return gateway
 
     @classmethod
-    def mount(cls, session: Any, site: str) -> bool:
+    def mount(cls, session: Any, site: str, regions: list[str] | None = None) -> bool:
         """Mount rotator on session if enabled. Returns True when mounted."""
-        gateway = cls.get_gateway(site)
+        gateway = cls.get_gateway(site, regions=regions)
         if gateway is None:
             return False
         # Prefix must match ApiGateway(site=...) exactly.
