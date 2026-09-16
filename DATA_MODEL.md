@@ -356,7 +356,7 @@ One row per playable agent. Kit catalog (abilities, costs, portraits) plus any e
 | `insert_date` | `TIMESTAMPTZ` | |
 | `update_date` | `TIMESTAMPTZ` | |
 
-**Insert from:** one GET `https://valorant-api.com/v1/agents?isPlayableCharacter=true` (names, role, ability text/icons, portraits). Credit costs and ult orbs are **not** on that API — merge Liquipedia MediaWiki `parse` wikitext `AbilityCard` (`cost`, `ultimatecost`, `charges`) + Infobox (`realname`, `country`, `releasedate`). Not used for matches.  
+**Insert from:** AWS-rotated GET `https://valorant-api.com/v1/agents?isPlayableCharacter=true` (face, portraits, ability text/icons). Credit costs, uses, windup/duration/cooldown, ult orbs from Liquipedia MediaWiki `parse` `AbilityCard` + Infobox. Host IP is never used.  
 **Dagster:** job `vlr_agents` (also in `vlr_dims`). Full catalog upsert on `agent_name`. Rematerialize when Riot ships a new agent. `dims_from_landings` only inserts new scoreboard names and does not wipe kit columns.
 
 ---
