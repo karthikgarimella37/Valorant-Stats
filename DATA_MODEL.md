@@ -346,8 +346,8 @@ One row per playable agent. Kit catalog (abilities, costs, portraits) plus any e
 | `ability_c_cost` | `INTEGER` | Credits; `0` = Free |
 | `ability_q_name` | `TEXT` | Q ability name |
 | `ability_q_cost` | `INTEGER` | Credits; `0` = Free |
-| `ability_e_name` | `TEXT` | E (signature) ability name |
-| `ability_e_cost` | `INTEGER` | Credits; `0` = Free |
+| `ability_e_name` | `TEXT` | E (signature) ability name from live valorant-api slot `Ability2` |
+| `ability_e_cost` | `INTEGER` | Always `0` — signature is not bought |
 | `ultimate_name` | `TEXT` | X ultimate name |
 | `ultimate_orbs` | `INTEGER` | Ult points (Liquipedia `ultimatecost`) |
 | `abilities_json` | `JSONB` | Liquipedia AbilityCard + API icons. Keys: `kind` (Passive/Basic/Signature/Ultimate), `name`, `hotkey` / `hotkey_pc` / `hotkey_ps` / `hotkey_xbox`, `cost_credits`, `ultimate_orbs`, `uses`, `charges`, `windup`, `duration`, `cooldown`, `debuff`, `regain`, `description`, `icon_url`, `stats`. |
