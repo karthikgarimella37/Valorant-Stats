@@ -1,4 +1,4 @@
-"""Parse Liquipedia Infobox / AbilityCard / Quote wikitext for agent and map catalogs."""
+"""Parse Liquipedia / Fandom Infobox, AbilityCard, Quote, and wikitable text."""
 
 from __future__ import annotations
 
