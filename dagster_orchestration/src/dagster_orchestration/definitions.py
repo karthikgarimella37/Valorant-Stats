@@ -889,6 +889,11 @@ vlr_agents = define_asset_job(
     selection=[dims_agents],
 )
 
+vlr_maps = define_asset_job(
+    "vlr_maps",
+    selection=[dims_maps],
+)
+
 defs = Definitions(
     assets=[
         dbt_build_select_one_plus_ten,
