@@ -158,9 +158,10 @@ def assemble_match_payload(
     }
 
 
-def _index_row(payload: dict[str, Any], replay_maps: list[str]) -> dict[str, Any]:
+def _index_row(payload: dict[str, Any], replay_maps: list[str], repo_root: Path) -> dict[str, Any]:
     """Slim row for matches.jsonl (join keys + paths, not full maps)."""
     maps = payload.get("maps") or []
+    match_id = str(payload.get("rib_match_id"))
     return {
         "rib_match_id": payload.get("rib_match_id"),
         "rib_event_id": payload.get("rib_event_id"),
@@ -175,7 +176,7 @@ def _index_row(payload: dict[str, Any], replay_maps: list[str]) -> dict[str, Any
         "n_maps": len(maps),
         "has_replay": bool(replay_maps),
         "replay_map_ids": replay_maps,
-        "json_path": str(match_json_path(REPO_ROOT, str(payload.get("rib_match_id")))),
+        "json_path": str(match_json_path(repo_root, match_id)),
     }
 
 
