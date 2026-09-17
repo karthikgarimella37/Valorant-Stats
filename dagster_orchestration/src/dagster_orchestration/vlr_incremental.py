@@ -10,7 +10,6 @@ from backend.vlr.dim.historical import apply_events_schema
 from backend.vlr.dim.matches import apply_matches_schema
 from backend.vlr.dim.players import apply_players_schema
 from backend.vlr.dim.teams import apply_teams_schema
-from backend.vlr.fact.pipeline import apply_facts_schema
 from backend.vlr.fact.tables import FACT_SPECS
 from backend.vlr.ops.extract import (
     extract_events_since,
