@@ -3,7 +3,7 @@
 > Session-agnostic source of truth. Updated by agents via the `session-continuity` skill. Commit and push this file so every new Cursor chat starts with current context.
 
 **Last updated:** 2026-09-16  
-**Updated by:** remaining VLR facts vs rib overlay (round + replay)  
+**Updated by:** rib overlay extract/parse/load (round + replay JSON)  
 **Later nudge date:** 2026-09-16
 
 ---
