@@ -155,6 +155,12 @@ data/vlr/dim_weapons.jsonl              # gun catalog (valorant.fandom.com)
 data/vlr/facts/<stem>.jsonl             # fact landings from matches.jsonl
 data/vlr/dim_date.parquet               # generated calendar for vlr.dim_date
 data/vlr/watermarks.json                # incremental fetch cursor
+data/rib_gg/events.jsonl                # rib event cards
+data/rib_gg/event_matches.jsonl         # per-event match lists
+data/rib_gg/matches.jsonl               # rib series index (join keys + paths)
+data/rib_gg/json/matches/<id>.json      # parsed RSC match (roundStats, economy)
+data/rib_gg/json/replay/<id>/<map>.json # full replay-data (snapshots stay here)
+data/rib_gg/facts/<stem>.jsonl          # overlay fact landings
 ```
 - Do not put extract logic inside Dagster modules beyond orchestration glue.
 - Do not put dbt SQL under `dagster_orchestration/`.
