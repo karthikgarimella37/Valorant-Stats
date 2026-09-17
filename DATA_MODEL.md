@@ -105,7 +105,12 @@ CREATE SEQUENCE valorant.seq_<table>_row_number
 | `fact_round_economy_detail`     | fact     | Job `vlr_facts`                        | Yes                 | Bank/loadout when `round_economy` is on the landing                     |
 | `fact_map_veto`                 | fact     | Job `vlr_facts`                        | Yes                 | Ban/pick/decider from `map_vetos`                                       |
 | `fact_match_half_round_stats`   | **view** | dbt later                              | n/a                 | Aggregate `fact_round_results`                                          |
-| `fact_player_vs_player_kills`   | fact     | Later (rib)                            | Yes (rib only)      | Replay kills                                                            |
+| `fact_rib_round`                | fact     | Job `rib_facts`                        | Yes (rib)           | Round winner + win type from rib RSC                                    |
+| `fact_rib_round_player`         | fact     | Job `rib_facts`                        | Yes (rib)           | Per-round weapon/armor/loadout/ACS/K/A/damage/HS%                       |
+| `fact_rib_round_economy`        | fact     | Job `rib_facts`                        | Yes (rib)           | Team bank/loadout/buy tier                                              |
+| `fact_player_vs_player_kills`   | fact     | Job `rib_facts`                        | Yes (rib)           | Replay kills (time + positions)                                         |
+| `fact_rib_replay_event`         | fact     | Job `rib_facts`                        | Yes (rib)           | Non-snapshot events (kill/plant/defuse/ability)                         |
+| `fact_rib_match_crosswalk`      | fact     | Job `rib_facts`                        | Yes (rib)           | Fuzzy rib → VLR series join                                             |
 | `vlr_watermarks`                | ops      | JSON landing; warehouse table later    | Yes                 | See `LATER.md`                                                          |
 
 
