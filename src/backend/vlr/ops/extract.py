@@ -68,29 +68,16 @@ class ExtractResult:
     extra: dict[str, Any] = field(default_factory=dict)
 
 
-def _as_utc_midnight(value: date | None) -> datetime | None:
-    """Treat a VLR calendar date as 00:00 UTC so last_source_at stays a timestamptz."""
-    if value is None:
-        return None
-    return datetime(value.year, value.month, value.day, tzinfo=timezone.utc)
-
-
 def _max_dt(*values: datetime | None) -> datetime | None:
     present = [value for value in values if value is not None]
     return max(present) if present else None
 
 
-def since_date(since: datetime) -> date:
-    """Date-only overlap: keep the whole calendar day of `since`, not only times after the hour."""
-    return since.astimezone(timezone.utc).date()
-
-
-def _keep_date(raw: str | None, since: datetime) -> bool:
-    """True when a project date is missing (keep it) or on/after the since calendar day."""
-    parsed = parse_project_date(raw)
-    if parsed is None:
+def _keep_since(value: datetime | None, since: datetime) -> bool:
+    """Keep rows at or after since (last_source_at minus 1 hour). Missing clock → keep."""
+    if value is None:
         return True
-    return parsed >= since_date(since)
+    return value >= since
 
 
 def _health() -> VlrV2Connector:
