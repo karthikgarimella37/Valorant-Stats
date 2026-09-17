@@ -731,8 +731,13 @@ Run extract + dbt from the **Dockerfile / compose**, not a laptop venv. Order:
      fact_match_economy
      fact_round_economy_detail
      fact_map_veto
-7. rib overlay (only matches with a join to vlr_match_id):
+7. rib overlay job `rib_facts` (JSON land → parse → batch upsert):
+     fact_rib_match_crosswalk
+     fact_rib_round
+     fact_rib_round_player
+     fact_rib_round_economy
      fact_player_vs_player_kills
+     fact_rib_replay_event
 8. dbt: view fact_match_half_round_stats + tests
 ```
 
