@@ -160,7 +160,7 @@ data/rib_gg/events.jsonl                # rib event cards
 data/rib_gg/event_matches.jsonl         # per-event match lists
 data/rib_gg/matches.jsonl               # rib series index (join keys + paths)
 data/rib_gg/json/matches/<id>.json      # parsed RSC match (roundStats, economy)
-data/rib_gg/json/replay/<id>/<map>.json # full replay-data (snapshots stay here)
+data/rib_gg/json/replay/<id>/<map>.json # full replay-data (source for snapshot + event tables)
 data/rib_gg/facts/<stem>.jsonl          # overlay fact landings
 ```
 - Do not put extract logic inside Dagster modules beyond orchestration glue.

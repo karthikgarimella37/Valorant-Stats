@@ -701,11 +701,11 @@ Grain: team × map × attack/defense. Built from `fact_round_results`.
 
 ### `fact_player_vs_player_kills` — rib overlay
 
-Grain: one kill from replay. Snapshots stay in `data/rib_gg/json/replay/`. Job `rib_facts`.
+Grain: one kill from replay. Job `rib_facts`.
 
-### `fact_rib_round` / `fact_rib_round_player` / `fact_rib_round_economy` / `fact_rib_replay_event`
+### `fact_rib_round` / `fact_rib_round_player` / `fact_rib_round_economy` / `fact_rib_replay_event` / `fact_rib_replay_snapshot`
 
-Round winner + per-player loadout/combat + team economy + non-snapshot replay events + **position snapshots**. Keys include both `rib_*` and `vlr_*` ids after fuzzy join.
+Round winner + per-player loadout/combat + team economy + replay events + **position ticks** (`type=snapshot` → `fact_rib_replay_snapshot`). Keys include both `rib_*` and `vlr_*` ids after fuzzy join. Replay JSON also stays under `data/rib_gg/json/replay/` so load can retry.
 
 ### `fact_rib_match_crosswalk`
 
