@@ -740,30 +740,15 @@ Run extract + dbt from the **Dockerfile / compose**, not a laptop venv. Order:
      events → matches → teams → players → facts
      each: watermark → in-memory extract since last_source_at-1h → merge → watermark
 3. Optional catalogs: `vlr_agents` / `vlr_maps` / `vlr_weapons`
-4. dbt later: views/tests on live `vlr.fact_*` (not the dummy `valorant` stubs)
-```
-     fact_player_match_performance
-     fact_round_results
-     fact_map_game_results
-     fact_series_team_result
-     fact_match_economy
-     fact_round_economy_detail
-     fact_map_veto
-7. rib overlay job `rib_facts` (JSON land → parse → batch upsert):
-     fact_rib_match_crosswalk
-     fact_rib_round
-     fact_rib_round_player
-     fact_rib_round_economy
-     fact_player_vs_player_kills
-     fact_rib_replay_event
-     fact_rib_replay_snapshot
-8. dbt: view fact_match_half_round_stats + tests
+4. rib overlay job `rib_facts` (unchanged)
+5. dbt later: views/tests on live `vlr.fact_*` (not the dummy `valorant` stubs)
 ```
 
-Jobs (existing names, source flip):
+Jobs:
 
-- `vlr_star_schema_job` — **main daily** (events → matches → facts)
-- `vlr_facts` — parse `matches.jsonl` → `vlr.fact_*` (do not run until discussed)
+- `vlr_daily` — **main incremental** (events → matches → teams → players → facts)
+- `vlr_events` / `vlr_matches` / `vlr_teams` / `vlr_players` / `vlr_facts` — 4-step DAGs
+- `vlr_hist_*` — one-shot jsonl backfills (do not use for daily)
 - `rib_facts` — overlay: RSC match + replay JSON → `vlr.fact_rib_*` + kills
 - `rib_gg_star_schema_job` — **legacy** be-prod parquet (stale API)
 
