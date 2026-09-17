@@ -796,7 +796,7 @@ These read from the warehouse. Frontend not started.
 - `fact_round_economy_detail` is scraped from the VLR economy tab (`scrape_economy.py`); `/v2` still only has the buy-win table.
 - `/v2/match/details` omits `event_id` (resolve via `/v2/search` or events/matches) and Attack/Defend player splits (`.side.mod-both` only).
 - Performance 2K–1v5 / ECON / PL / DE and economy buy columns arrive as keys `"1"`…`"13"` / `"0"`…`"5"` — remap in `src/backend/vlr/field_maps.py`.
-- Incremental extract cursor: `vlr_watermarks` (`entity_type`, `entity_id`, `last_fetched_at`, `source_url`). JSON first; load to Supabase when Dagster runs.
+- Incremental extract cursor: `vlr.ops_pipeline_watermarks` (`pipeline_name`, `table_name`, `last_source_at`). Legacy JSON `data/vlr/watermarks.json` is per-entity fetch history only.
 - `dim_maps` and `dim_agents` are kit catalogs (valorant-api.com + Liquipedia, AWS rotator). `dim_weapons` is the Fandom gun catalog (AWS rotator).
 - Current dbt dim stubs in schema `valorant` are still dummy; live facts load into schema `vlr`.
 - Do not store API keys in this file. Use `.env` only.
