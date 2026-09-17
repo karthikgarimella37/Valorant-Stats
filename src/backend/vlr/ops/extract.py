@@ -168,7 +168,7 @@ def _list_status(connector: VlrV2Connector, status: str, max_pages: int, since: 
 
 def _warehouse_event_ids(since: datetime) -> list[str]:
     """Re-fetch live/upcoming events already in the warehouse plus anything touched since the cursor."""
-    logger.info("[inc] warehouse dim_events since=%s", since.isoformat())
+    logger.info("[inc] warehouse dim_events since=%s", iso_seconds(since))
     connector = SupabaseConnector()
     rows = connector.fetch_all(
         """
@@ -210,7 +210,7 @@ def _warehouse_event_ids(since: datetime) -> list[str]:
 
 def extract_events_since(since: datetime, run_id: str = "") -> ExtractResult:
     """Live + upcoming always; completed pages until older than since; details stay in memory."""
-    logger.info("[inc] === STEP extract events since=%s ===", since.isoformat())
+    logger.info("[inc] === STEP extract events since=%s ===", iso_seconds(since))
     connector = _health()
     max_live = int(os.getenv("VLR_INC_LIVE_PAGES", "20"))
     max_completed = int(os.getenv("VLR_INC_COMPLETED_PAGES", "8"))
@@ -287,7 +287,7 @@ def merge_events(rows: list[dict[str, Any]]) -> int:
 
 def _warehouse_match_event_ids(since: datetime) -> list[str]:
     """Events that still need match lists: live/upcoming plus anything with dates on/after since."""
-    logger.info("[inc] warehouse events for matches since=%s", since.isoformat())
+    logger.info("[inc] warehouse events for matches since=%s", iso_seconds(since))
     connector = SupabaseConnector()
     rows = connector.fetch_all(
         "SELECT vlr_event_id, status, start_date, end_date, update_date FROM vlr.dim_events"
@@ -313,7 +313,7 @@ def _warehouse_match_event_ids(since: datetime) -> list[str]:
 
 def extract_matches_since(since: datetime, run_id: str = "") -> ExtractResult:
     """List matches for recent/live events and fetch details for rows on/after the since day."""
-    logger.info("[inc] === STEP extract matches since=%s ===", since.isoformat())
+    logger.info("[inc] === STEP extract matches since=%s ===", iso_seconds(since))
     connector = _health()
     stashed_ids = peek_stash(run_id, "event_ids") if run_id else None
     event_ids = list(dict.fromkeys((stashed_ids or []) + _warehouse_match_event_ids(since)))
@@ -465,7 +465,7 @@ def _ids_from_roster(raw: Any) -> list[str]:
 
 def _warehouse_team_ids(since: datetime) -> list[str]:
     """Team ids on matches updated since the cursor, when this job runs alone."""
-    logger.info("[inc] warehouse team ids since=%s", since.isoformat())
+    logger.info("[inc] warehouse team ids since=%s", iso_seconds(since))
     connector = SupabaseConnector()
     rows = connector.fetch_all(
         """
@@ -487,7 +487,7 @@ def _warehouse_team_ids(since: datetime) -> list[str]:
 
 def extract_teams_since(since: datetime, run_id: str = "") -> ExtractResult:
     """GET /v2/team profile for team ids seen on recent matches."""
-    logger.info("[inc] === STEP extract teams since=%s ===", since.isoformat())
+    logger.info("[inc] === STEP extract teams since=%s ===", iso_seconds(since))
     connector = _health()
     stashed = peek_stash(run_id, "team_ids") if run_id else None
     team_ids = list(dict.fromkeys(stashed or _warehouse_team_ids(since)))
@@ -551,7 +551,7 @@ def merge_teams(rows: list[dict[str, Any]]) -> int:
 
 def _warehouse_player_ids(since: datetime) -> list[str]:
     """Player ids from recently updated team rosters when the players job runs alone."""
-    logger.info("[inc] warehouse player ids since=%s", since.isoformat())
+    logger.info("[inc] warehouse player ids since=%s", iso_seconds(since))
     connector = SupabaseConnector()
     rows = connector.fetch_all(
         """
@@ -586,7 +586,7 @@ def _team_name_lookup() -> dict[str, str]:
 
 def extract_players_since(since: datetime, run_id: str = "") -> ExtractResult:
     """GET /v2/player profile for ids on recent team rosters."""
-    logger.info("[inc] === STEP extract players since=%s ===", since.isoformat())
+    logger.info("[inc] === STEP extract players since=%s ===", iso_seconds(since))
     connector = _health()
     stashed = peek_stash(run_id, "player_ids") if run_id else None
     player_ids = list(dict.fromkeys(stashed or _warehouse_player_ids(since)))
@@ -646,7 +646,7 @@ def merge_players(rows: list[dict[str, Any]]) -> int:
 
 def extract_facts_since(since: datetime, run_id: str = "") -> ExtractResult:
     """Parse in-memory match details (or re-fetch ids from dim_matches) into fact buckets."""
-    logger.info("[inc] === STEP extract facts since=%s ===", since.isoformat())
+    logger.info("[inc] === STEP extract facts since=%s ===", iso_seconds(since))
     match_rows = peek_stash(run_id, "match_rows") if run_id else None
     if match_rows:
         logger.info("[inc] facts using stashed match_rows n=%s", len(match_rows))
@@ -656,7 +656,7 @@ def extract_facts_since(since: datetime, run_id: str = "") -> ExtractResult:
             max_source_at=datetime.now(timezone.utc),
             extra={"source": "stash"},
         )
-    logger.info("[inc] facts stash miss; listing dim_matches since=%s then re-fetching details", since.isoformat())
+    logger.info("[inc] facts stash miss; listing dim_matches since=%s then re-fetching details", iso_seconds(since))
     connector = SupabaseConnector()
     rows = connector.fetch_all(
         """
