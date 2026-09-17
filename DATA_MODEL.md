@@ -705,7 +705,7 @@ Grain: one kill from replay. Snapshots stay in `data/rib_gg/json/replay/`. Job `
 
 ### `fact_rib_round` / `fact_rib_round_player` / `fact_rib_round_economy` / `fact_rib_replay_event`
 
-Round winner + per-player loadout/combat + team economy + non-snapshot replay events. Keys include both `rib_*` and `vlr_*` ids after fuzzy join.
+Round winner + per-player loadout/combat + team economy + non-snapshot replay events + **position snapshots**. Keys include both `rib_*` and `vlr_*` ids after fuzzy join.
 
 ### `fact_rib_match_crosswalk`
 
