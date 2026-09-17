@@ -129,13 +129,12 @@ def compute_since(spec: WatermarkSpec, last_source_at: datetime | None) -> tuple
     overlap = timedelta(hours=spec.overlap_hours)
     since = last_source_at - overlap
     logger.info(
-        "[watermark] since pipeline=%s table=%s last_source_at=%s overlap_hours=%s since=%s date_only=%s note=%s",
+        "[watermark] since pipeline=%s table=%s last_source_at=%s overlap_hours=%s since=%s note=%s",
         spec.pipeline_name,
         spec.table_name,
-        last_source_at.isoformat(),
+        iso_seconds(last_source_at),
         spec.overlap_hours,
-        since.isoformat(),
-        spec.date_only,
+        iso_seconds(since),
         spec.lookback_note,
     )
     return since, False
