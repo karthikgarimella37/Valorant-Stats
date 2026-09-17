@@ -29,6 +29,7 @@ from backend.vlr.dim.teams import apply_teams_schema, extract_teams, load_teams
 from backend.vlr.dim.weapons import run_weapons
 from backend.vlr.extract import VlrExtractPipeline
 from backend.vlr.fact.pipeline import extract_facts, load_facts
+from backend.vlr.ops.run import run_full_refresh
 from dagster_orchestration.vlr_incremental import VLR_INC_ASSETS, VLR_INC_JOBS
 
 load_project_env(REPO_ROOT)
