@@ -477,8 +477,6 @@ class RibSiteConnector:
                     time.sleep(wait)
                     if response.status_code == 429:
                         request_session = self.session_factory.create()
-                        if session is not None:
-                            session = request_session
                     continue
                 response.raise_for_status()
                 if expect_json:
