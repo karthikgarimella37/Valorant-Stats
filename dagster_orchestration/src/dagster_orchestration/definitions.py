@@ -454,13 +454,23 @@ def date_seed(context: AssetExecutionContext) -> int:
 
 @asset(group_name="vlr_seed", deps=[date_seed])
 def date_load(context: AssetExecutionContext) -> int:
-    """Upsert generated calendar rows into vlr.dim_date."""
+    """Upsert generated calendar rows into vlr.dim_date, then stamp the watermark."""
     context.log.info("=== STEP date_load: upsert vlr.dim_date ===")
-    rows = rows_from_dates_landing(REPO_ROOT)
-    loaded = load_dates(rows)
-    context.add_output_metadata({"upserted": loaded})
-    context.log.info("dim_date upserted=%s", loaded)
-    return loaded
+
+    def _load() -> int:
+        rows = rows_from_dates_landing(REPO_ROOT)
+        loaded = load_dates(rows)
+        context.add_output_metadata({"upserted": loaded})
+        context.log.info("dim_date upserted=%s", loaded)
+        return loaded
+
+    return run_full_refresh(
+        pipeline_name="vlr_date",
+        table_name="dim_date",
+        fn=_load,
+        dagster_run_id=context.run_id,
+        dagster_job_name=context.job_name,
+    )
 
 
 @asset(group_name="vlr_seed")
