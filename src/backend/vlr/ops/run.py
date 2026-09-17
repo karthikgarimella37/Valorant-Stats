@@ -114,7 +114,7 @@ def step_update_watermark(
         "table_name": table_name,
         "status": status,
         "row_count": row_count,
-        "last_source_at": last_source_at.isoformat() if last_source_at else None,
+        "last_source_at": iso_seconds(last_source_at),
         "counts": counts or {},
     }
     logger.info("[inc] update_watermark done %s", out)
