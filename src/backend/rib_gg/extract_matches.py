@@ -338,7 +338,8 @@ def extract_rib_matches(repo_root: Path | None = None) -> dict[str, int]:
             return
         if match_id not in seen_index:
             _append_jsonl(index_path, row, index_lock)
-            seen_index.add(match_id)
+            with index_lock:
+                seen_index.add(match_id)
         with progress_lock:
             done += 1
             replays += len(row.get("replay_map_ids") or [])
