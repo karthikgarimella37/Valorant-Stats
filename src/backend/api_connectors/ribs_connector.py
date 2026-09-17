@@ -444,8 +444,17 @@ class RibSiteConnector:
                     timeout=self.timeout,
                 )
                 if response.status_code in {429, 500, 502, 503, 504}:
-                    wait = min(2 ** attempt, 45)
                     snippet = (response.text or "").replace("\n", " ")[:180]
+                    if "Vercel Security Checkpoint" in (response.text or ""):
+                        logger.error(
+                            "[rib_site] Vercel blocked AWS IP path=%s (security checkpoint). "
+                            "rib.gg will not serve rotator IPs.",
+                            path,
+                        )
+                        raise RuntimeError(
+                            "rib.gg Vercel security checkpoint: AWS API Gateway IPs are blocked"
+                        )
+                    wait = min(2 ** attempt, 45)
                     last_error = RuntimeError(
                         f"rib.gg HTTP {response.status_code} path={path} body={snippet}"
                     )
