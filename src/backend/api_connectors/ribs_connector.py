@@ -418,21 +418,6 @@ class RibSiteConnector:
         self.max_retries = max_retries
         self.session_factory = RibSiteSessionFactory()
 
-    def _warm_session(self, request_session: requests.Session) -> None:
-        """One homepage hit so Vercel sees a browser-like first request on this AWS IP."""
-        if getattr(request_session, "_rib_warmed", False):
-            return
-        try:
-            logger.info("[rib_site] Warm GET /")
-            request_session.get(
-                f"{RIB_GG_SITE}/",
-                headers=dict(RIB_BROWSER_HEADERS),
-                timeout=self.timeout,
-            )
-        except Exception:
-            logger.warning("[rib_site] Warm GET / failed", exc_info=True)
-        request_session._rib_warmed = True  # type: ignore[attr-defined]
-
     def _get(
         self,
         path: str,
