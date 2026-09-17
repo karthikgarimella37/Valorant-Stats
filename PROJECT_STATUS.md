@@ -14,7 +14,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 
 ## Current focus
 
-- Start **rib overlay job `rib_facts`**. Code is in; first run with `RIB_MATCH_IDS` then full event crawl. Let current `vlr_facts` load finish in parallel.
+- Run **rib_facts** (match 270 first) with snapshots loading into `vlr.fact_rib_replay_snapshot`.
 
 ## Status
 
