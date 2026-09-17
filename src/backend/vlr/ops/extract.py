@@ -212,7 +212,7 @@ def _warehouse_event_ids(since: datetime) -> list[str]:
     return keep
 
 
-def extract_events_since(since: datetime) -> ExtractResult:
+def extract_events_since(since: datetime, run_id: str = "") -> ExtractResult:
     """Live + upcoming always; completed pages until older than since; details stay in memory."""
     logger.info("[inc] === STEP extract events since=%s ===", since.isoformat())
     connector = _health()
