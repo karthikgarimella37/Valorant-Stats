@@ -204,10 +204,10 @@ def max_source_now_if_live(max_source_at: datetime | None, has_live: bool) -> da
     """Live/upcoming rows have no final source time; pin the cursor to now so the next run re-reads them."""
     now = datetime.now(timezone.utc)
     if has_live:
-        logger.info("[inc] live/upcoming rows present; last_source_at=now %s", now.isoformat())
+        logger.info("[inc] live/upcoming rows present; last_source_at=now %s", iso_seconds(now))
         return now
     if max_source_at is None:
-        logger.info("[inc] no source timestamps; last_source_at=now %s", now.isoformat())
+        logger.info("[inc] no source timestamps; last_source_at=now %s", iso_seconds(now))
         return now
-    logger.info("[inc] last_source_at from extracted rows %s", max_source_at.isoformat())
+    logger.info("[inc] last_source_at from extracted rows %s", iso_seconds(max_source_at))
     return max_source_at

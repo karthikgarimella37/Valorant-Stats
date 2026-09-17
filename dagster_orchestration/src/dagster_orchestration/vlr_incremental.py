@@ -70,7 +70,7 @@ def _extract_payload(context: AssetExecutionContext, wm: dict[str, Any], extract
     context.log.info(
         "=== STEP %s: extract since=%s bootstrap=%s overlap_hours=%s note=%s ===",
         context.asset_key.to_user_string(),
-        since.isoformat(),
+        since.isoformat(timespec="seconds"),
         wm.get("bootstrap"),
         wm.get("overlap_hours"),
         wm.get("lookback_note"),
@@ -82,7 +82,7 @@ def _extract_payload(context: AssetExecutionContext, wm: dict[str, Any], extract
         "rows": result.rows,
         "row_count": result.row_count,
         "has_live": result.has_live,
-        "max_source_at": max_source_at.isoformat(),
+        "max_source_at": max_source_at.isoformat(timespec="seconds"),
         "extra": result.extra,
     }
     context.add_output_metadata(_meta(payload))
