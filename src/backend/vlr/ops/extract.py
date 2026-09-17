@@ -582,9 +582,9 @@ def extract_players_since(since: datetime, run_id: str = "") -> ExtractResult:
     if not player_ids:
         return ExtractResult()
     workers = int(os.getenv("VLR_PLAYER_WORKERS", os.getenv("VLR_MATCH_WORKERS", "6")))
-    lookup = team_id_lookup(REPO_ROOT)
+    lookup = _team_name_lookup()
     if not lookup:
-        logger.info("[inc] players team_name lookup empty jsonl; continuing with API team ids only")
+        logger.info("[inc] players team_name lookup empty warehouse; continuing with API team ids only")
     detail_connector = VlrV2Connector(max_workers=workers, timeout=60)
     rows: list[dict[str, Any]] = []
     errors = 0
