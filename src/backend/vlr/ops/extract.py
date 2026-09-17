@@ -122,7 +122,7 @@ def _normalize_listing(segment: dict[str, Any], status: str) -> dict[str, Any] |
 
 def _list_status(connector: VlrV2Connector, status: str, max_pages: int, since: datetime | None) -> list[dict[str, Any]]:
     """Page one /v2/events status. Completed stops when a page is entirely older than since."""
-    logger.info("[inc] events list start status=%s max_pages=%s since=%s", status, max_pages, since)
+    logger.info("[inc] events list start status=%s max_pages=%s since=%s", status, max_pages, iso_seconds(since))
     by_id: dict[str, dict[str, Any]] = {}
     for page in range(1, max_pages + 1):
         segments = connector.get_events_page(page, status)
