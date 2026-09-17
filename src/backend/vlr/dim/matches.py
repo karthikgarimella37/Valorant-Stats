@@ -350,6 +350,7 @@ def format_row(
         "team_2_score": score_2,
         "match_date": match_date,
         "match_date_text": date_raw,
+        "match_at": match_at,
         "match_note": listing.get("note") or None,
         "match_patch": parse_match_patch(str(detail.get("date") or date_raw or "")),
         "n_maps": n_maps,
