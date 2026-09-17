@@ -314,7 +314,7 @@ def vlr_players_wm_write(context: AssetExecutionContext, vlr_players_merge: dict
 @asset(group_name="vlr_inc", deps=[ops_watermarks_schema])
 def vlr_facts_wm_read(context: AssetExecutionContext) -> dict[str, Any]:
     """Step 1 facts: one cursor (lead table fact_match_overall_stats) shared across all vlr fact tables."""
-    apply_facts_schema(REPO_ROOT)
+    context.log.info("[inc] skip facts DDL on incremental; vlr.fact_* must already exist")
     payload = step_check_watermark("vlr_facts", FACTS_LEAD_TABLE)
     context.add_output_metadata(_meta(payload))
     return payload
