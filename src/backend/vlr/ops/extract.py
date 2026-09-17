@@ -408,7 +408,7 @@ def extract_matches_since(since: datetime, run_id: str = "") -> ExtractResult:
         len(rows),
         errors,
         has_live,
-        max_source_at.isoformat() if max_source_at else None,
+        iso_seconds(max_source_at),
     )
     if run_id:
         stash(run_id, "match_rows", rows)
