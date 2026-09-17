@@ -183,8 +183,6 @@ def dbt_build_vlr_marts(context: AssetExecutionContext) -> None:
         "fact_match_half_round_stats",
         "fact_player_map_stats",
         "source:vlr",
-        "test_type:generic",
-        "test_type:singular",
     ]
     context.log.info("=== STEP dbt_build_vlr_marts: views + tests on live vlr.* ===")
     _run_command(context, command, cwd=DBT_PROJECT_DIR)
