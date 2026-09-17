@@ -271,6 +271,9 @@ def parse_match_overlay(
                     }
                 )
 
+        for round_number, replay_round in enumerate(replay_rounds, start=1):
+            if not isinstance(replay_round, dict):
+                continue
             events = replay_round.get("events") if isinstance(replay_round.get("events"), list) else []
             event_index = 0
             for event in events:
@@ -283,8 +286,7 @@ def parse_match_overlay(
                 actor_id = _s(event.get("actorId"))
                 target_id = _s(event.get("targetId"))
                 pos_x, pos_y = _pos_xy(event.get("pos"))
-                target_pos = event.get("targetPos")
-                tx, ty = _pos_xy(target_pos)
+                tx, ty = _pos_xy(event.get("targetPos"))
                 known = {"t", "pos", "type", "actorId", "targetId", "weapon", "ability", "targetPos"}
                 actor_player = actor_to_player.get(actor_id or "")
                 target_player = actor_to_player.get(target_id or "")
