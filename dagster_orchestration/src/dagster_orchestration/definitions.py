@@ -547,10 +547,10 @@ def rib_match_extract(context: AssetExecutionContext) -> dict[str, int]:
 @asset(group_name="rib_facts", deps=[rib_match_extract])
 def rib_facts_parse(context: AssetExecutionContext) -> dict[str, int]:
     """Parse landed rib JSON into overlay fact jsonl and fuzzy-join VLR ids."""
-    context.log.info("=== STEP rib_facts_parse: json → fact jsonl + VLR join ===")
+    context.log.info("=== STEP rib_facts_parse START ===")
     counts = parse_rib_facts(REPO_ROOT)
     context.add_output_metadata({"row_counts": MetadataValue.json(counts)})
-    context.log.info("rib facts parsed %s", counts)
+    context.log.info("=== STEP rib_facts_parse DONE %s ===", counts)
     return counts
 
 
