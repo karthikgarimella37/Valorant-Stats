@@ -115,10 +115,10 @@ def bootstrap_last_source_at(table_name: str) -> datetime:
             "[watermark] Bootstrap empty table=vlr.%s using VLR_INC_BOOTSTRAP_DAYS=%s since=%s",
             table,
             _bootstrap_days(),
-            since.isoformat(),
+            iso_seconds(since),
         )
         return since
-    logger.info("[watermark] Bootstrap table=vlr.%s max_update_date=%s", table, stamped.isoformat())
+    logger.info("[watermark] Bootstrap table=vlr.%s max_update_date=%s", table, iso_seconds(stamped))
     return stamped
 
 
