@@ -698,9 +698,17 @@ Composite unique: `(vlr_match_id, action_order)`.
 
 Grain: team × map × attack/defense. Built from `fact_round_results`.
 
-### `fact_player_vs_player_kills` — later (rib)
+### `fact_player_vs_player_kills` — rib overlay
 
-Grain: one kill. Not in VLR.
+Grain: one kill from replay. Snapshots stay in `data/rib_gg/json/replay/`. Job `rib_facts`.
+
+### `fact_rib_round` / `fact_rib_round_player` / `fact_rib_round_economy` / `fact_rib_replay_event`
+
+Round winner + per-player loadout/combat + team economy + non-snapshot replay events. Keys include both `rib_*` and `vlr_*` ids after fuzzy join.
+
+### `fact_rib_match_crosswalk`
+
+Grain: one rib series. Fuzzy join to `vlr_match_id` on event name + team names + date.
 
 See `LATER.md` for watermarks / economy dim / KG agent.
 
