@@ -1021,6 +1021,8 @@ vlr_weapons = define_asset_job(
 rib_facts = define_asset_job(
     "rib_facts",
     selection=[rib_match_extract, rib_facts_parse, rib_facts_load],
+    # One process: extract→parse→load logs stay in this terminal (no child reconstruct).
+    executor_def=in_process_executor,
 )
 
 defs = Definitions(
