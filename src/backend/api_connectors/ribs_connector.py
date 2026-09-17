@@ -614,7 +614,7 @@ class RibSiteConnector:
         map_id: str,
         session: requests.Session | None = None,
     ) -> dict[str, Any]:
-        """Full replay blob for one map. Caller lands the JSON; do not insert snapshots."""
+        """Full replay blob for one map. Parse later into event + snapshot warehouse tables."""
         params = {"mapId": map_id}
         headers = {
             "Accept": "application/json, text/plain, */*",
