@@ -74,3 +74,4 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 | 2026-09-15 | Dims marked done. `LATER.md` + daily nudge. Fact backend (`vlr_facts`) coded, not run |
 | 2026-09-15 | Fact unique keys → composite (not concat). Performance table left on `fact_key` while its load runs |
 | 2026-09-16 | Future facts load = composite unique + parallel tables. Adhoc migrate waits for concat load then swaps keys |
+| 2026-09-16 | Half data already in VLR facts. Next extract = rib roundStats + full replay JSON, fuzzy-join to VLR |
