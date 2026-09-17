@@ -171,10 +171,6 @@ Optional env vars:
 - `VLR_TEAM_WORKERS` / `VLR_PLAYER_WORKERS`
 - `VLR_API_CONCURRENCY` (default `6`) / `VLR_API_INTERVAL_SEC` (default `0.4`)
 
-## Fact tables (historical jsonl)
-
-Job: `vlr_hist_facts` — parse `data/vlr/matches.jsonl` into `vlr.fact_*`. Daily incremental facts are `vlr_facts` / `vlr_daily`.
-
 ## Run the VLR.gg extract → parquet → Supabase job
 
 Job: `vlr_star_schema_job`
