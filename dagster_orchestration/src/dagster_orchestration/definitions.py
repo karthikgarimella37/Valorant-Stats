@@ -1024,5 +1024,6 @@ defs = Definitions(
         vlr_maps,
         vlr_weapons,
         vlr_facts,
+        rib_facts,
     ],
 )
