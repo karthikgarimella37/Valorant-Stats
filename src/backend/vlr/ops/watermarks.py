@@ -217,7 +217,7 @@ def write_watermark(
         table_name,
         status,
         row_count,
-        last_source_at.isoformat() if last_source_at else None,
+        iso_seconds(last_source_at),
         dagster_run_id,
         dagster_job_name,
         (error_text or "")[:300],
