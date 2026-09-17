@@ -57,9 +57,10 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 
 ## Open questions / blockers
 
-- Keep `docker compose up -d --build vlrggapi` running before `vlr_events` / `vlr_matches`
-- Match details still incomplete in `matches.jsonl` (~3.5% when last noted)
-- Map scoreboard has no player id; `vlr_player_id` is resolved from teams/players/events jsonl
+- Keep `docker compose up -d --build vlrggapi` running before incremental VLR jobs
+- Match details still incomplete in `matches.jsonl` (~3.5% empty-detail/429) — do not re-scrape all matches
+- Map scoreboard has no player id; incremental facts resolve `vlr_player_id` from warehouse dims
+- Dummy dbt marts still live in schema `valorant`; live tables are schema `vlr`
 - `round_economy` is usually empty until economy-tab scrape is on the landing
 - Round `win_method_code` is null on current `/v2` rounds
 - Series 2K/1vX only attach to **map 1** (VLR does not split them per map)
