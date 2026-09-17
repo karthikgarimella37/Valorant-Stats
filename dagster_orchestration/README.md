@@ -169,17 +169,11 @@ Optional env vars:
 - `VLR_EVENT_DETAIL_WORKERS` (default `8`)
 - `VLR_MATCH_EVENT_WORKERS` (default `8`) / `VLR_MATCH_WORKERS` (default `6`)
 - `VLR_TEAM_WORKERS` / `VLR_PLAYER_WORKERS`
+- `VLR_API_CONCURRENCY` (default `6`) / `VLR_API_INTERVAL_SEC` (default `0.4`)
 
-- `VLR_API_CONCURRENCY` (default `6`) — max in-flight `/v2` match-detail calls
-- `VLR_API_INTERVAL_SEC` (default `0.4`) — min seconds between starting those calls
-- `VLR_MATCH_SKIP_EXISTING=1` — skip ids already in `matches.jsonl`
-- `VLR_TEAM_WORKERS` (default same as `VLR_MATCH_WORKERS` / `6`)
-- `VLR_TEAM_SKIP_EXISTING=1` — skip ids already in `teams.jsonl`
-- `VLR_PLAYER_WORKERS` (default same as `VLR_MATCH_WORKERS` / `6`)
-- `VLR_PLAYER_SKIP_EXISTING=1` — skip ids already in `players.jsonl`
-- `VLR_REQUIRE_ROTATOR=0` — only for local debug; do not use for a full scrape
-- `VLR_LIQUIPEDIA_WORKERS` (default `1`) / `VLR_LIQUIPEDIA_INTERVAL_SEC` (default `1.1`) — kit catalog only
-- `VLR_CATALOG_ROTATOR_REGIONS` — AWS region list for valorant-api / Liquipedia gateways (default: first of `VLR_IP_ROTATOR_REGIONS`)
+## Fact tables (historical jsonl)
+
+Job: `vlr_hist_facts` — parse `data/vlr/matches.jsonl` into `vlr.fact_*`. Daily incremental facts are `vlr_facts` / `vlr_daily`.
 
 ## Run the VLR.gg extract → parquet → Supabase job
 
