@@ -477,6 +477,8 @@ class RibSiteConnector:
                 logger.info("[rib_site] GET %s HTTP %s bytes=%s", path, response.status_code, len(response.content))
                 return response
             except Exception as exc:
+                if "Vercel security checkpoint" in str(exc):
+                    raise
                 last_error = exc
                 wait = min(2 ** attempt, 45)
                 logger.warning(
