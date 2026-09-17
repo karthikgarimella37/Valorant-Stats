@@ -110,6 +110,18 @@ def parse_rib_facts(repo_root: Path | None = None) -> dict[str, int]:
         except Exception:
             logger.exception("[rib_facts] Parse failed id=%s", match_id)
             continue
+        logger.info(
+            "[rib_facts] Parse match %s/%s id=%s rows rounds=%s players=%s eco=%s kills=%s events=%s snapshots=%s",
+            scanned,
+            len(ids),
+            match_id,
+            len(parsed.get("rounds") or []),
+            len(parsed.get("round_players") or []),
+            len(parsed.get("round_economy") or []),
+            len(parsed.get("kills") or []),
+            len(parsed.get("replay_events") or []),
+            len(parsed.get("snapshots") or []),
+        )
         for stem, rows in parsed.items():
             dest = buckets.get(stem)
             if dest is None:
