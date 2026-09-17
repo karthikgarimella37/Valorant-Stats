@@ -695,9 +695,13 @@ Composite unique: `(vlr_match_id, map_game_number, round_number, vlr_team_id)`.
 Grain: **one veto action**. Ban / pick / decider from `map_vetos` text.  
 Composite unique: `(vlr_match_id, action_order)`.
 
-### `fact_match_half_round_stats` — dbt view (later)
+### `fact_match_half_round_stats` — dbt materialized view
 
-Grain: team × map × attack/defense. Built from `fact_round_results`.
+Grain: team × map × attack/defense. Built from `vlr.fact_round_results`. Job `vlr_dbt`.
+
+### `fact_player_map_stats` — dbt view
+
+Grain: one player on one map game. Joins `fact_match_overall_stats` to `fact_player_match_performance`.
 
 ### `fact_player_vs_player_kills` — rib overlay
 
