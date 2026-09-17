@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Callable
 
-from dagster import AssetExecutionContext, MetadataValue, asset, define_asset_job, failure_hook, HookContext
+from dagster import AssetExecutionContext, MetadataValue, asset, define_asset_job
 
 from backend.vlr.dim.historical import apply_events_schema
 from backend.vlr.dim.matches import apply_matches_schema
@@ -26,16 +27,14 @@ from backend.vlr.ops.extract import (
     merge_teams,
 )
 from backend.vlr.ops.run import (
+    clear_stash,
     max_source_now_if_live,
     parse_since,
     step_check_watermark,
     step_update_watermark,
 )
 from backend.vlr.ops.specs import FACTS_LEAD_TABLE
-from dagster_orchestration.definitions import REPO_ROOT
-
-# Imported from definitions would cycle. Resolve repo root the same way.
-from pathlib import Path
+from backend.vlr.ops.watermarks import ensure_watermarks_table
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -63,7 +62,8 @@ def _meta(payload: dict[str, Any]) -> dict[str, Any]:
             out[key] = MetadataValue.json(value)
         elif isinstance(value, list):
             out[f"{key}_n"] = len(value)
-    out["row_count"] = payload.get("row_count")
+    if "row_count" in payload:
+        out["row_count"] = payload.get("row_count")
     return out
 
 
@@ -112,7 +112,11 @@ def _merge_payload(context: AssetExecutionContext, extracted: dict[str, Any], me
     try:
         loaded = merge_fn(rows)
     except Exception as exc:
-        context.log.exception("merge failed pipeline=%s table=%s", extracted.get("pipeline_name"), extracted.get("table_name"))
+        context.log.exception(
+            "merge failed pipeline=%s table=%s",
+            extracted.get("pipeline_name"),
+            extracted.get("table_name"),
+        )
         step_update_watermark(
             pipeline_name=str(extracted["pipeline_name"]),
             table_name=str(extracted["table_name"]),
@@ -138,7 +142,12 @@ def _merge_payload(context: AssetExecutionContext, extracted: dict[str, Any], me
         "merge_status": "success",
     }
     context.add_output_metadata(_meta(payload))
-    context.log.info("merge done pipeline=%s upserted=%s counts=%s", extracted.get("pipeline_name"), row_count, counts)
+    context.log.info(
+        "merge done pipeline=%s upserted=%s counts=%s",
+        extracted.get("pipeline_name"),
+        row_count,
+        counts,
+    )
     return payload
 
 
@@ -167,11 +176,29 @@ def _write_payload(context: AssetExecutionContext, merged: dict[str, Any]) -> di
     return out
 
 
+def _run_one(
+    context: AssetExecutionContext,
+    *,
+    pipeline_name: str,
+    table_name: str,
+    schema_fn: Callable,
+    extract_fn: Callable,
+    merge_fn: Callable,
+) -> dict[str, Any]:
+    """Run the four steps in order inside vlr_daily so events finish before matches."""
+    context.log.info("[inc] daily pipeline start %s table=%s", pipeline_name, table_name)
+    schema_fn(REPO_ROOT)
+    wm = step_check_watermark(pipeline_name, table_name)
+    extracted = _extract_payload(context, wm, extract_fn)
+    merged = _merge_payload(context, extracted, merge_fn)
+    written = _write_payload(context, merged)
+    context.log.info("[inc] daily pipeline done %s %s", pipeline_name, written)
+    return written
+
+
 @asset(group_name="vlr_inc")
 def ops_watermarks_schema(context: AssetExecutionContext) -> str:
     """Create vlr.ops_pipeline_watermarks and seed one row per known table."""
-    from backend.vlr.ops.watermarks import ensure_watermarks_table
-
     context.log.info("=== STEP ops_watermarks_schema: ensure vlr.ops_pipeline_watermarks ===")
     path = ensure_watermarks_table(REPO_ROOT)
     context.add_output_metadata({"sql_path": MetadataValue.path(str(path))})
@@ -188,25 +215,25 @@ def vlr_events_wm_read(context: AssetExecutionContext) -> dict[str, Any]:
     return payload
 
 
-@asset(group_name="vlr_inc", deps=[vlr_events_wm_read])
+@asset(group_name="vlr_inc")
 def vlr_events_extract(context: AssetExecutionContext, vlr_events_wm_read: dict[str, Any]) -> dict[str, Any]:
     """Step 2 events: live+upcoming always, completed until older than since, keep rows in memory."""
     return _extract_payload(context, vlr_events_wm_read, extract_events_since)
 
 
-@asset(group_name="vlr_inc", deps=[vlr_events_extract])
+@asset(group_name="vlr_inc")
 def vlr_events_merge(context: AssetExecutionContext, vlr_events_extract: dict[str, Any]) -> dict[str, Any]:
     """Step 3 events: upsert vlr.dim_events from the in-memory extract."""
     return _merge_payload(context, vlr_events_extract, merge_events)
 
 
-@asset(group_name="vlr_inc", deps=[vlr_events_merge])
+@asset(group_name="vlr_inc")
 def vlr_events_wm_write(context: AssetExecutionContext, vlr_events_merge: dict[str, Any]) -> dict[str, Any]:
     """Step 4 events: advance last_source_at only after a successful merge."""
     return _write_payload(context, vlr_events_merge)
 
 
-@asset(group_name="vlr_inc", deps=[ops_watermarks_schema, vlr_events_wm_write])
+@asset(group_name="vlr_inc", deps=[ops_watermarks_schema])
 def vlr_matches_wm_read(context: AssetExecutionContext) -> dict[str, Any]:
     """Step 1 matches: same timestamptz clock; date-only match_date keeps the whole since day."""
     apply_matches_schema(REPO_ROOT)
@@ -215,25 +242,25 @@ def vlr_matches_wm_read(context: AssetExecutionContext) -> dict[str, Any]:
     return payload
 
 
-@asset(group_name="vlr_inc", deps=[vlr_matches_wm_read])
+@asset(group_name="vlr_inc")
 def vlr_matches_extract(context: AssetExecutionContext, vlr_matches_wm_read: dict[str, Any]) -> dict[str, Any]:
     """Step 2 matches: list recent/live events, fetch details, keep them in memory for facts."""
     return _extract_payload(context, vlr_matches_wm_read, extract_matches_since)
 
 
-@asset(group_name="vlr_inc", deps=[vlr_matches_extract])
+@asset(group_name="vlr_inc")
 def vlr_matches_merge(context: AssetExecutionContext, vlr_matches_extract: dict[str, Any]) -> dict[str, Any]:
     """Step 3 matches: upsert vlr.dim_matches from the in-memory extract."""
     return _merge_payload(context, vlr_matches_extract, merge_matches)
 
 
-@asset(group_name="vlr_inc", deps=[vlr_matches_merge])
+@asset(group_name="vlr_inc")
 def vlr_matches_wm_write(context: AssetExecutionContext, vlr_matches_merge: dict[str, Any]) -> dict[str, Any]:
     """Step 4 matches: write last_source_at (now if any live series)."""
     return _write_payload(context, vlr_matches_merge)
 
 
-@asset(group_name="vlr_inc", deps=[ops_watermarks_schema, vlr_matches_wm_write])
+@asset(group_name="vlr_inc", deps=[ops_watermarks_schema])
 def vlr_teams_wm_read(context: AssetExecutionContext) -> dict[str, Any]:
     """Step 1 teams: cursor for dim_teams; overlap 1 hour on last_source_at."""
     apply_teams_schema(REPO_ROOT)
@@ -242,25 +269,25 @@ def vlr_teams_wm_read(context: AssetExecutionContext) -> dict[str, Any]:
     return payload
 
 
-@asset(group_name="vlr_inc", deps=[vlr_teams_wm_read])
+@asset(group_name="vlr_inc")
 def vlr_teams_extract(context: AssetExecutionContext, vlr_teams_wm_read: dict[str, Any]) -> dict[str, Any]:
     """Step 2 teams: /v2/team for ids on the matches just pulled (or warehouse since)."""
     return _extract_payload(context, vlr_teams_wm_read, extract_teams_since)
 
 
-@asset(group_name="vlr_inc", deps=[vlr_teams_extract])
+@asset(group_name="vlr_inc")
 def vlr_teams_merge(context: AssetExecutionContext, vlr_teams_extract: dict[str, Any]) -> dict[str, Any]:
     """Step 3 teams: upsert vlr.dim_teams from in-memory profiles."""
     return _merge_payload(context, vlr_teams_extract, merge_teams)
 
 
-@asset(group_name="vlr_inc", deps=[vlr_teams_merge])
+@asset(group_name="vlr_inc")
 def vlr_teams_wm_write(context: AssetExecutionContext, vlr_teams_merge: dict[str, Any]) -> dict[str, Any]:
     """Step 4 teams: persist last_source_at after merge."""
     return _write_payload(context, vlr_teams_merge)
 
 
-@asset(group_name="vlr_inc", deps=[ops_watermarks_schema, vlr_teams_wm_write])
+@asset(group_name="vlr_inc", deps=[ops_watermarks_schema])
 def vlr_players_wm_read(context: AssetExecutionContext) -> dict[str, Any]:
     """Step 1 players: cursor for dim_players; overlap 1 hour."""
     apply_players_schema(REPO_ROOT)
@@ -269,25 +296,36 @@ def vlr_players_wm_read(context: AssetExecutionContext) -> dict[str, Any]:
     return payload
 
 
-@asset(group_name="vlr_inc", deps=[vlr_players_wm_read])
+@asset(group_name="vlr_inc")
 def vlr_players_extract(context: AssetExecutionContext, vlr_players_wm_read: dict[str, Any]) -> dict[str, Any]:
     """Step 2 players: /v2/player for roster ids from the teams just pulled."""
     return _extract_payload(context, vlr_players_wm_read, extract_players_since)
 
 
-@asset(group_name="vlr_inc", deps=[vlr_players_extract])
+@asset(group_name="vlr_inc")
 def vlr_players_merge(context: AssetExecutionContext, vlr_players_extract: dict[str, Any]) -> dict[str, Any]:
     """Step 3 players: upsert vlr.dim_players from in-memory profiles."""
     return _merge_payload(context, vlr_players_extract, merge_players)
 
 
-@asset(group_name="vlr_inc", deps=[vlr_players_merge])
+@asset(group_name="vlr_inc")
+def vlr_players_wm_write(context: AssetExecutionContext, vlr_players_merge: dict[str, Any]) -> dict[str, Any]:
+    """Step 4 players: persist last_source_at after merge."""
+    return _write_payload(context, vlr_players_wm_write_input(vlr_players_merge))
+
+
+def vlr_players_wm_write_input(merged: dict[str, Any]) -> dict[str, Any]:
+    """Pass-through so the write asset body stays one line with a why-docstring on the asset."""
+    return merged
+
+
+@asset(group_name="vlr_inc")
 def vlr_players_wm_write(context: AssetExecutionContext, vlr_players_merge: dict[str, Any]) -> dict[str, Any]:
     """Step 4 players: persist last_source_at after merge."""
     return _write_payload(context, vlr_players_merge)
 
 
-@asset(group_name="vlr_inc", deps=[ops_watermarks_schema, vlr_matches_wm_write])
+@asset(group_name="vlr_inc", deps=[ops_watermarks_schema])
 def vlr_facts_wm_read(context: AssetExecutionContext) -> dict[str, Any]:
     """Step 1 facts: one cursor (lead table fact_match_overall_stats) shared across all vlr fact tables."""
     apply_facts_schema(REPO_ROOT)
@@ -296,26 +334,76 @@ def vlr_facts_wm_read(context: AssetExecutionContext) -> dict[str, Any]:
     return payload
 
 
-@asset(group_name="vlr_inc", deps=[vlr_facts_wm_read])
+@asset(group_name="vlr_inc")
 def vlr_facts_extract(context: AssetExecutionContext, vlr_facts_wm_read: dict[str, Any]) -> dict[str, Any]:
     """Step 2 facts: reuse in-memory match details from this run, or re-fetch ids since the cursor."""
     return _extract_payload(context, vlr_facts_wm_read, extract_facts_since)
 
 
-@asset(group_name="vlr_inc", deps=[vlr_facts_extract])
+@asset(group_name="vlr_inc")
 def vlr_facts_merge(context: AssetExecutionContext, vlr_facts_extract: dict[str, Any]) -> dict[str, Any]:
     """Step 3 facts: parse in memory and upsert every vlr.fact_* table."""
     return _merge_payload(context, vlr_facts_extract, merge_facts)
 
 
-@asset(group_name="vlr_inc", deps=[vlr_facts_merge])
+@asset(group_name="vlr_inc")
 def vlr_facts_wm_write(context: AssetExecutionContext, vlr_facts_merge: dict[str, Any]) -> dict[str, Any]:
     """Step 4 facts: write the same last_source_at onto every vlr fact watermark row."""
-    from backend.vlr.ops.run import clear_stash
-
     out = _write_payload(context, vlr_facts_merge)
     clear_stash(context.run_id)
     return out
+
+
+@asset(group_name="vlr_inc", deps=[ops_watermarks_schema])
+def vlr_daily_run(context: AssetExecutionContext) -> dict[str, Any]:
+    """Daily chain in one process: events → matches → teams → players → facts (stash match rows for facts)."""
+    context.log.info("=== STEP vlr_daily_run: events → matches → teams → players → facts ===")
+    results = {
+        "vlr_events": _run_one(
+            context,
+            pipeline_name="vlr_events",
+            table_name="dim_events",
+            schema_fn=apply_events_schema,
+            extract_fn=extract_events_since,
+            merge_fn=merge_events,
+        ),
+        "vlr_matches": _run_one(
+            context,
+            pipeline_name="vlr_matches",
+            table_name="dim_matches",
+            schema_fn=apply_matches_schema,
+            extract_fn=extract_matches_since,
+            merge_fn=merge_matches,
+        ),
+        "vlr_teams": _run_one(
+            context,
+            pipeline_name="vlr_teams",
+            table_name="dim_teams",
+            schema_fn=apply_teams_schema,
+            extract_fn=extract_teams_since,
+            merge_fn=merge_teams,
+        ),
+        "vlr_players": _run_one(
+            context,
+            pipeline_name="vlr_players",
+            table_name="dim_players",
+            schema_fn=apply_players_schema,
+            extract_fn=extract_players_since,
+            merge_fn=merge_players,
+        ),
+        "vlr_facts": _run_one(
+            context,
+            pipeline_name="vlr_facts",
+            table_name=FACTS_LEAD_TABLE,
+            schema_fn=apply_facts_schema,
+            extract_fn=extract_facts_since,
+            merge_fn=merge_facts,
+        ),
+    }
+    clear_stash(context.run_id)
+    context.add_output_metadata({key: MetadataValue.json(value) for key, value in results.items()})
+    context.log.info("=== STEP vlr_daily_run done pipelines=%s ===", list(results))
+    return results
 
 
 VLR_INC_ASSETS = [
@@ -340,6 +428,7 @@ VLR_INC_ASSETS = [
     vlr_facts_extract,
     vlr_facts_merge,
     vlr_facts_wm_write,
+    vlr_daily_run,
 ]
 
 vlr_events_inc = define_asset_job(
@@ -364,7 +453,7 @@ vlr_facts_inc = define_asset_job(
 )
 vlr_daily = define_asset_job(
     "vlr_daily",
-    selection=VLR_INC_ASSETS,
+    selection=[ops_watermarks_schema, vlr_daily_run],
 )
 
 VLR_INC_JOBS = [
