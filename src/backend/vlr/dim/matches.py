@@ -49,6 +49,7 @@ DIM_COLS = (
     "team_2_score",
     "match_date",
     "match_date_text",
+    "match_at",
     "match_note",
     "match_patch",
     "n_maps",
