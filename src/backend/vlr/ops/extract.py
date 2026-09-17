@@ -270,6 +270,7 @@ def extract_events_since(since: datetime, run_id: str = "") -> ExtractResult:
         has_live,
         max_source_at.isoformat() if max_source_at else None,
     )
+    extra_ids = [str(row.get("vlr_event_id")) for row in rows if row.get("vlr_event_id")]
     if run_id:
         stash(run_id, "event_ids", extra_ids)
     return ExtractResult(
