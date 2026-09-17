@@ -195,7 +195,9 @@ def _load_one_table(
     """Upsert one overlay table. Independent of other overlay tables."""
     rows = _read_fact_jsonl(spec, root)
     if not rows:
+        logger.info("[rib_facts] Load skip empty table=%s", spec.table)
         return spec.table, 0
+    logger.info("[rib_facts] Load START table=%s rows=%s batch=%s", spec.table, len(rows), batch_size)
     count = upsert_dim_rows(
         rows,
         table=spec.table,
