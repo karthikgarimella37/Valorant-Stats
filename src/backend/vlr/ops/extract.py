@@ -47,7 +47,7 @@ from backend.vlr.dim.util import (
 )
 from backend.vlr.fact.pipeline import upsert_facts_from_match_rows
 from backend.vlr.fact.tables import FACT_SPECS
-from backend.vlr.ops.run import max_source_now_if_live, peek_stash, stash
+from backend.vlr.ops.run import peek_stash, stash
 from backend.vlr.ops.watermarks import REPO_ROOT
 
 logger = logging.getLogger(__name__)
