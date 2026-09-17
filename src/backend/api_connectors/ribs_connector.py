@@ -498,8 +498,6 @@ class RibSiteConnector:
                     break
                 time.sleep(wait)
                 request_session = self.session_factory.create()
-                if session is not None:
-                    session = request_session
         raise RuntimeError(f"rib.gg GET failed path={path}") from last_error
 
     def rsc_text(
