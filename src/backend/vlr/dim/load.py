@@ -50,6 +50,9 @@ def upsert_dim_rows(
     conflict_column: str | tuple[str, ...],
     jsonb_columns: tuple[str, ...] = (),
     batch_size: int = 1000,
+    on_conflict: str = "update",
+    max_cpu_pct: int | None = None,
+    min_sleep_sec: float = 0.0,
 ) -> int:
     """Batch upsert on one column or a composite unique key; keep row_number on re-run."""
     if not rows:
@@ -58,19 +61,19 @@ def upsert_dim_rows(
     connector = SupabaseConnector()
     conflict_cols = (conflict_column,) if isinstance(conflict_column, str) else tuple(conflict_column)
     update_columns = [c for c in columns if c not in {*conflict_cols, "insert_date"}]
-    total = 0
     logger.info("[dims] Load start table=%s rows=%s", table, len(rows))
-    for start in range(0, len(rows), batch_size):
-        chunk = rows[start : start + batch_size]
-        total += connector.upsert_rows(
-            chunk,
-            schema="vlr",
-            table=table,
-            columns=columns,
-            conflict_column=conflict_column,
-            update_columns=update_columns,
-            jsonb_columns=jsonb_columns,
-        )
-        logger.info("[dims] Load progress table=%s upserted=%s/%s", table, total, len(rows))
+    total = connector.upsert_rows(
+        rows,
+        schema="vlr",
+        table=table,
+        columns=columns,
+        conflict_column=conflict_column,
+        update_columns=update_columns,
+        jsonb_columns=jsonb_columns,
+        batch_size=batch_size,
+        on_conflict=on_conflict,
+        max_cpu_pct=max_cpu_pct,
+        min_sleep_sec=min_sleep_sec,
+    )
     logger.info("[dims] Load done table=%s upserted=%s", table, total)
     return total

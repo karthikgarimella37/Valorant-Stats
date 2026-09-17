@@ -7,12 +7,14 @@ from typing import Any
 from backend.vlr.dim.util import canonical_agent_name
 from backend.vlr.fact.player_ids import PlayerIdLookup
 from backend.vlr.fact.util import (
+    coalesce_id,
     duration_sec,
     match_advanced,
     other_team_id,
     parse_veto_actions,
     played_won,
     remap_advanced,
+    resolve_team_id_from_tag,
     to_float,
     to_int,
     win_method_code,
@@ -104,24 +106,14 @@ def parse_match_facts(
         if not isinstance(eco, dict):
             continue
         tag = _s(eco.get("0") or eco.get("team") or eco.get("Team"))
-        team_id = None
-        if tag:
-            n1 = (_s(team_1.get("name")) or "").lower()
-            n2 = (_s(team_2.get("name")) or "").lower()
-            t = tag.lower()
-            if t == n1 or n1.startswith(t) or t in n1:
-                team_id = team_1_id
-            elif t == n2 or n2.startswith(t) or t in n2:
-                team_id = team_2_id
-        if not team_id:
-            continue
+        team_id = resolve_team_id_from_tag(tag, team_1, team_2, team_1_id, team_2_id)
         counts = _economy_counts(eco)
         buckets["economy"].append(
             {
                 "vlr_match_id": match_id,
                 "vlr_event_id": event_id,
                 "match_date": match_date,
-                "vlr_team_id": team_id,
+                "vlr_team_id": coalesce_id(team_id),
                 **counts,
             }
         )
@@ -151,14 +143,12 @@ def parse_match_facts(
         is_winner = team_obj.get("is_winner")
         if is_winner is None and maps_won is not None and other is not None:
             is_winner = maps_won > other
-        if not team_id:
-            continue
         buckets["series"].append(
             {
                 "vlr_match_id": match_id,
                 "vlr_event_id": event_id,
                 "match_date": match_date,
-                "vlr_team_id": team_id,
+                "vlr_team_id": coalesce_id(team_id),
                 "maps_won": maps_won,
                 "maps_lost": other,
                 "is_winner": bool(is_winner) if is_winner is not None else None,
@@ -184,8 +174,6 @@ def parse_match_facts(
             ("team1", team_1_id, t1_rounds, t2_rounds, t1_atk, t1_def, t1_ot),
             ("team2", team_2_id, t2_rounds, t1_rounds, t2_atk, t2_def, t2_ot),
         ):
-            if not team_id:
-                continue
             is_pick = bool(picked_by) and picked_by.lower() in {
                 (_s(team_1.get("name")) or "").lower() if side == "team1" else (_s(team_2.get("name")) or "").lower(),
                 (_s(team_1.get("tag")) or "").lower() if side == "team1" else (_s(team_2.get("tag")) or "").lower(),
@@ -197,7 +185,7 @@ def parse_match_facts(
                     "match_date": match_date,
                     "map_name": map_name,
                     "map_game_number": map_game_number,
-                    "vlr_team_id": team_id,
+                    "vlr_team_id": coalesce_id(team_id),
                     "rounds_won": won,
                     "rounds_lost": lost,
                     "attack_rounds_won": atk,
@@ -230,61 +218,59 @@ def parse_match_facts(
                     if player_ids
                     else _s(player.get("id") or player.get("player_id"))
                 )
-                if team_id and player_id:
-                    buckets["overall"].append(
-                        {
-                            "vlr_match_id": match_id,
-                            "vlr_event_id": event_id,
-                            "match_date": match_date,
-                            "map_name": map_name,
-                            "map_game_number": map_game_number,
-                            "player_name": ign,
-                            "vlr_team_id": team_id,
-                            "vlr_player_id": player_id,
-                            "agent_name": agent,
-                            "kills": to_int(player.get("kills")),
-                            "deaths": to_int(player.get("deaths")),
-                            "assists": to_int(player.get("assists")),
-                            "plus_minus": to_int(player.get("kd_diff") or player.get("plus_minus")),
-                            "acs": to_float(player.get("acs")),
-                            "adr": to_float(player.get("adr")),
-                            "rating": to_float(player.get("rating")),
-                            "rounds_played": rounds_played,
-                            "is_winner": is_winner,
-                        }
-                    )
+                buckets["overall"].append(
+                    {
+                        "vlr_match_id": match_id,
+                        "vlr_event_id": event_id,
+                        "match_date": match_date,
+                        "map_name": map_name,
+                        "map_game_number": map_game_number,
+                        "player_name": ign,
+                        "vlr_team_id": coalesce_id(team_id),
+                        "vlr_player_id": coalesce_id(player_id),
+                        "agent_name": agent,
+                        "kills": to_int(player.get("kills")),
+                        "deaths": to_int(player.get("deaths")),
+                        "assists": to_int(player.get("assists")),
+                        "plus_minus": to_int(player.get("kd_diff") or player.get("plus_minus")),
+                        "acs": to_float(player.get("acs")),
+                        "adr": to_float(player.get("adr")),
+                        "rating": to_float(player.get("rating")),
+                        "rounds_played": rounds_played,
+                        "is_winner": is_winner,
+                    }
+                )
                 adv = match_advanced(ign, series_advanced) if map_game_number == 1 else {}
-                if team_id and player_id:
-                    buckets["performance"].append(
-                        {
-                            "vlr_match_id": match_id,
-                            "vlr_event_id": event_id,
-                            "match_date": match_date,
-                            "map_name": map_name,
-                            "map_game_number": map_game_number,
-                            "player_name": ign,
-                            "vlr_team_id": team_id,
-                            "vlr_player_id": player_id,
-                            "agent_name": agent,
-                            "kast": to_float(player.get("kast")),
-                            "hs_pct": to_float(player.get("hs_pct")),
-                            "first_kills": to_int(player.get("fk")),
-                            "first_deaths": to_int(player.get("fd")),
-                            "fk_diff": to_int(player.get("fk_diff")),
-                            "multi_k2": to_int(adv.get("multi_2k") or adv.get("2K")),
-                            "multi_k3": to_int(adv.get("multi_3k") or adv.get("3K")),
-                            "multi_k4": to_int(adv.get("multi_4k") or adv.get("4K")),
-                            "multi_k5": to_int(adv.get("multi_5k") or adv.get("5K")),
-                            "clutch_v1": to_int(adv.get("clutch_1v1") or adv.get("1v1")),
-                            "clutch_v2": to_int(adv.get("clutch_1v2") or adv.get("1v2")),
-                            "clutch_v3": to_int(adv.get("clutch_1v3") or adv.get("1v3")),
-                            "clutch_v4": to_int(adv.get("clutch_1v4") or adv.get("1v4")),
-                            "clutch_v5": to_int(adv.get("clutch_1v5") or adv.get("1v5")),
-                            "econ": to_int(adv.get("econ")),
-                            "plants": to_int(adv.get("plants")),
-                            "defuses": to_int(adv.get("defuses")),
-                        }
-                    )
+                buckets["performance"].append(
+                    {
+                        "vlr_match_id": match_id,
+                        "vlr_event_id": event_id,
+                        "match_date": match_date,
+                        "map_name": map_name,
+                        "map_game_number": map_game_number,
+                        "player_name": ign,
+                        "vlr_team_id": coalesce_id(team_id),
+                        "vlr_player_id": coalesce_id(player_id),
+                        "agent_name": agent,
+                        "kast": to_float(player.get("kast")),
+                        "hs_pct": to_float(player.get("hs_pct")),
+                        "first_kills": to_int(player.get("fk")),
+                        "first_deaths": to_int(player.get("fd")),
+                        "fk_diff": to_int(player.get("fk_diff")),
+                        "multi_k2": to_int(adv.get("multi_2k") or adv.get("2K")),
+                        "multi_k3": to_int(adv.get("multi_3k") or adv.get("3K")),
+                        "multi_k4": to_int(adv.get("multi_4k") or adv.get("4K")),
+                        "multi_k5": to_int(adv.get("multi_5k") or adv.get("5K")),
+                        "clutch_v1": to_int(adv.get("clutch_1v1") or adv.get("1v1")),
+                        "clutch_v2": to_int(adv.get("clutch_1v2") or adv.get("1v2")),
+                        "clutch_v3": to_int(adv.get("clutch_1v3") or adv.get("1v3")),
+                        "clutch_v4": to_int(adv.get("clutch_1v4") or adv.get("1v4")),
+                        "clutch_v5": to_int(adv.get("clutch_1v5") or adv.get("1v5")),
+                        "econ": to_int(adv.get("econ")),
+                        "plants": to_int(adv.get("plants")),
+                        "defuses": to_int(adv.get("defuses")),
+                    }
+                )
 
         for round_row in map_row.get("rounds") or []:
             if not isinstance(round_row, dict):
@@ -305,8 +291,8 @@ def parse_match_facts(
                     "map_name": map_name,
                     "map_game_number": map_game_number,
                     "round_number": round_number,
-                    "winning_vlr_team_id": winning_team_id,
-                    "losing_vlr_team_id": other_team_id(winning_team_id, team_1_id, team_2_id),
+                    "winning_vlr_team_id": coalesce_id(winning_team_id),
+                    "losing_vlr_team_id": coalesce_id(other_team_id(winning_team_id, team_1_id, team_2_id)),
                     "is_attack_win": side in {"t", "attack", "atk"},
                     "win_method_code": win_method_code(round_row.get("method")),
                 }
@@ -321,7 +307,7 @@ def parse_match_facts(
             pistol = bool(eco_round.get("is_pistol_round")) if "is_pistol_round" in eco_round else round_number in {1, 13}
             for side, team_id in (("team1", team_1_id), ("team2", team_2_id)):
                 cell = eco_round.get(side)
-                if not isinstance(cell, dict) or not team_id:
+                if not isinstance(cell, dict):
                     continue
                 side_code = _s(cell.get("side"))
                 buckets["round_economy"].append(
@@ -332,7 +318,7 @@ def parse_match_facts(
                         "map_name": map_name,
                         "map_game_number": map_game_number,
                         "round_number": round_number,
-                        "vlr_team_id": team_id,
+                        "vlr_team_id": coalesce_id(team_id),
                         "economy_code": _s(cell.get("buy_type")),
                         "bank": to_int(cell.get("bank_credits") or cell.get("bank")),
                         "loadout": to_int(cell.get("loadout_credits") or cell.get("loadout")),

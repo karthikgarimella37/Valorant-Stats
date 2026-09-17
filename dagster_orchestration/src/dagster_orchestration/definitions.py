@@ -5,7 +5,14 @@ from datetime import date
 from pathlib import Path
 
 import psycopg2
-from dagster import AssetExecutionContext, Definitions, MetadataValue, asset, define_asset_job
+from dagster import (
+    AssetExecutionContext,
+    Definitions,
+    MetadataValue,
+    asset,
+    define_asset_job,
+    in_process_executor,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SRC_ROOT = REPO_ROOT / "src"
@@ -16,6 +23,7 @@ from backend.api_connectors.ribs_connector import RibsConnector
 from backend.config.env import load_project_env
 from backend.database_connectors.supabase_connectors import SupabaseConnector
 from backend.rib_gg.extract import RibExtractPipeline, landing_dir_for, read_ndjson
+from backend.rib_gg.pipeline import extract_rib_matches, load_rib_facts, parse_rib_facts
 from backend.vlr.dim.agents import run_agents
 from backend.vlr.dim.dates import apply_dates_schema, load_dates, rows_from_dates_landing, seed_dates
 from backend.vlr.dim.from_landings import load_from_landings
@@ -28,6 +36,8 @@ from backend.vlr.dim.teams import apply_teams_schema, extract_teams, load_teams
 from backend.vlr.dim.weapons import run_weapons
 from backend.vlr.extract import VlrExtractPipeline
 from backend.vlr.fact.pipeline import extract_facts, load_facts
+from backend.vlr.ops.run import run_full_refresh
+from .vlr_incremental import VLR_INC_ASSETS, VLR_INC_JOBS
 
 load_project_env(REPO_ROOT)
 
@@ -155,32 +165,13 @@ def log_select_one_plus_ten_result(context: AssetExecutionContext) -> None:
 
 
 @asset(group_name="dbt")
-def dbt_build_star_schema(context: AssetExecutionContext) -> None:
-    """
-    Ensure the `valorant` schema exists, then materialize rib-aligned stub dim_/fact_ tables via dbt.
-    Prefer `rib_gg_star_schema_job` for populated parquet → Supabase loads.
-    """
+def dbt_build_vlr_marts(context: AssetExecutionContext) -> None:
+    """Build live vlr views/matviews and run grain tests. Does not recreate Python dim/fact tables."""
     if not DBT_BIN.exists():
         raise RuntimeError(
             "dbt executable not found. Create the dbt virtualenv in "
             "`src/backend/sql` and install dbt there first."
         )
-
-    schema = _get_dbt_schema()
-    _ensure_schema(context, schema)
-
-    models = [
-        "dim_events",
-        "dim_teams",
-        "dim_players",
-        "dim_agents",
-        "dim_maps",
-        "dim_series",
-        "dim_matches",
-        "fact_match_overall_stats",
-        "fact_match_performance",
-        "fact_match_economy",
-    ]
     command = [
         str(DBT_BIN),
         "build",
@@ -188,25 +179,14 @@ def dbt_build_star_schema(context: AssetExecutionContext) -> None:
         str(DBT_PROJECT_DIR),
         "--profiles-dir",
         str(DBT_PROJECT_DIR),
+        "--select",
+        "fact_match_half_round_stats",
+        "fact_player_map_stats",
+        "source:vlr",
     ]
-    for model in models:
-        command.extend(["--select", model])
-
-    try:
-        context.log.info(
-            "Starting DBT Build into schema '%s' for models: %s",
-            schema,
-            ", ".join(models),
-        )
-        _run_command(context, command, cwd=DBT_PROJECT_DIR)
-        context.log.info(
-            "DBT run completed successfully. Tables created/updated as %s.dim_* / %s.fact_*",
-            schema,
-            schema,
-        )
-    except Exception as e:
-        context.log.error("DBT run failed! SQL execution failed with error: %s", e)
-        raise
+    context.log.info("=== STEP dbt_build_vlr_marts: views + tests on live vlr.* ===")
+    _run_command(context, command, cwd=DBT_PROJECT_DIR)
+    context.log.info("dbt live vlr marts built")
 
 
 # ---------------------------------------------------------------------------
@@ -451,23 +431,43 @@ def date_seed(context: AssetExecutionContext) -> int:
 
 @asset(group_name="vlr_seed", deps=[date_seed])
 def date_load(context: AssetExecutionContext) -> int:
-    """Upsert generated calendar rows into vlr.dim_date."""
+    """Upsert generated calendar rows into vlr.dim_date, then stamp the watermark."""
     context.log.info("=== STEP date_load: upsert vlr.dim_date ===")
-    rows = rows_from_dates_landing(REPO_ROOT)
-    loaded = load_dates(rows)
-    context.add_output_metadata({"upserted": loaded})
-    context.log.info("dim_date upserted=%s", loaded)
-    return loaded
+
+    def _load() -> int:
+        rows = rows_from_dates_landing(REPO_ROOT)
+        loaded = load_dates(rows)
+        context.add_output_metadata({"upserted": loaded})
+        context.log.info("dim_date upserted=%s", loaded)
+        return loaded
+
+    return run_full_refresh(
+        pipeline_name="vlr_date",
+        table_name="dim_date",
+        fn=_load,
+        dagster_run_id=context.run_id,
+        dagster_job_name=context.job_name,
+    )
 
 
 @asset(group_name="vlr_seed")
 def dims_static(context: AssetExecutionContext) -> dict[str, int]:
     """Load VCT circuits, local ranking codes, and economy buy types (no API)."""
     context.log.info("=== STEP dims_static: vct_regions + regions + economy ===")
-    counts = load_static(REPO_ROOT)
-    context.add_output_metadata({"row_counts": MetadataValue.json(counts)})
-    context.log.info("Static dims upserted=%s", counts)
-    return counts
+
+    def _load() -> dict[str, int]:
+        counts = load_static(REPO_ROOT)
+        context.add_output_metadata({"row_counts": MetadataValue.json(counts)})
+        context.log.info("Static dims upserted=%s", counts)
+        return counts
+
+    return run_full_refresh(
+        pipeline_name="vlr_dims",
+        table_name="dim_vct_regions",
+        fn=_load,
+        dagster_run_id=context.run_id,
+        dagster_job_name=context.job_name,
+    )
 
 
 @asset(group_name="vlr_seed")
@@ -484,30 +484,60 @@ def dims_from_landings(context: AssetExecutionContext) -> dict[str, int]:
 def dims_weapons(context: AssetExecutionContext) -> dict[str, int]:
     """Fandom gun catalog into vlr.dim_weapons via AWS rotator."""
     context.log.info("=== STEP dims_weapons: valorant.fandom.com via AWS rotator ===")
-    counts = run_weapons(REPO_ROOT)
-    context.add_output_metadata({"row_counts": MetadataValue.json(counts)})
-    context.log.info("Weapons upserted=%s", counts)
-    return counts
+
+    def _load() -> dict[str, int]:
+        counts = run_weapons(REPO_ROOT)
+        context.add_output_metadata({"row_counts": MetadataValue.json(counts)})
+        context.log.info("Weapons upserted=%s", counts)
+        return counts
+
+    return run_full_refresh(
+        pipeline_name="vlr_weapons",
+        table_name="dim_weapons",
+        fn=_load,
+        dagster_run_id=context.run_id,
+        dagster_job_name=context.job_name,
+    )
 
 
 @asset(group_name="vlr_seed")
 def dims_agents(context: AssetExecutionContext) -> dict[str, int]:
     """Kit catalog: valorant-api.com + Liquipedia AbilityCard via AWS rotator."""
     context.log.info("=== STEP dims_agents: valorant-api + liquipedia via AWS rotator ===")
-    counts = run_agents(REPO_ROOT)
-    context.add_output_metadata({"row_counts": MetadataValue.json(counts)})
-    context.log.info("Agents catalog upserted=%s", counts)
-    return counts
+
+    def _load() -> dict[str, int]:
+        counts = run_agents(REPO_ROOT)
+        context.add_output_metadata({"row_counts": MetadataValue.json(counts)})
+        context.log.info("Agents catalog upserted=%s", counts)
+        return counts
+
+    return run_full_refresh(
+        pipeline_name="vlr_agents",
+        table_name="dim_agents",
+        fn=_load,
+        dagster_run_id=context.run_id,
+        dagster_job_name=context.job_name,
+    )
 
 
 @asset(group_name="vlr_seed")
 def dims_maps(context: AssetExecutionContext) -> dict[str, int]:
     """Map catalog: valorant-api radar x/y + Liquipedia location/earth via AWS rotator."""
     context.log.info("=== STEP dims_maps: valorant-api + liquipedia via AWS rotator ===")
-    counts = run_maps(REPO_ROOT)
-    context.add_output_metadata({"row_counts": MetadataValue.json(counts)})
-    context.log.info("Maps catalog upserted=%s", counts)
-    return counts
+
+    def _load() -> dict[str, int]:
+        counts = run_maps(REPO_ROOT)
+        context.add_output_metadata({"row_counts": MetadataValue.json(counts)})
+        context.log.info("Maps catalog upserted=%s", counts)
+        return counts
+
+    return run_full_refresh(
+        pipeline_name="vlr_maps",
+        table_name="dim_maps",
+        fn=_load,
+        dagster_run_id=context.run_id,
+        dagster_job_name=context.job_name,
+    )
 
 
 @asset(group_name="vlr_facts")
@@ -527,6 +557,39 @@ def facts_load(context: AssetExecutionContext) -> dict[str, int]:
     counts = load_facts(REPO_ROOT)
     context.add_output_metadata({"row_counts": MetadataValue.json(counts)})
     context.log.info("Facts upserted=%s", counts)
+    return counts
+
+
+@asset(group_name="rib_facts")
+def rib_match_extract(context: AssetExecutionContext) -> dict[str, int]:
+    """Land rib.gg RSC match JSON + replay blobs via AWS rotator (parallel workers)."""
+    context.log.info("=== STEP rib_match_extract START workers=%s match_ids=%s ===",
+        os.getenv("RIB_MATCH_WORKERS", "8"),
+        os.getenv("RIB_MATCH_IDS", "all events"),
+    )
+    counts = extract_rib_matches(REPO_ROOT)
+    context.add_output_metadata({"row_counts": MetadataValue.json(counts)})
+    context.log.info("=== STEP rib_match_extract DONE %s ===", counts)
+    return counts
+
+
+@asset(group_name="rib_facts", deps=[rib_match_extract])
+def rib_facts_parse(context: AssetExecutionContext) -> dict[str, int]:
+    """Parse landed rib JSON into overlay fact jsonl and fuzzy-join VLR ids."""
+    context.log.info("=== STEP rib_facts_parse START ===")
+    counts = parse_rib_facts(REPO_ROOT)
+    context.add_output_metadata({"row_counts": MetadataValue.json(counts)})
+    context.log.info("=== STEP rib_facts_parse DONE %s ===", counts)
+    return counts
+
+
+@asset(group_name="rib_facts", deps=[rib_facts_parse])
+def rib_facts_load(context: AssetExecutionContext) -> dict[str, int]:
+    """Batch upsert overlay facts; sleep between batches so Supabase CPU stays bounded."""
+    context.log.info("=== STEP rib_facts_load START (includes fact_rib_replay_snapshot) ===")
+    counts = load_rib_facts(REPO_ROOT)
+    context.add_output_metadata({"row_counts": MetadataValue.json(counts)})
+    context.log.info("=== STEP rib_facts_load DONE %s ===", counts)
     return counts
 
 
@@ -847,7 +910,12 @@ dbt_job = define_asset_job(
 
 dbt_star_schema_job = define_asset_job(
     "dbt_star_schema_job",
-    selection=[dbt_build_star_schema],
+    selection=[dbt_build_vlr_marts],
+)
+
+vlr_dbt = define_asset_job(
+    "vlr_dbt",
+    selection=[dbt_build_vlr_marts],
 )
 
 rib_gg_star_schema_job = define_asset_job(
@@ -885,24 +953,29 @@ vlr_dims = define_asset_job(
     selection=[dims_static, dims_from_landings, dims_weapons, dims_agents, dims_maps],
 )
 
-vlr_events = define_asset_job(
-    "vlr_events",
+vlr_hist_events = define_asset_job(
+    "vlr_hist_events",
     selection=[evt_schema, evt_extract, evt_load],
 )
 
-vlr_matches = define_asset_job(
-    "vlr_matches",
+vlr_hist_matches = define_asset_job(
+    "vlr_hist_matches",
     selection=[match_schema, match_extract, match_load],
 )
 
-vlr_teams = define_asset_job(
-    "vlr_teams",
+vlr_hist_teams = define_asset_job(
+    "vlr_hist_teams",
     selection=[team_schema, team_extract, team_load],
 )
 
-vlr_players = define_asset_job(
-    "vlr_players",
+vlr_hist_players = define_asset_job(
+    "vlr_hist_players",
     selection=[player_schema, player_extract, player_load],
+)
+
+vlr_hist_facts = define_asset_job(
+    "vlr_hist_facts",
+    selection=[facts_extract, facts_load],
 )
 
 vlr_agents = define_asset_job(
@@ -920,16 +993,18 @@ vlr_weapons = define_asset_job(
     selection=[dims_weapons],
 )
 
-vlr_facts = define_asset_job(
-    "vlr_facts",
-    selection=[facts_extract, facts_load],
+rib_facts = define_asset_job(
+    "rib_facts",
+    selection=[rib_match_extract, rib_facts_parse, rib_facts_load],
+    # One process: extract→parse→load logs stay in this terminal (no child reconstruct).
+    executor_def=in_process_executor,
 )
 
 defs = Definitions(
     assets=[
         dbt_build_select_one_plus_ten,
         log_select_one_plus_ten_result,
-        dbt_build_star_schema,
+        dbt_build_vlr_marts,
         rib_probe_endpoints,
         rib_extract_teams,
         rib_extract_events,
@@ -946,6 +1021,9 @@ defs = Definitions(
         dims_maps,
         facts_extract,
         facts_load,
+        rib_match_extract,
+        rib_facts_parse,
+        rib_facts_load,
         evt_schema,
         evt_extract,
         evt_load,
@@ -965,21 +1043,25 @@ defs = Definitions(
         vlr_extract_match_details,
         vlr_load_supabase,
         vlr_dbt_half_round_view,
+        *VLR_INC_ASSETS,
     ],
     jobs=[
         dbt_job,
         dbt_star_schema_job,
+        vlr_dbt,
         rib_gg_star_schema_job,
         vlr_star_schema_job,
         vlr_date,
         vlr_dims,
-        vlr_events,
-        vlr_matches,
-        vlr_teams,
-        vlr_players,
+        vlr_hist_events,
+        vlr_hist_matches,
+        vlr_hist_teams,
+        vlr_hist_players,
+        vlr_hist_facts,
         vlr_agents,
         vlr_maps,
         vlr_weapons,
-        vlr_facts,
+        rib_facts,
+        *VLR_INC_JOBS,
     ],
 )

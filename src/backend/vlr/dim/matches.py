@@ -26,6 +26,7 @@ from backend.vlr.dim.util import (
     match_ids_in_jsonl,
     matches_jsonl_path,
     parse_match_date,
+    parse_match_at,
     parse_match_patch,
     read_event_match_lists,
     serialize_match_row,
@@ -49,6 +50,7 @@ DIM_COLS = (
     "team_2_score",
     "match_date",
     "match_date_text",
+    "match_at",
     "match_note",
     "match_patch",
     "n_maps",
@@ -77,6 +79,7 @@ DIM_TYPES = {
     "team_2_score": "INTEGER",
     "match_date": "TEXT",
     "match_date_text": "TEXT",
+    "match_at": "TIMESTAMPTZ",
     "match_note": "TEXT",
     "match_patch": "TEXT",
     "n_maps": "INTEGER",
@@ -325,6 +328,15 @@ def format_row(
     name_1 = team_1.get("name") or "TBD"
     name_2 = team_2.get("name") or "TBD"
     match_date = parse_match_date(date_raw, fallback_year=year)
+    match_at = parse_match_at(
+        date_raw,
+        unix=listing.get("timestamp")
+        or listing.get("unix_timestamp")
+        or listing.get("time")
+        or detail.get("timestamp")
+        or detail.get("unix_timestamp"),
+        fallback_year=year,
+    )
     return {
         "vlr_match_id": match_id,
         "vlr_event_id": event_id,
@@ -338,6 +350,7 @@ def format_row(
         "team_2_score": score_2,
         "match_date": match_date,
         "match_date_text": date_raw,
+        "match_at": match_at,
         "match_note": listing.get("note") or None,
         "match_patch": parse_match_patch(str(detail.get("date") or date_raw or "")),
         "n_maps": n_maps,
@@ -354,7 +367,7 @@ def format_row(
         "update_date": now,
         "listing": listing,
         "detail": detail,
-        "_label": f"{match_id} {name_1} vs {name_2} ({match_date or '?'})",
+        "_label": f"{match_id} {name_1} vs {name_2} ({match_at.isoformat(timespec='seconds') if match_at else match_date or '?'})",
     }
 
 
@@ -635,6 +648,7 @@ def apply_matches_schema(repo_root: Path | None = None) -> Path:
         "ON vlr.dim_matches (vlr_match_id)",
         "CREATE INDEX IF NOT EXISTS idx_vlr_dim_matches_event ON vlr.dim_matches (vlr_event_id)",
         "CREATE INDEX IF NOT EXISTS idx_vlr_dim_matches_date ON vlr.dim_matches (match_date)",
+        "CREATE INDEX IF NOT EXISTS idx_vlr_dim_matches_match_at ON vlr.dim_matches (match_at)",
     ):
         connector.execute(stmt)
     logger.info("[matches] Schema ready (create-if-missing + alter, no drop)")

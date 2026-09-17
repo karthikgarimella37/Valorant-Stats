@@ -1,53 +1,55 @@
-{{ config(materialized='view') }}
+{{ config(materialized='materialized_view', schema='vlr') }}
 
 -- Team × map × side (attack/defense) round wins for the map dashboard.
--- VLR has no player-level attack/defense K/D; this view is the substitute.
+-- Grain: one team on one map game on one side. Source: vlr.fact_round_results (Python upsert).
 
 with rounds as (
     select
-        r.match_id,
-        r.event_id,
-        r.map_id,
+        r.vlr_match_id,
+        r.vlr_event_id,
+        r.map_name,
         r.map_game_number,
         r.round_number,
-        r.winning_team_id,
-        r.losing_team_id,
+        r.winning_vlr_team_id,
+        r.losing_vlr_team_id,
         r.is_attack_win
     from {{ source('vlr', 'fact_round_results') }} as r
 ),
 
 sides as (
     select
-        match_id,
-        event_id,
-        map_id,
+        vlr_match_id,
+        vlr_event_id,
+        map_name,
         map_game_number,
-        winning_team_id as team_id,
+        winning_vlr_team_id as vlr_team_id,
         is_attack_win as is_attack,
         true as is_win
     from rounds
     union all
     select
-        match_id,
-        event_id,
-        map_id,
+        vlr_match_id,
+        vlr_event_id,
+        map_name,
         map_game_number,
-        losing_team_id as team_id,
+        losing_vlr_team_id as vlr_team_id,
         not is_attack_win as is_attack,
         false as is_win
     from rounds
-    where losing_team_id is not null
+    where losing_vlr_team_id is not null
+      and losing_vlr_team_id <> '-1'
 )
 
 select
-    match_id,
-    event_id,
-    map_id,
+    vlr_match_id,
+    vlr_event_id,
+    map_name,
     map_game_number,
-    team_id,
+    vlr_team_id,
     is_attack,
     count(*)::int as rounds_played,
     sum(case when is_win then 1 else 0 end)::int as rounds_won
 from sides
-where team_id is not null
+where vlr_team_id is not null
+  and vlr_team_id <> '-1'
 group by 1, 2, 3, 4, 5, 6

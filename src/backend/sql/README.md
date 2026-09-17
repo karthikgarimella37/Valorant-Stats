@@ -48,4 +48,7 @@ Dagster and dbt both read these values:
 source .venv/bin/activate
 .venv/bin/dbt debug --project-dir . --profiles-dir .
 .venv/bin/dbt build --project-dir . --profiles-dir . --select select_1_plus_10
+.venv/bin/dbt build --project-dir . --profiles-dir . --select fact_match_half_round_stats fact_player_map_stats source:vlr
 ```
+
+Live marts land in schema `vlr` (views / materialized views + tests). Dummy dim/fact stubs are disabled. Smoke model `select_1_plus_10` stays in `DBT_SUPABASE_SCHEMA` (default `valorant`).

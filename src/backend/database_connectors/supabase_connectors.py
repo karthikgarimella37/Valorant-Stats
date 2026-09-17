@@ -370,6 +370,10 @@ class SupabaseConnector:
         conflict_column: str | tuple[str, ...] | list[str],
         update_columns: list[str] | None = None,
         jsonb_columns: tuple[str, ...] = ("prizes_json", "teams_json", "standings_json"),
+        batch_size: int = 1000,
+        on_conflict: str = "update",
+        max_cpu_pct: int | None = None,
+        min_sleep_sec: float = 0.0,
     ) -> int:
         """Insert/update rows in batches; keep existing row_number on conflict (one col or composite)."""
         from psycopg2.extras import execute_values
@@ -398,19 +402,136 @@ class SupabaseConnector:
             else:
                 template_parts.append("%s")
         template = "(" + ", ".join(template_parts) + ")"
-        insert_sql = f'''
+        if on_conflict not in {"update", "nothing"}:
+            raise RuntimeError(f"on_conflict must be update or nothing, got {on_conflict!r}")
+        if on_conflict == "nothing":
+            insert_sql = f'''
+            INSERT INTO "{schema}"."{table}" ({col_sql})
+            VALUES %s
+            ON CONFLICT ({conflict_sql}) DO NOTHING
+            '''
+        else:
+            insert_sql = f'''
             INSERT INTO "{schema}"."{table}" ({col_sql})
             VALUES %s
             ON CONFLICT ({conflict_sql}) DO UPDATE SET {update_sql}
-        '''
+            '''
         tuples = [tuple(row.get(col) for col in columns) for row in rows]
-        logger.info("[upsert] Start %s.%s rows=%s", schema, table, len(tuples))
+        total = 0
+        import time
+
+        started = time.monotonic()
+        duty = None if max_cpu_pct is None else max(10, min(90, max_cpu_pct)) / 100.0
+        logger.info("[upsert] Start %s.%s rows=%s conflict=%s", schema, table, len(tuples), on_conflict)
         with self._connect() as conn:
             with conn.cursor() as cur:
-                execute_values(cur, insert_sql, tuples, template=template, page_size=500)
-            conn.commit()
-        logger.info("[upsert] Done %s.%s rows=%s", schema, table, len(tuples))
-        return len(tuples)
+                cur.execute("SET statement_timeout = 0")
+                for start in range(0, len(tuples), batch_size):
+                    chunk = tuples[start : start + batch_size]
+                    batch_started = time.monotonic()
+                    execute_values(cur, insert_sql, chunk, template=template, page_size=500)
+                    conn.commit()
+                    total += len(chunk)
+                    batch_sec = time.monotonic() - batch_started
+                    elapsed = time.monotonic() - started
+                    rate = total / elapsed if elapsed else 0
+                    pause = batch_sec * (1.0 - duty) / duty if duty else 0.0
+                    if min_sleep_sec:
+                        pause = max(pause, min_sleep_sec)
+                    logger.info(
+                        "[upsert] %s.%s upserted=%s/%s batch_sec=%.2f sleep=%.2f rate=%.0f/s",
+                        schema,
+                        table,
+                        total,
+                        len(tuples),
+                        batch_sec,
+                        pause,
+                        rate,
+                    )
+                    if pause > 0:
+                        time.sleep(pause)
+        return total
+
+    def copy_rows(
+        self,
+        rows: list[dict[str, Any]],
+        *,
+        schema: str,
+        table: str,
+        columns: tuple[str, ...] | list[str],
+        batch_size: int = 5000,
+        max_cpu_pct: int = 60,
+        min_sleep_sec: float = 4.0,
+    ) -> int:
+        """Append rows with COPY. Sleeps after each batch so average load stays under max_cpu_pct."""
+        import csv
+        import time
+
+        if not rows:
+            return 0
+        schema = _safe_ident(schema)
+        table = _safe_ident(table)
+        cols = [_safe_ident(c) for c in columns]
+        col_list = sql.SQL(", ").join(sql.Identifier(c) for c in cols)
+        copy_sql = sql.SQL("COPY {}.{} ({}) FROM STDIN WITH (FORMAT csv, NULL '')").format(
+            sql.Identifier(schema),
+            sql.Identifier(table),
+            col_list,
+        )
+
+        def cell(value: Any) -> Any:
+            if value is None:
+                return ""
+            if isinstance(value, bool):
+                return "t" if value else "f"
+            if hasattr(value, "isoformat"):
+                return value.isoformat()
+            return value
+
+        started = time.monotonic()
+        total = 0
+        duty = max(10, min(90, max_cpu_pct)) / 100.0
+        logger.info(
+            "[copy] Start %s.%s rows=%s batch=%s max_cpu_pct=%s",
+            schema,
+            table,
+            len(rows),
+            batch_size,
+            max_cpu_pct,
+        )
+        with self._connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SET statement_timeout = 0")
+                for start in range(0, len(rows), batch_size):
+                    chunk = rows[start : start + batch_size]
+                    buf = io.StringIO()
+                    writer = csv.writer(buf, lineterminator="\n")
+                    for row in chunk:
+                        writer.writerow([cell(row.get(col)) for col in columns])
+                    buf.seek(0)
+                    batch_started = time.monotonic()
+                    cur.copy_expert(copy_sql.as_string(conn), buf)
+                    conn.commit()
+                    total += len(chunk)
+                    batch_sec = time.monotonic() - batch_started
+                    elapsed = time.monotonic() - started
+                    rate = total / elapsed if elapsed else 0
+                    pause = batch_sec * (1.0 - duty) / duty if duty < 1 else 0.0
+                    pause = max(pause, min_sleep_sec)
+                    logger.info(
+                        "[copy] %s.%s copied=%s/%s batch_sec=%.2f sleep=%.2f rate=%.0f/s",
+                        schema,
+                        table,
+                        total,
+                        len(rows),
+                        batch_sec,
+                        pause,
+                        rate,
+                    )
+                    if pause > 0:
+                        time.sleep(pause)
+        logger.info("[copy] Done %s.%s rows=%s", schema, table, total)
+        return total
 
 
 def main() -> None:

@@ -30,7 +30,11 @@ class SiteBoundSession(requests.Session):
         return super().request(method, url, *args, **kwargs)
 
 
-def rotating_session(site: str, headers: dict[str, str] | None = None) -> SiteBoundSession:
+def rotating_session(
+    site: str,
+    headers: dict[str, str] | None = None,
+    regions: list[str] | None = None,
+) -> SiteBoundSession:
     """Open a session whose outbound IP is AWS, never the laptop / Dagster host."""
     if not ip_rotator_enabled():
         raise RuntimeError(
@@ -41,11 +45,11 @@ def rotating_session(site: str, headers: dict[str, str] | None = None) -> SiteBo
     session = SiteBoundSession(prefix)
     if headers:
         session.headers.update(headers)
-    regions = catalog_rotator_regions()
-    mounted = VlrIpRotator.mount(session, prefix, regions=regions)
+    use_regions = regions if regions is not None else catalog_rotator_regions()
+    mounted = VlrIpRotator.mount(session, prefix, regions=use_regions)
     if not mounted:
         raise RuntimeError(
             f"AWS IP rotator did not mount for {prefix}. Refusing to send from the host IP."
         )
-    logger.info("[rotator] Catalog session site=%s regions=%s (AWS IPs, not host)", prefix, regions)
+    logger.info("[rotator] Catalog session site=%s regions=%s (AWS IPs, not host)", prefix, use_regions)
     return session

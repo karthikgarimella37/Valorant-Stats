@@ -1,0 +1,23 @@
+version: 2
+
+models:
+  - name: fact_match_half_round_stats
+    description: Team × map × attack/defense round wins from vlr.fact_round_results.
+    columns:
+      - name: vlr_match_id
+        tests: [not_null]
+      - name: map_game_number
+        tests: [not_null]
+      - name: vlr_team_id
+        tests: [not_null]
+      - name: is_attack
+        tests: [not_null]
+  - name: fact_player_map_stats
+    description: Player-map box score joined to performance metrics.
+    columns:
+      - name: vlr_match_id
+        tests: [not_null]
+      - name: vlr_player_id
+        tests: [not_null]
+      - name: map_game_number
+        tests: [not_null]

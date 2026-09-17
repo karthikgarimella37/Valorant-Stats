@@ -14,6 +14,7 @@ from __future__ import annotations
 import atexit
 import logging
 import os
+import sys
 import threading
 from typing import Any
 
@@ -104,6 +105,11 @@ def catalog_rotator_regions() -> list[str]:
     return ["us-east-1"]
 
 
+def extract_rotator_regions() -> list[str]:
+    """Full region list for high-volume extracts (rib.gg match/replay)."""
+    return _regions() or ["us-east-1"]
+
+
 class VlrIpRotator:
     """
     Process-wide ApiGateway for a single site (default https://www.vlr.gg).
@@ -134,12 +140,44 @@ class VlrIpRotator:
     @classmethod
     def _start_unlocked(cls, site: str, regions: list[str] | None = None) -> Any:
         try:
+            from random import choice
+
+            from requests.adapters import HTTPAdapter
             from requests_ip_rotator import ApiGateway
         except ImportError as exc:
             raise RuntimeError(
                 "requests-ip-rotator is not installed. "
                 "Run: uv add requests-ip-rotator (root + dagster_orchestration)"
             ) from exc
+
+        class AwsProxyGateway(ApiGateway):
+            """AWS proxy without fake X-Forwarded-For. Vercel 429s random XFF on rib.gg."""
+
+            def send(
+                self,
+                request,
+                stream=False,
+                timeout=None,
+                verify=True,
+                cert=None,
+                proxies=None,
+            ):
+                endpoint = choice(self.endpoints)
+                _protocol, site_rest = request.url.split("://", 1)
+                site_path = site_rest.split("/", 1)[1]
+                request.url = "https://" + endpoint + "/ProxyStage/" + site_path
+                request.headers["Host"] = endpoint
+                request.headers.pop("X-Forwarded-For", None)
+                request.headers.pop("X-My-X-Forwarded-For", None)
+                return HTTPAdapter.send(
+                    self,
+                    request,
+                    stream=stream,
+                    timeout=timeout,
+                    verify=verify,
+                    cert=cert,
+                    proxies=proxies,
+                )
 
         access_key_id = _access_key_id()
         access_key_secret = _access_key_secret()
@@ -160,7 +198,7 @@ class VlrIpRotator:
             kwargs["regions"] = use_regions
 
         logger.info("Starting AWS ApiGateway IP rotator for %s regions=%s", site, use_regions or "DEFAULT")
-        gateway = ApiGateway(site, **kwargs)
+        gateway = AwsProxyGateway(site, **kwargs)
         endpoints = gateway.start()
         count = len(endpoints) if endpoints is not None else 0
         logger.info(
@@ -189,6 +227,10 @@ class VlrIpRotator:
 
     @classmethod
     def shutdown_all(cls) -> None:
+        """Drop AWS REST APIs. Skip during interpreter teardown (thread pool is already dead)."""
+        if sys.is_finalizing():
+            logger.warning("Skip rotator shutdown; interpreter is exiting")
+            return
         with cls._lock:
             items = list(cls._gateways.items())
             cls._gateways.clear()
@@ -196,6 +238,11 @@ class VlrIpRotator:
             try:
                 logger.info("Shutting down IP rotator for %s", site)
                 gateway.shutdown()
+            except RuntimeError as exc:
+                if "interpreter shutdown" in str(exc):
+                    logger.warning("Skip rotator delete for %s; interpreter exiting", site)
+                    continue
+                logger.exception("Failed shutting down IP rotator for %s", site)
             except Exception:
                 logger.exception("Failed shutting down IP rotator for %s", site)
 

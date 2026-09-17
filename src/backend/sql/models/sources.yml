@@ -1,12 +1,56 @@
 version: 2
 
-# Why: dbt marts read VLR landings already loaded into schema vlr by Dagster.
+# Why: dbt views/tests read live warehouse tables loaded by Python into schema vlr.
 sources:
   - name: vlr
     schema: vlr
     tables:
       - name: dim_matches
+        columns:
+          - name: vlr_match_id
+            tests: [not_null, unique]
+      - name: dim_events
+        columns:
+          - name: vlr_event_id
+            tests: [not_null, unique]
+      - name: dim_teams
+        columns:
+          - name: vlr_team_id
+            tests: [not_null, unique]
+      - name: dim_players
+        columns:
+          - name: vlr_player_id
+            tests: [not_null, unique]
       - name: fact_round_results
+        columns:
+          - name: vlr_match_id
+            tests: [not_null]
+          - name: map_game_number
+            tests: [not_null]
+          - name: round_number
+            tests: [not_null]
       - name: fact_match_overall_stats
+        columns:
+          - name: vlr_match_id
+            tests: [not_null]
+          - name: map_game_number
+            tests: [not_null]
+          - name: vlr_team_id
+            tests: [not_null]
+          - name: vlr_player_id
+            tests: [not_null]
       - name: fact_player_match_performance
+        columns:
+          - name: vlr_match_id
+            tests: [not_null]
+          - name: map_game_number
+            tests: [not_null]
+          - name: vlr_team_id
+            tests: [not_null]
+          - name: vlr_player_id
+            tests: [not_null]
       - name: fact_match_economy
+      - name: fact_map_game_results
+      - name: fact_series_team_result
+      - name: fact_round_economy_detail
+      - name: fact_map_veto

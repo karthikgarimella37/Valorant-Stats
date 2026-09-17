@@ -4,7 +4,7 @@
 > Use this file to track **what is done**, **what is still required**, and **which API feeds which table**.  
 > Dagster runs daily: upsert dims first, then facts. dbt models live in `src/backend/sql/models/marts/`.
 
-**Last updated:** 2026-09-14
+**Last updated:** 2026-09-17
 
 ---
 
@@ -14,7 +14,7 @@
 | Role         | Source                                                                                                           | What it owns                                                                                                                                             |
 | ------------ | ---------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Primary**  | [vlr.gg](https://www.vlr.gg) via **self-hosted** [axsddlr/vlrggapi](https://github.com/axsddlr/vlrggapi) (`/v2`) | Historical + current events, series, maps, teams, players, scoreboard, performance, economy, round **win** timeline, kill matrix. Covers previous years. |
-| **Overlay**  | rib.gg `/api/matches/{id}/replay-data`                                                                           | Replay kills, positions. Join to VLR by **event name + team names + date** (fuzzy).                                                                      |
+| Overlay  | rib.gg RSC `/matches/{id}` + `/api/matches/{id}/replay-data` | Round player table, economy, replay kills/events/**snapshots**. Join to VLR by **event name + team names + date** (fuzzy). Snapshots upsert into `vlr.fact_rib_replay_snapshot`. |
 | **Not used** | valorant-api.com, public `vlrggapi.vercel.app` (down), orlandomm (503)                                           | Dropped as live hosts.                                                                                                                                   |
 
 
@@ -104,9 +104,16 @@ CREATE SEQUENCE valorant.seq_<table>_row_number
 | `fact_match_economy`            | fact     | Job `vlr_facts`                        | Yes                 | Pistol/eco/full played vs won                                           |
 | `fact_round_economy_detail`     | fact     | Job `vlr_facts`                        | Yes                 | Bank/loadout when `round_economy` is on the landing                     |
 | `fact_map_veto`                 | fact     | Job `vlr_facts`                        | Yes                 | Ban/pick/decider from `map_vetos`                                       |
-| `fact_match_half_round_stats`   | **view** | dbt later                              | n/a                 | Aggregate `fact_round_results`                                          |
-| `fact_player_vs_player_kills`   | fact     | Later (rib)                            | Yes (rib only)      | Replay kills                                                            |
-| `vlr_watermarks`                | ops      | JSON landing; warehouse table later    | Yes                 | See `LATER.md`                                                          |
+| `fact_match_half_round_stats`   | matview  | Job `vlr_dbt`                          | Yes                 | Aggregate `fact_round_results`                                          |
+| `fact_player_map_stats`         | view     | Job `vlr_dbt`                          | Yes                 | overall ⋈ performance                                                   |
+| `fact_rib_round`                | fact     | Job `rib_facts`                        | Yes (rib)           | Round winner + win type from rib RSC                                    |
+| `fact_rib_round_player`         | fact     | Job `rib_facts`                        | Yes (rib)           | Per-round weapon/armor/loadout/ACS/K/A/damage/HS%                       |
+| `fact_rib_round_economy`        | fact     | Job `rib_facts`                        | Yes (rib)           | Team bank/loadout/buy tier                                              |
+| `fact_player_vs_player_kills`   | fact     | Job `rib_facts`                        | Yes (rib)           | Replay kills (time + positions)                                         |
+| `fact_rib_replay_event`         | fact     | Job `rib_facts`                        | Yes (rib)           | Non-snapshot events (kill/plant/defuse/ability)                         |
+| `fact_rib_replay_snapshot`      | fact     | Job `rib_facts`                        | Yes (rib)           | Position ticks (`type=snapshot`)                                        |
+| `fact_rib_match_crosswalk`      | fact     | Job `rib_facts`                        | Yes (rib)           | Fuzzy rib → VLR series join                                             |
+| `vlr.ops_pipeline_watermarks`   | ops      | Job `vlr_daily` / every inc DAG        | Yes                 | One row per pipeline+table; `last_source_at` timestamptz                |
 
 
 VLR does **not** have replay (kills/positions). It **does** have round winners + attack/defense side on the match page. That is enough for the half-round **view**.
@@ -646,7 +653,7 @@ Upsert is a **composite unique** on those grain columns — not a concatenated `
 
 Facts live in schema `vlr`. Grain keys are **TEXT source ids** (same pattern as dims), not `dim_*.row_number` FKs. dbt can join later. Besides keys: **metrics and booleans only**. Every table has `row_number`, `insert_date`, `update_date`, and a **composite unique** on the grain columns.
 
-Parse from `data/vlr/matches.jsonl` (`detail.maps`). Job `vlr_facts` (`facts_extract` → `facts_load`). Tables load **in parallel**. Scoreboard has no player id; `vlr_player_id` is joined from `teams.jsonl` / `players.jsonl` / `events.jsonl`. After the current concat load, run `python -m backend.vlr.fact.migrate_concat_keys --wait`.
+Parse from in-memory match details on the incremental job `vlr_facts` (or `vlr_daily`). Historical jsonl path remains `vlr_hist_facts`. Scoreboard has no player id; incremental facts resolve `vlr_player_id` from warehouse `dim_players` / `dim_teams`.
 
 ### `fact_match_overall_stats` — **start here** (website)
 
@@ -689,45 +696,66 @@ Composite unique: `(vlr_match_id, map_game_number, round_number, vlr_team_id)`.
 Grain: **one veto action**. Ban / pick / decider from `map_vetos` text.  
 Composite unique: `(vlr_match_id, action_order)`.
 
-### `fact_match_half_round_stats` — dbt view (later)
+### `fact_match_half_round_stats` — dbt materialized view
 
-Grain: team × map × attack/defense. Built from `fact_round_results`.
+Grain: team × map × attack/defense. Built from `vlr.fact_round_results`. Job `vlr_dbt`.
 
-### `fact_player_vs_player_kills` — later (rib)
+### `fact_player_map_stats` — dbt view
 
-Grain: one kill. Not in VLR.
+Grain: one player on one map game. Joins `fact_match_overall_stats` to `fact_player_match_performance`.
 
-See `LATER.md` for watermarks / economy dim / KG agent.
+### `fact_player_vs_player_kills` — rib overlay
+
+Grain: one kill from replay. Job `rib_facts`.
+
+### `fact_rib_round` / `fact_rib_round_player` / `fact_rib_round_economy` / `fact_rib_replay_event` / `fact_rib_replay_snapshot`
+
+Round winner + per-player loadout/combat + team economy + replay events + **position ticks** (`type=snapshot` → `fact_rib_replay_snapshot`). Keys include both `rib_*` and `vlr_*` ids after fuzzy join. Replay JSON also stays under `data/rib_gg/json/replay/` so load can retry.
+
+### `fact_rib_match_crosswalk`
+
+Grain: one rib series. Fuzzy join to `vlr_match_id` on event name + team names + date.
+
+See `LATER.md` for economy dim / KG agent / close-the-VLR-load.
+
+## Incremental pipelines
+
+Every live VLR DAG is four steps:
+
+1. **check watermark** — read `vlr.ops_pipeline_watermarks` for that pipeline+table
+2. **extract** — pull since `last_source_at` into memory (daily volume is small)
+3. **merge** — upsert those rows into Supabase
+4. **update watermark** — always write the attempt; success may advance `last_source_at`; failure never does
+
+Table grain: `(pipeline_name, table_name)`. Columns: `source_name`, `last_source_at`, `last_success_at`, `last_attempt_at`, `row_count`, `dagster_run_id`, `dagster_job_name`, `status`, `error_text`, plus `row_number` / `insert_date` / `update_date`.
+
+**Minus 1 hour:** `last_source_at` is timestamptz with seconds. Next run starts at `last_source_at - interval '1 hour'`. Matches store `match_at` (unix epoch or parsed clock). Event listings have no clock, so that cursor is the run time. Catalogs (date/agents/maps/weapons/economy) have no source event time — full small upsert, watermark is `last_success_at` only.
+
+**First incremental run** bootstraps `since` from `MAX(update_date)` on that warehouse table so history is not rescanned. Empty table → `VLR_INC_BOOTSTRAP_DAYS` (default 7).
+
+Jobs: `vlr_events`, `vlr_matches`, `vlr_teams`, `vlr_players`, `vlr_facts` (4 steps each). Chain: `vlr_daily` (events → matches → teams → players → facts). One-shot jsonl backfills: `vlr_hist_*`.
 
 ## Dagster daily pipeline (Docker)
 
 Run extract + dbt from the **Dockerfile / compose**, not a laptop venv. Order:
 
 ```text
-1. dim_date, dim_vct_regions, dim_regions, dim_economy     (seed / extend)
-2. Parallel VLR catalog:  dim_country (from teams/players), dim_teams, dim_events
-3. dim_players           (needs teams + country)
-4. dim_matches           (needs events + teams + date)
-5. Distinct names:        thin dim_maps / dim_agents from match payloads; kit via `vlr_maps` / `vlr_agents`
-6. Job `vlr_facts` (jsonl parse, no HTTP):
-     fact_match_overall_stats (start here)
-     fact_player_match_performance
-     fact_round_results
-     fact_map_game_results
-     fact_series_team_result
-     fact_match_economy
-     fact_round_economy_detail
-     fact_map_veto
-7. rib overlay (only matches with a join to vlr_match_id):
-     fact_player_vs_player_kills
-8. dbt: view fact_match_half_round_stats + tests
+1. dim_date, dim_vct_regions, dim_regions, dim_economy     (seed / extend; full small upsert + watermark)
+2. Job `vlr_daily` (or the five 4-step jobs in order):
+     events → matches → teams → players → facts
+     each: watermark → in-memory extract since last_source_at-1h → merge → watermark
+3. Optional catalogs: `vlr_agents` / `vlr_maps` / `vlr_weapons`
+4. rib overlay job `rib_facts` (unchanged)
+5. dbt job `vlr_dbt`: views/matviews + tests on live `vlr.fact_*`
 ```
 
-Jobs (existing names, source flip):
+Jobs:
 
-- `vlr_star_schema_job` — **main daily** (events → matches → facts)
-- `vlr_facts` — parse `matches.jsonl` → `vlr.fact_*` (do not run until discussed)
-- `rib_gg_star_schema_job` — **overlay** replay/kills only
+- `vlr_daily` — **main incremental** (events → matches → teams → players → facts)
+- `vlr_events` / `vlr_matches` / `vlr_teams` / `vlr_players` / `vlr_facts` — 4-step DAGs
+- `vlr_hist_*` — one-shot jsonl backfills (do not use for daily)
+- `vlr_dbt` — views/matviews + tests on live `vlr` facts
+- `rib_gg_star_schema_job` — **legacy** be-prod parquet (stale API)
 
 Upsert rule: business key = VLR id. New row → next `row_number`. Never change `row_number`.
 
@@ -773,7 +801,7 @@ These read from the warehouse. Frontend not started.
 - `fact_round_economy_detail` is scraped from the VLR economy tab (`scrape_economy.py`); `/v2` still only has the buy-win table.
 - `/v2/match/details` omits `event_id` (resolve via `/v2/search` or events/matches) and Attack/Defend player splits (`.side.mod-both` only).
 - Performance 2K–1v5 / ECON / PL / DE and economy buy columns arrive as keys `"1"`…`"13"` / `"0"`…`"5"` — remap in `src/backend/vlr/field_maps.py`.
-- Incremental extract cursor: `vlr_watermarks` (`entity_type`, `entity_id`, `last_fetched_at`, `source_url`). JSON first; load to Supabase when Dagster runs.
+- Incremental extract cursor: `vlr.ops_pipeline_watermarks` (`pipeline_name`, `table_name`, `last_source_at`). Legacy JSON `data/vlr/watermarks.json` is per-entity fetch history only.
 - `dim_maps` and `dim_agents` are kit catalogs (valorant-api.com + Liquipedia, AWS rotator). `dim_weapons` is the Fandom gun catalog (AWS rotator).
 - Current dbt dim stubs in schema `valorant` are still dummy; live facts load into schema `vlr`.
 - Do not store API keys in this file. Use `.env` only.

@@ -10,13 +10,43 @@ snapshot-paths: ["snapshots"]
 macro-paths: ["macros"]
 test-paths: ["tests"]
 
-# Ensure target schema exists before materializing models (e.g. valorant.dim_*, valorant.fact_*)
 on-run-start:
   - "create schema if not exists {{ target.schema }}"
+  - "create schema if not exists vlr"
 
 models:
   valorant_stats:
-    staging:
-      +materialized: view
     marts:
-      +materialized: table
+      +materialized: view
+      +schema: vlr
+      # Dummy rib-shaped stubs. Live dims/facts are Python upserts into vlr.
+      dim_events:
+        +enabled: false
+      dim_teams:
+        +enabled: false
+      dim_players:
+        +enabled: false
+      dim_agents:
+        +enabled: false
+      dim_maps:
+        +enabled: false
+      dim_series:
+        +enabled: false
+      dim_matches:
+        +enabled: false
+      fact_match_overall_stats:
+        +enabled: false
+      fact_match_performance:
+        +enabled: false
+      fact_match_economy:
+        +enabled: false
+      fact_match_half_round_stats:
+        +enabled: true
+        +materialized: materialized_view
+      fact_player_map_stats:
+        +enabled: true
+        +materialized: view
+      select_1_plus_10:
+        +enabled: true
+        +materialized: table
+        +schema: "{{ target.schema }}"

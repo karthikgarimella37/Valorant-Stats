@@ -6,7 +6,7 @@ import json
 import logging
 import re
 import threading
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +20,25 @@ _MATCH_ID_RE = re.compile(r"vlr\.gg/(\d+)")
 _PROJECT_DATE_RE = re.compile(r"^(\d{4})/(\d{1,2})/(\d{1,2})$")
 _TODAY_YESTERDAY_RE = re.compile(r"(Today|Yesterday)$", re.I)
 _PATCH_RE = re.compile(r"Patch\s+([\d.]+)", re.I)
+_TIME_RE = re.compile(
+    r"(?P<h>\d{1,2}):(?P<m>\d{2})(?::(?P<s>\d{2}))?\s*(?P<p>AM|PM)?",
+    re.I,
+)
+_TZ_RE = re.compile(r"\b(UTC|GMT|EST|EDT|CST|CDT|MST|MDT|PST|PDT|CET|CEST)\b", re.I)
+_TZ_HOURS = {
+    "UTC": 0,
+    "GMT": 0,
+    "EST": -5,
+    "EDT": -4,
+    "CST": -6,
+    "CDT": -5,
+    "MST": -7,
+    "MDT": -6,
+    "PST": -8,
+    "PDT": -7,
+    "CET": 1,
+    "CEST": 2,
+}
 _JSONL_LOCK = threading.Lock()
 _MONTHS = {
     "jan": 1,
@@ -319,24 +338,83 @@ def parse_match_patch(raw: str | None) -> str | None:
 
 
 def parse_match_date(raw: str | None, fallback_year: int | None = None) -> str | None:
-    """Parse VLR match date strings into project dates (`2026/8/29`)."""
+    """Parse VLR match date strings into project dates (`2026/8/29`) for dim_date joins."""
     if not raw:
         return None
     text = _TODAY_YESTERDAY_RE.sub("", str(raw)).strip()
-    text = re.sub(r"\d{1,2}:\d{2}\s*(AM|PM).*$", "", text, flags=re.I)
+    text = re.sub(r"\d{1,2}:\d{2}(?::\d{2})?\s*(AM|PM)?", "", text, flags=re.I)
     text = _PATCH_RE.sub("", text)
     text = re.sub(r"\s+", " ", text).strip(" ,")
     start, _ = parse_event_dates(text, fallback_year=fallback_year)
     return start
 
 
+def parse_unix_seconds(raw: Any) -> datetime | None:
+    """Unix seconds or milliseconds → UTC datetime truncated to whole seconds."""
+    if isinstance(raw, bool) or raw is None or raw == "":
+        return None
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        return None
+    if value > 1e12:
+        value /= 1000.0
+    if value < 1e9 or value > 2e10:
+        return None
+    return datetime.fromtimestamp(value, tz=timezone.utc).replace(microsecond=0)
+
+
+def parse_match_at(
+    raw: str | None,
+    *,
+    unix: Any = None,
+    fallback_year: int | None = None,
+) -> datetime | None:
+    """Match start as UTC timestamptz with seconds so incremental lookback is last_source_at minus 1 hour.
+
+    Prefers a unix epoch from the payload; otherwise date + clock + timezone from the VLR date string.
+    Missing clock stays 00:00:00 that calendar day (still a real timestamptz, not a date type).
+    """
+    unix_dt = parse_unix_seconds(unix)
+    if unix_dt is not None:
+        return unix_dt
+    if raw is None or str(raw).strip() == "":
+        return None
+    text = str(raw).strip()
+    try:
+        iso = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        if iso.tzinfo is None:
+            iso = iso.replace(tzinfo=timezone.utc)
+        return iso.astimezone(timezone.utc).replace(microsecond=0)
+    except ValueError:
+        pass
+    day = parse_project_date(parse_match_date(text, fallback_year=fallback_year))
+    if day is None:
+        return None
+    hour, minute, second = 0, 0, 0
+    time_match = _TIME_RE.search(text)
+    if time_match:
+        hour = int(time_match.group("h"))
+        minute = int(time_match.group("m"))
+        second = int(time_match.group("s") or 0)
+        ampm = (time_match.group("p") or "").upper()
+        if ampm == "PM" and hour < 12:
+            hour += 12
+        if ampm == "AM" and hour == 12:
+            hour = 0
+    tz_match = _TZ_RE.search(text)
+    offset_h = _TZ_HOURS.get(tz_match.group(1).upper(), 0) if tz_match else 0
+    naive = datetime(day.year, day.month, day.day, hour, minute, second)
+    return (naive - timedelta(hours=offset_h)).replace(tzinfo=timezone.utc)
+
+
 def serialize_match_row(row: dict[str, Any]) -> dict[str, Any]:
     """JSON-safe copy of a match landing line (datetimes as ISO)."""
     out = dict(row)
-    for key in ("insert_date", "update_date"):
+    for key in ("insert_date", "update_date", "match_at"):
         value = out.get(key)
         if isinstance(value, datetime):
-            out[key] = value.isoformat()
+            out[key] = value.isoformat(timespec="seconds")
         elif isinstance(value, date):
             out[key] = format_project_date(value)
     value = out.get("match_date")

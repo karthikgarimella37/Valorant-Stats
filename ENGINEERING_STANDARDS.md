@@ -2,7 +2,7 @@
 
 > Always-on reference for this repo. Every Cursor chat must follow this file when writing or changing code. Prefer simple technical English. Keep chat replies short.
 
-**Last updated:** 2026-09-15
+**Last updated:** 2026-09-17
 
 **Pipeline goal:** Fast, scalable extract → transform → load → dbt into **Supabase**, so analytics read from the warehouse. Prefer **parallel work** and **optimized functions** everywhere they help.
 
@@ -137,10 +137,10 @@ All event / match **calendar** dates in logs, JSON landings, and warehouse text 
 src/backend/
   api_connectors/          # HTTP clients (rib.gg, vlr, gateways)
   database_connectors/     # Supabase / DB clients
-  rib_gg/                  # rib.gg normalize + land parquet/ndjson
+  rib_gg/                  # rib.gg overlay extract/parse/join/pipeline (+ old parquet star)
   vlr/                     # vlr extract / scrape transforms
   vlr/dim/                 # dim extract (historical.py, matches.py, dates.py, util.py)
-  vlr/fact/                # fact extract (later: parse matches.jsonl)
+  vlr/fact/                # fact extract (parse matches.jsonl)
   sql/                     # dbt project (own .venv)
   config/env.py            # discover and load every repo .env
 dagster_orchestration/     # Dagster defs, assets, jobs only
@@ -154,7 +154,14 @@ data/vlr/dim_maps.jsonl                 # map catalog (valorant-api + Liquipedia
 data/vlr/dim_weapons.jsonl              # gun catalog (valorant.fandom.com)
 data/vlr/facts/<stem>.jsonl             # fact landings from matches.jsonl
 data/vlr/dim_date.parquet               # generated calendar for vlr.dim_date
-data/vlr/watermarks.json                # incremental fetch cursor
+data/vlr/watermarks.json                # legacy per-entity JSON cursor (historical extract)
+# warehouse cursor: vlr.ops_pipeline_watermarks (pipeline_name + table_name)
+data/rib_gg/events.jsonl                # rib event cards
+data/rib_gg/event_matches.jsonl         # per-event match lists
+data/rib_gg/matches.jsonl               # rib series index (join keys + paths)
+data/rib_gg/json/matches/<id>.json      # parsed RSC match (roundStats, economy)
+data/rib_gg/json/replay/<id>/<map>.json # full replay-data (source for snapshot + event tables)
+data/rib_gg/facts/<stem>.jsonl          # overlay fact landings
 ```
 - Do not put extract logic inside Dagster modules beyond orchestration glue.
 - Do not put dbt SQL under `dagster_orchestration/`.
@@ -229,7 +236,9 @@ data/vlr/watermarks.json                # incremental fetch cursor
 - Prefer assets/jobs that unlock parallel extract of independent entities (teams/events/series) when the graph allows.
 
 ### Job design
-- One job = one clear pipeline story (e.g. rib.gg star schema; vlr star schema; single dbt smoke job).
+- One job = one clear pipeline story (e.g. incremental `vlr_events`; historical `vlr_hist_events`; daily `vlr_daily`).
+- Incremental VLR jobs are **four steps**: check watermark → extract in memory → merge to Supabase → update watermark. Cursor table: `vlr.ops_pipeline_watermarks`.
+- `last_source_at` is timestamptz **to the second**. Default overlap is **minus 1 hour**; extract from that time onward. Catalogs (date/agents/maps/weapons/economy) have no source event time: full small upsert, watermark is `last_success_at` only.
 - Keep smoke/sample jobs separate from full production jobs.
 - End state of production jobs: analytics-ready tables in Supabase for downstream apps.
 
@@ -258,9 +267,9 @@ data/vlr/watermarks.json                # incremental fetch cursor
 - Prefer CTEs with clear names (`source_rows`, `cleaned`, `final`).
 - No `SELECT *` in marts unless the model is a thin pass-through that is documented.
 - Add tests for primary key uniqueness and not-null on keys when a model is real (not dummy scaffold).
-- Materialization: staging = view, marts = table (see `dbt_project.yml`).
-- Target schema via `DBT_SUPABASE_SCHEMA` (default `valorant`).
-- Dummy scaffold models must stay obvious (`dummy_data` + filter) until replaced with real sources — do not pretend they are production.
+- Materialization: staging = view; live marts = view or materialized view; dummy stubs stay disabled. Do not dbt-materialize tables that Python already upserts.
+- Target schema via `DBT_SUPABASE_SCHEMA` (default `valorant` for smoke). Live views use schema `vlr`.
+- Add tests for grain uniqueness and not-null on keys for live sources and marts.
 - Optimize SQL for warehouse reads: filter early, select needed columns, index-friendly join keys (`*_id`).
 - Use `DBT_THREADS` for parallel model builds when running dbt from Dagster/CLI.
 - Dagster dbt steps must stream CLI output into `context.log` so failures show the failing model fast.

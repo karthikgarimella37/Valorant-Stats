@@ -111,71 +111,65 @@ cd dagster_orchestration
 uv run dagster job execute -m dagster_orchestration.definitions -j vlr_weapons
 ```
 
-## Fact tables from matches.jsonl (do not run until discussed)
+## Fact tables from matches.jsonl (one-shot)
 
-Job: `vlr_facts`
+Job: `vlr_hist_facts`
 
-Parses `data/vlr/matches.jsonl` into `data/vlr/facts/*.jsonl` then upserts `vlr.fact_*`. **No VLR HTTP.**
+Parses `data/vlr/matches.jsonl` into `data/vlr/facts/*.jsonl` then upserts `vlr.fact_*`. **No VLR HTTP.** Daily incremental facts: `vlr_facts`.
 
 ```bash
 cd dagster_orchestration
-uv run dagster job execute -m dagster_orchestration.definitions -j vlr_facts
+uv run dagster job execute -m dagster_orchestration.definitions -j vlr_hist_facts
 ```
 
-## Historical VLR jobs (Dagster)
+## rib overlay (round + replay)
 
-Jobs: `vlr_events` then `vlr_matches`. After matches ids exist, `vlr_teams` enriches `vlr.dim_teams` from `/v2/team`.
+Job: `rib_facts`
 
-Launch from the UI or CLI. Extracts refuse to start unless `docker logs vlrggapi` shows `Ready endpoints=` > 0 (AWS IPs). Do not scrape vlr.gg from the host IP.
+Lands `rib.gg` match RSC + full replay JSON, parses round/player/economy/kills/events/**snapshots**, fuzzy-joins VLR ids, then batched upsert into `vlr.fact_rib_*`. First run uses `RIB_MATCH_IDS`.
 
 ```bash
-# from repo root — rotator overlay
-docker compose up -d --build vlrggapi
-docker logs vlrggapi | grep vlrggapi_rotator
-# expect: Ready endpoints=1 (or more)
-
 cd dagster_orchestration
-./dev.sh
-# Jobs → vlr_events → Materialize
-# Jobs → vlr_matches → Materialize
-# Jobs → vlr_teams → Materialize
+RIB_MATCH_IDS=270 uv run dagster job execute -m dagster_orchestration.definitions -j rib_facts
 ```
 
-CLI:
+## Historical VLR jobs (one-shot jsonl; not daily)
+
+Jobs: `vlr_hist_events`, `vlr_hist_matches`, `vlr_hist_teams`, `vlr_hist_players`, `vlr_hist_facts`.
+
+These page the full catalog into jsonl. Daily work uses the 4-step incremental jobs instead.
 
 ```bash
 cd dagster_orchestration
+uv run dagster job execute -m dagster_orchestration.definitions -j vlr_hist_events
+```
+
+## Incremental VLR jobs (daily)
+
+Each job is four steps: **check watermark → extract in memory → merge to Supabase → update watermark**.
+
+Cursor table: `vlr.ops_pipeline_watermarks`. `last_source_at` minus 1 hour (date-only fields also keep that whole day). First run bootstraps from `MAX(update_date)`.
+
+```bash
+cd dagster_orchestration
+# one table
 uv run dagster job execute -m dagster_orchestration.definitions -j vlr_events
-uv run dagster job execute -m dagster_orchestration.definitions -j vlr_matches
-uv run dagster job execute -m dagster_orchestration.definitions -j vlr_teams
-uv run dagster job execute -m dagster_orchestration.definitions -j vlr_players
+# events → matches → teams → players → facts
+uv run dagster job execute -m dagster_orchestration.definitions -j vlr_daily
 ```
 
-`vlr_events`: ensure `vlr.dim_events` → `data/vlr/events.jsonl` → upsert.  
-`vlr_matches`: ensure `vlr.dim_matches` → `data/vlr/matches.jsonl` (dim + full match JSON) → upsert.  
-`vlr_teams`: ALTER `vlr.dim_teams` → `data/vlr/teams.jsonl` (`/v2/team?q=profile`) → upsert.  
-`vlr_players`: ALTER `vlr.dim_players` → `data/vlr/players.jsonl` (`/v2/player?q=profile`) → upsert.
+Jobs: `vlr_events`, `vlr_matches`, `vlr_teams`, `vlr_players`, `vlr_facts`, `vlr_daily`.
 
 Needs: vlrggapi on `http://127.0.0.1:3001` with AWS rotator, and working Supabase env.
 
 Optional env vars:
 
-- `VLR_EVENT_DETAIL_WORKERS` (default `12`)
-- `VLR_EVENT_PAGE_WORKERS` (default `8`)
-- `VLR_EVENT_PAGE_DELAY_SEC` (default `0.2`)
-- `VLR_MAX_EVENTS` / `VLR_MAX_MATCHES` / `VLR_MAX_TEAMS` / `VLR_MAX_PLAYERS` — cap for a smoke run
-- `VLR_EVENT_SKIP_EXISTING=1` — skip ids already in `events.jsonl`
+- `VLR_INC_BOOTSTRAP_DAYS` (default `7`) — first run if the warehouse table is empty
+- `VLR_INC_LIVE_PAGES` (default `20`) / `VLR_INC_COMPLETED_PAGES` (default `8`)
+- `VLR_EVENT_DETAIL_WORKERS` (default `8`)
 - `VLR_MATCH_EVENT_WORKERS` (default `8`) / `VLR_MATCH_WORKERS` (default `6`)
-- `VLR_API_CONCURRENCY` (default `6`) — max in-flight `/v2` match-detail calls
-- `VLR_API_INTERVAL_SEC` (default `0.4`) — min seconds between starting those calls
-- `VLR_MATCH_SKIP_EXISTING=1` — skip ids already in `matches.jsonl`
-- `VLR_TEAM_WORKERS` (default same as `VLR_MATCH_WORKERS` / `6`)
-- `VLR_TEAM_SKIP_EXISTING=1` — skip ids already in `teams.jsonl`
-- `VLR_PLAYER_WORKERS` (default same as `VLR_MATCH_WORKERS` / `6`)
-- `VLR_PLAYER_SKIP_EXISTING=1` — skip ids already in `players.jsonl`
-- `VLR_REQUIRE_ROTATOR=0` — only for local debug; do not use for a full scrape
-- `VLR_LIQUIPEDIA_WORKERS` (default `1`) / `VLR_LIQUIPEDIA_INTERVAL_SEC` (default `1.1`) — kit catalog only
-- `VLR_CATALOG_ROTATOR_REGIONS` — AWS region list for valorant-api / Liquipedia gateways (default: first of `VLR_IP_ROTATOR_REGIONS`)
+- `VLR_TEAM_WORKERS` / `VLR_PLAYER_WORKERS`
+- `VLR_API_CONCURRENCY` (default `6`) / `VLR_API_INTERVAL_SEC` (default `0.4`)
 
 ## Run the VLR.gg extract → parquet → Supabase job
 
