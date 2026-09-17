@@ -652,7 +652,7 @@ Upsert is a **composite unique** on those grain columns — not a concatenated `
 
 Facts live in schema `vlr`. Grain keys are **TEXT source ids** (same pattern as dims), not `dim_*.row_number` FKs. dbt can join later. Besides keys: **metrics and booleans only**. Every table has `row_number`, `insert_date`, `update_date`, and a **composite unique** on the grain columns.
 
-Parse from `data/vlr/matches.jsonl` (`detail.maps`). Job `vlr_facts` (`facts_extract` → `facts_load`). Tables load **in parallel**. Scoreboard has no player id; `vlr_player_id` is joined from `teams.jsonl` / `players.jsonl` / `events.jsonl`. After the current concat load, run `python -m backend.vlr.fact.migrate_concat_keys --wait`.
+Parse from in-memory match details on the incremental job `vlr_facts` (or `vlr_daily`). Historical jsonl path remains `vlr_hist_facts`. Scoreboard has no player id; incremental facts resolve `vlr_player_id` from warehouse `dim_players` / `dim_teams`.
 
 ### `fact_match_overall_stats` — **start here** (website)
 
