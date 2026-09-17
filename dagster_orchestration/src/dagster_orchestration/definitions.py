@@ -913,6 +913,11 @@ dbt_star_schema_job = define_asset_job(
     selection=[dbt_build_vlr_marts],
 )
 
+vlr_dbt = define_asset_job(
+    "vlr_dbt",
+    selection=[dbt_build_vlr_marts],
+)
+
 rib_gg_star_schema_job = define_asset_job(
     "rib_gg_star_schema_job",
     selection=[
