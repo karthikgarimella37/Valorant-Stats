@@ -111,15 +111,15 @@ cd dagster_orchestration
 uv run dagster job execute -m dagster_orchestration.definitions -j vlr_weapons
 ```
 
-## Fact tables from matches.jsonl (do not run until discussed)
+## Fact tables from matches.jsonl (one-shot)
 
-Job: `vlr_facts`
+Job: `vlr_hist_facts`
 
-Parses `data/vlr/matches.jsonl` into `data/vlr/facts/*.jsonl` then upserts `vlr.fact_*`. **No VLR HTTP.**
+Parses `data/vlr/matches.jsonl` into `data/vlr/facts/*.jsonl` then upserts `vlr.fact_*`. **No VLR HTTP.** Daily incremental facts: `vlr_facts`.
 
 ```bash
 cd dagster_orchestration
-uv run dagster job execute -m dagster_orchestration.definitions -j vlr_facts
+uv run dagster job execute -m dagster_orchestration.definitions -j vlr_hist_facts
 ```
 
 ## rib overlay (round + replay)
