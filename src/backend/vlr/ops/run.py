@@ -139,25 +139,24 @@ def run_full_refresh(
     )
     try:
         result = fn()
-        known = {spec.table_name for spec in __import__("backend.vlr.ops.specs", fromlist=["WATERMARK_SPECS"]).WATERMARK_SPECS if spec.pipeline_name == pipeline_name}
+        known = {spec.table_name for spec in WATERMARK_SPECS if spec.pipeline_name == pipeline_name}
         if extra_tables is not None:
             counts = extra_tables
             row_count = sum(extra_tables.values())
         elif isinstance(result, dict):
-            table_counts = {
+            counts = {
                 str(key): int(value)
                 for key, value in result.items()
                 if str(key) in known and isinstance(value, int)
             }
-            counts = table_counts
             if "loaded" in result and isinstance(result["loaded"], int):
                 row_count = int(result["loaded"])
-            elif table_name in table_counts:
-                row_count = table_counts[table_name]
+            elif table_name in counts:
+                row_count = counts[table_name]
+            elif counts:
+                row_count = sum(counts.values())
             else:
-                row_count = sum(table_counts.values()) if table_counts else sum(
-                    int(value) for value in result.values() if isinstance(value, int)
-                )
+                row_count = sum(int(value) for value in result.values() if isinstance(value, int))
         elif isinstance(result, int):
             counts = {table_name: result}
             row_count = result
@@ -165,7 +164,7 @@ def run_full_refresh(
             counts = {table_name: 0}
             row_count = 0
         now = datetime.now(timezone.utc)
-        fan_out = extra_tables is not None or (len(known) > 1 and counts and set(counts).issubset(known))
+        fan_out = bool(counts) and set(counts).issubset(known) and len(known) > 1
         logger.info(
             "[inc] full refresh merge done pipeline=%s table=%s row_count=%s counts=%s fan_out=%s",
             pipeline_name,
@@ -174,26 +173,16 @@ def run_full_refresh(
             counts,
             fan_out,
         )
-            step_update_watermark(
-                pipeline_name=pipeline_name,
-                table_name=table_name,
-                last_source_at=now,
-                row_count=row_count,
-                dagster_run_id=dagster_run_id,
-                dagster_job_name=dagster_job_name,
-                status="success",
-                counts=counts,
-            )
-        else:
-            step_update_watermark(
-                pipeline_name=pipeline_name,
-                table_name=table_name,
-                last_source_at=now,
-                row_count=row_count,
-                dagster_run_id=dagster_run_id,
-                dagster_job_name=dagster_job_name,
-                status="success",
-            )
+        step_update_watermark(
+            pipeline_name=pipeline_name,
+            table_name=table_name,
+            last_source_at=now,
+            row_count=row_count,
+            dagster_run_id=dagster_run_id,
+            dagster_job_name=dagster_job_name,
+            status="success",
+            counts=counts if fan_out else None,
+        )
         return result
     except Exception as exc:
         logger.exception("[inc] full refresh failed pipeline=%s table=%s", pipeline_name, table_name)
