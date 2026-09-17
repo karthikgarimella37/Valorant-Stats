@@ -163,7 +163,7 @@ def parse_rib_facts(repo_root: Path | None = None) -> dict[str, int]:
         "\n".join(json.dumps(row, ensure_ascii=False, default=str) for row in crosswalk.values())
         + ("\n" if crosswalk else "")
     )
-    logger.info("[rib_facts] Parse done %s", counts)
+    logger.info("=== rib_facts PARSE DONE %s ===", counts)
     return counts
 
 
