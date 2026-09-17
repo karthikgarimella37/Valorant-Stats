@@ -427,8 +427,6 @@ class RibSiteConnector:
         expect_json: bool = False,
     ) -> requests.Response:
         """GET with 429/5xx backoff. Each call can use its own rotator session."""
-        import time
-
         url = f"{RIB_GG_SITE}{path}"
         request_session = session or self.session_factory.create()
         last_error: Exception | None = None
