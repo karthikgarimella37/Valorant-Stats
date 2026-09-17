@@ -30,7 +30,6 @@ from backend.vlr.dim.players import (
     JSON_COLS as PLAYER_JSON_COLS,
     _profile_usable as player_profile_usable,
     format_row as format_player_row,
-    team_id_lookup,
 )
 from backend.vlr.dim.teams import (
     DIM_COLS as TEAM_DIM_COLS,
