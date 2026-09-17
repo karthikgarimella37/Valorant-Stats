@@ -14,7 +14,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 
 ## Current focus
 
-- Fact tables: future extract/load uses composite unique keys. Current concat load is finishing; adhoc `migrate_concat_keys --wait` converts warehouse uniques after it.
+- Start **rib.gg overlay** (round player table + full replay JSON) with rotator/workers like VLR. Fuzzy-join to VLR ids. Let current `vlr_facts` load/migrate finish in parallel.
 
 ## Status
 
