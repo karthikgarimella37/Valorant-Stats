@@ -43,7 +43,6 @@ from backend.vlr.dim.util import (
     event_id_from_url,
     parse_event_dates,
     parse_match_at,
-    parse_match_date,
     parse_project_date,
     year_from_text,
 )

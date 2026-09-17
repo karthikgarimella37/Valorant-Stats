@@ -6,13 +6,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Callable
 
-from backend.vlr.ops.watermarks import (
-    ensure_watermarks_table,
-    read_watermark,
-    watermark_to_meta,
-    write_pipeline_watermarks,
-    write_watermark,
-)
+from backend.vlr.ops.watermarks import iso_seconds
 from backend.vlr.ops.specs import WATERMARK_SPECS
 
 logger = logging.getLogger(__name__)
