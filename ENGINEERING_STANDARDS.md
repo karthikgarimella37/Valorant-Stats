@@ -154,7 +154,8 @@ data/vlr/dim_maps.jsonl                 # map catalog (valorant-api + Liquipedia
 data/vlr/dim_weapons.jsonl              # gun catalog (valorant.fandom.com)
 data/vlr/facts/<stem>.jsonl             # fact landings from matches.jsonl
 data/vlr/dim_date.parquet               # generated calendar for vlr.dim_date
-data/vlr/watermarks.json                # incremental fetch cursor
+data/vlr/watermarks.json                # legacy per-entity JSON cursor (historical extract)
+# warehouse cursor: vlr.ops_pipeline_watermarks (pipeline_name + table_name)
 data/rib_gg/events.jsonl                # rib event cards
 data/rib_gg/event_matches.jsonl         # per-event match lists
 data/rib_gg/matches.jsonl               # rib series index (join keys + paths)
