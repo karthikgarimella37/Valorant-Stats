@@ -400,7 +400,7 @@ def extract_matches_since(since: datetime, run_id: str = "") -> ExtractResult:
             status = str(row.get("status") or "").strip().lower()
             if status in LIVE_STATUSES or not row.get("is_completed"):
                 has_live = True
-            max_source_at = _max_dt(max_source_at, _as_utc_midnight(parse_project_date(row.get("match_date"))))
+            max_source_at = _max_dt(max_source_at, row.get("match_at") if isinstance(row.get("match_at"), datetime) else None)
             if done % 20 == 0 or done == len(jobs):
                 logger.info("[inc] matches details %s/%s rows=%s errors=%s", done, len(jobs), len(rows), errors)
     logger.info(
