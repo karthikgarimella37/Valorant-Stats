@@ -412,11 +412,26 @@ class RibSiteSessionFactory:
 class RibSiteConnector:
     """Live rib.gg RSC pages + replay-data JSON. be-prod is stale; do not use it here."""
 
-    def __init__(self, timeout: int = 60, max_retries: int = 5):
+    def __init__(self, timeout: int = 60, max_retries: int = 10):
         logger.info("[rib_site] Init timeout=%s retries=%s", timeout, max_retries)
         self.timeout = timeout
         self.max_retries = max_retries
         self.session_factory = RibSiteSessionFactory()
+
+    def _warm_session(self, request_session: requests.Session) -> None:
+        """One homepage hit so Vercel sees a browser-like first request on this AWS IP."""
+        if getattr(request_session, "_rib_warmed", False):
+            return
+        try:
+            logger.info("[rib_site] Warm GET /")
+            request_session.get(
+                f"{RIB_GG_SITE}/",
+                headers=dict(RIB_BROWSER_HEADERS),
+                timeout=self.timeout,
+            )
+        except Exception:
+            logger.warning("[rib_site] Warm GET / failed", exc_info=True)
+        request_session._rib_warmed = True  # type: ignore[attr-defined]
 
     def _get(
         self,
@@ -427,37 +442,52 @@ class RibSiteConnector:
         session: requests.Session | None = None,
         expect_json: bool = False,
     ) -> requests.Response:
-        """GET with 429/5xx backoff. Each call can use its own rotator session."""
+        """GET with 429/5xx backoff. Rotate to a new AWS IP after each 429."""
         url = f"{RIB_GG_SITE}{path}"
         request_session = session or self.session_factory.create()
         last_error: Exception | None = None
         for attempt in range(1, self.max_retries + 1):
+            merged = dict(RIB_BROWSER_HEADERS)
+            if headers:
+                merged.update(headers)
             try:
+                self._warm_session(request_session)
+                logger.info("[rib_site] GET %s attempt=%s/%s", path, attempt, self.max_retries)
                 response = request_session.get(
                     url,
                     params=params,
-                    headers=headers,
+                    headers=merged,
                     timeout=self.timeout,
                 )
                 if response.status_code in {429, 500, 502, 503, 504}:
-                    wait = min(2 ** attempt, 30)
+                    wait = min(2 ** attempt, 45)
+                    snippet = (response.text or "").replace("\n", " ")[:180]
+                    last_error = RuntimeError(
+                        f"rib.gg HTTP {response.status_code} path={path} body={snippet}"
+                    )
                     logger.warning(
-                        "[rib_site] HTTP %s path=%s attempt=%s/%s sleep=%ss",
+                        "[rib_site] HTTP %s path=%s attempt=%s/%s sleep=%ss body=%s",
                         response.status_code,
                         path,
                         attempt,
                         self.max_retries,
                         wait,
+                        snippet,
                     )
                     time.sleep(wait)
+                    if response.status_code == 429:
+                        request_session = self.session_factory.create()
+                        if session is not None:
+                            session = request_session
                     continue
                 response.raise_for_status()
                 if expect_json:
                     response.json()
+                logger.info("[rib_site] GET %s HTTP %s bytes=%s", path, response.status_code, len(response.content))
                 return response
             except Exception as exc:
                 last_error = exc
-                wait = min(2 ** attempt, 30)
+                wait = min(2 ** attempt, 45)
                 logger.warning(
                     "[rib_site] Error path=%s attempt=%s/%s sleep=%ss err=%s",
                     path,
@@ -469,6 +499,9 @@ class RibSiteConnector:
                 if attempt == self.max_retries:
                     break
                 time.sleep(wait)
+                request_session = self.session_factory.create()
+                if session is not None:
+                    session = request_session
         raise RuntimeError(f"rib.gg GET failed path={path}") from last_error
 
     def rsc_text(
