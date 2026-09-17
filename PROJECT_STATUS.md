@@ -78,3 +78,4 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 | 2026-09-16 | Future facts load = composite unique + parallel tables. Adhoc migrate waits for concat load then swaps keys |
 | 2026-09-16 | Half data already in VLR facts. Next extract = rib roundStats + full replay JSON, fuzzy-join to VLR |
 | 2026-09-16 | rib overlay coded: job `rib_facts`, JSON land + parse + batched load, snapshots stay on disk |
+| 2026-09-17 | Added `fact_rib_replay_snapshot`; snapshots upsert to Supabase. Running `rib_facts` on match 270 |
