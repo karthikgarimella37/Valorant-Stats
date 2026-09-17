@@ -14,7 +14,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 
 ## Current focus
 
-- Start **rib.gg overlay** (round player table + full replay JSON) with rotator/workers like VLR. Fuzzy-join to VLR ids. Let current `vlr_facts` load/migrate finish in parallel.
+- Start **rib overlay job `rib_facts`**. Code is in; first run with `RIB_MATCH_IDS` then full event crawl. Let current `vlr_facts` load finish in parallel.
 
 ## Status
 
