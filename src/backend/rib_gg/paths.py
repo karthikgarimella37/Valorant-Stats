@@ -43,7 +43,7 @@ def match_json_path(repo_root: Path, match_id: str) -> Path:
 
 
 def replay_json_path(repo_root: Path, match_id: str, map_id: str) -> Path:
-    """Full replay-data blob. Snapshots stay on disk, not in Supabase."""
+    """Full replay-data blob (source JSON). Parse loads snapshots into vlr.fact_rib_replay_snapshot."""
     safe_map = str(map_id).replace("/", "_")
     path = rib_root(repo_root) / "json" / "replay" / str(match_id) / f"{safe_map}.json"
     path.parent.mkdir(parents=True, exist_ok=True)
