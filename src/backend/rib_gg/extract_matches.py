@@ -231,7 +231,7 @@ def fetch_one_match(
                 map_id,
                 replay_path.stat().st_size,
             )
-    return _index_row(payload, replay_ids)
+    return _index_row(payload, replay_ids, repo_root)
 
 
 def _parse_match_id_list(raw: str | None) -> list[str]:
