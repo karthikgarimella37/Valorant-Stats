@@ -161,7 +161,7 @@ def _list_status(connector: VlrV2Connector, status: str, max_pages: int, since: 
             len(by_id),
         )
         if status == "completed" and since is not None and kept == 0 and older > 0:
-            logger.info("[inc] events completed page=%s all older than %s; stop paging", page, since_date(since))
+            logger.info("[inc] events completed page=%s all older than %s; stop paging", page, iso_seconds(since))
             break
     logger.info("[inc] events list done status=%s unique=%s", status, len(by_id))
     return list(by_id.values())
