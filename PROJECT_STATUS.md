@@ -45,13 +45,13 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 ## Next up
 
 - [ ] Let current `facts_load` finish; migrate script (`--wait`) drops `fact_key` unique
+- [ ] rib overlay: land RSC match + replay JSON, parse round/replay facts, fuzzy-join VLR
 - [ ] Let `vlr_matches` finish; upsert `vlr.dim_matches`; refetch empty-detail 429 rows
-- [ ] Optional: rematerialize `vlr_teams` / `vlr_players` from existing jsonl
+- [ ] Optional VLR-only: player ATK/DEF splits (HTML `.mod-t`/`.mod-ct`) if we want them without rib
+- [ ] dbt view `fact_match_half_round_stats` (team ATK/DEF already in `fact_map_game_results` + rounds)
 - [ ] Incremental watermarks — see `LATER.md` (not now)
 - [ ] Rewrite `dim_economy` — see `LATER.md` (not now)
 - [ ] KG column-description agent — see `LATER.md` (after facts have rows)
-- [ ] dbt view `fact_match_half_round_stats`
-- [ ] rib overlay: `fact_player_vs_player_kills`
 - [ ] Build viz
 
 ## Open questions / blockers
