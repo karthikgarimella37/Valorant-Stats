@@ -176,6 +176,8 @@ def parse_match_overlay(
         rounds = map_row.get("rounds") if isinstance(map_row.get("rounds"), list) else []
         round_stats = map_row.get("roundStats") if isinstance(map_row.get("roundStats"), list) else []
         round_economy = map_row.get("roundEconomy") if isinstance(map_row.get("roundEconomy"), list) else []
+
+        for round_number, round_row in enumerate(rounds, start=1):
             if not isinstance(round_row, dict):
                 continue
             winner_side = _s(round_row.get("winner"))
@@ -205,7 +207,6 @@ def parse_match_overlay(
                 }
             )
 
-        replay_round = replay_rounds[round_number - 1] if False else None  # placeholder, set in player loop
         for round_number, players in enumerate(round_stats, start=1):
             if not isinstance(players, list):
                 continue
