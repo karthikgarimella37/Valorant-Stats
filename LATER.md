@@ -35,13 +35,3 @@ After some fact tables are populated:
 - An MCP server reads the graph to answer chatbot questions on the analytics website.
 
 Do this only when facts exist so descriptions match real grains and metrics.
-
----
-
-## 4. dbt on live `vlr` facts
-
-Dummy dbt models still materialize empty tables in schema `valorant`. Live dims/facts are loaded by Python into schema `vlr`. When we turn dbt on for real:
-
-- Point sources at `vlr.fact_*` / `vlr.dim_*` (the half-round view already does this).
-- Replace stub marts so they are views/tests on live tables, not dummy `SELECT null`.
-- Do not duplicate the Python upsert into dbt tables.
