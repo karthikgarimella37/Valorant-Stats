@@ -256,16 +256,14 @@ def extract_events_since(since: datetime, run_id: str = "") -> ExtractResult:
             status = str(row.get("status") or "").strip().lower()
             if status in LIVE_STATUSES:
                 has_live = True
-            end_dt = _as_utc_midnight(parse_project_date(row.get("end_date") or row.get("start_date")))
-            max_source_at = _max_dt(max_source_at, end_dt)
             if done % 20 == 0 or done == len(listings):
                 logger.info("[inc] events details %s/%s rows=%s live=%s", done, len(listings), len(rows), has_live)
     logger.info(
-        "[inc] extract events done rows=%s errors=%s has_live=%s max_source_at=%s",
+        "[inc] extract events done rows=%s errors=%s has_live=%s max_source_at=%s (events have no source clock; cursor is run time)",
         len(rows),
         errors,
         has_live,
-        max_source_at.isoformat() if max_source_at else None,
+        iso_seconds(max_source_at),
     )
     extra_ids = [str(row.get("vlr_event_id")) for row in rows if row.get("vlr_event_id")]
     if run_id:
