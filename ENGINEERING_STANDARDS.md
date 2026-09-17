@@ -267,9 +267,9 @@ data/rib_gg/facts/<stem>.jsonl          # overlay fact landings
 - Prefer CTEs with clear names (`source_rows`, `cleaned`, `final`).
 - No `SELECT *` in marts unless the model is a thin pass-through that is documented.
 - Add tests for primary key uniqueness and not-null on keys when a model is real (not dummy scaffold).
-- Materialization: staging = view, marts = table (see `dbt_project.yml`).
-- Target schema via `DBT_SUPABASE_SCHEMA` (default `valorant`).
-- Dummy scaffold models must stay obvious (`dummy_data` + filter) until replaced with real sources — do not pretend they are production.
+- Materialization: staging = view; live marts = view or materialized view; dummy stubs stay disabled. Do not dbt-materialize tables that Python already upserts.
+- Target schema via `DBT_SUPABASE_SCHEMA` (default `valorant` for smoke). Live views use schema `vlr`.
+- Add tests for grain uniqueness and not-null on keys for live sources and marts.
 - Optimize SQL for warehouse reads: filter early, select needed columns, index-friendly join keys (`*_id`).
 - Use `DBT_THREADS` for parallel model builds when running dbt from Dagster/CLI.
 - Dagster dbt steps must stream CLI output into `context.log` so failures show the failing model fast.
