@@ -365,4 +365,8 @@ def extract_rib_matches(repo_root: Path | None = None) -> dict[str, int]:
     }
     logger.info("=== rib_extract DONE queued=%s landed=%s errors=%s replay_maps=%s ===",
         counts["queued"], counts["landed"], counts["errors"], counts["replays"])
+    if match_ids and done == 0:
+        raise RuntimeError(
+            f"rib_extract landed 0 of {len(match_ids)} targeted matches (errors={errors})"
+        )
     return counts
