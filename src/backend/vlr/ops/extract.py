@@ -447,8 +447,6 @@ def merge_matches(rows: list[dict[str, Any]]) -> int:
 def _ids_from_roster(raw: Any) -> list[str]:
     """Pull vlr_player_id off a roster JSON list (warehouse or API)."""
     if isinstance(raw, str):
-        import json
-
         try:
             raw = json.loads(raw)
         except json.JSONDecodeError:
