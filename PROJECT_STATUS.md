@@ -3,7 +3,7 @@
 > Session-agnostic source of truth. Updated by agents via the `session-continuity` skill. Commit and push this file so every new Cursor chat starts with current context.
 
 **Last updated:** 2026-09-17  
-**Updated by:** rib_facts snapshot table + match 270 run  
+**Updated by:** incremental watermarks with seconds + dbt live vlr marts  
 **Later nudge date:** 2026-09-17
 
 ---
