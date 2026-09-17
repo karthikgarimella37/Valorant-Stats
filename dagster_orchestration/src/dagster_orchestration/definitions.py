@@ -557,10 +557,10 @@ def rib_facts_parse(context: AssetExecutionContext) -> dict[str, int]:
 @asset(group_name="rib_facts", deps=[rib_facts_parse])
 def rib_facts_load(context: AssetExecutionContext) -> dict[str, int]:
     """Batch upsert overlay facts; sleep between batches so Supabase CPU stays bounded."""
-    context.log.info("=== STEP rib_facts_load: upsert vlr.fact_rib_* ===")
+    context.log.info("=== STEP rib_facts_load START (includes fact_rib_replay_snapshot) ===")
     counts = load_rib_facts(REPO_ROOT)
     context.add_output_metadata({"row_counts": MetadataValue.json(counts)})
-    context.log.info("rib facts upserted=%s", counts)
+    context.log.info("=== STEP rib_facts_load DONE %s ===", counts)
     return counts
 
 
