@@ -331,7 +331,9 @@ def extract_rib_matches(repo_root: Path | None = None) -> dict[str, int]:
                 skip_existing=skip_existing,
                 fetch_replay=fetch_replay,
             )
-        except Exception:
+        except Exception as exc:
+            if "Vercel security checkpoint" in str(exc):
+                raise
             logger.exception("[rib_extract] Match failed id=%s", match_id)
             with progress_lock:
                 errors += 1
