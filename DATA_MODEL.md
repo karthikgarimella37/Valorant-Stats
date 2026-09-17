@@ -112,7 +112,7 @@ CREATE SEQUENCE valorant.seq_<table>_row_number
 | `fact_rib_replay_event`         | fact     | Job `rib_facts`                        | Yes (rib)           | Non-snapshot events (kill/plant/defuse/ability)                         |
 | `fact_rib_replay_snapshot`      | fact     | Job `rib_facts`                        | Yes (rib)           | Position ticks (`type=snapshot`)                                        |
 | `fact_rib_match_crosswalk`      | fact     | Job `rib_facts`                        | Yes (rib)           | Fuzzy rib → VLR series join                                             |
-| `vlr_watermarks`                | ops      | JSON landing; warehouse table later    | Yes                 | See `LATER.md`                                                          |
+| `vlr.ops_pipeline_watermarks`   | ops      | Job `vlr_daily` / every inc DAG        | Yes                 | One row per pipeline+table; `last_source_at` timestamptz                |
 
 
 VLR does **not** have replay (kills/positions). It **does** have round winners + attack/defense side on the match page. That is enough for the half-round **view**.
