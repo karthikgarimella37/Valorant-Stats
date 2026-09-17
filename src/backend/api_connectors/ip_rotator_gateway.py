@@ -25,6 +25,10 @@ logger = logging.getLogger(__name__)
 load_project_env()
 
 
+class AwsProxyGateway:
+    """Placeholder so the class name exists; real subclass is built in _start_unlocked."""
+
+
 def ip_rotator_enabled() -> bool:
     """Off unless VLR_USE_IP_ROTATOR=1. AWS API Gateway is paid; do not auto-enable."""
     flag = os.getenv("VLR_USE_IP_ROTATOR", "").strip().lower()
