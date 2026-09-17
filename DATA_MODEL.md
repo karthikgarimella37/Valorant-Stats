@@ -754,7 +754,7 @@ Jobs:
 - `vlr_daily` — **main incremental** (events → matches → teams → players → facts)
 - `vlr_events` / `vlr_matches` / `vlr_teams` / `vlr_players` / `vlr_facts` — 4-step DAGs
 - `vlr_hist_*` — one-shot jsonl backfills (do not use for daily)
-- `rib_facts` — overlay: RSC match + replay JSON → `vlr.fact_rib_*` + kills
+- `vlr_dbt` — views/matviews + tests on live `vlr` facts
 - `rib_gg_star_schema_job` — **legacy** be-prod parquet (stale API)
 
 Upsert rule: business key = VLR id. New row → next `row_number`. Never change `row_number`.
