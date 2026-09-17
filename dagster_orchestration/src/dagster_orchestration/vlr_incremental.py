@@ -381,7 +381,7 @@ def vlr_daily_run(context: AssetExecutionContext) -> dict[str, Any]:
             context,
             pipeline_name="vlr_facts",
             table_name=FACTS_LEAD_TABLE,
-            schema_fn=apply_facts_schema,
+            schema_fn=lambda _root: context.log.info("[inc] skip facts DDL on incremental"),
             extract_fn=extract_facts_since,
             merge_fn=merge_facts,
         ),
