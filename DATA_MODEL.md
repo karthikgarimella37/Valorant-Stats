@@ -110,6 +110,7 @@ CREATE SEQUENCE valorant.seq_<table>_row_number
 | `fact_rib_round_economy`        | fact     | Job `rib_facts`                        | Yes (rib)           | Team bank/loadout/buy tier                                              |
 | `fact_player_vs_player_kills`   | fact     | Job `rib_facts`                        | Yes (rib)           | Replay kills (time + positions)                                         |
 | `fact_rib_replay_event`         | fact     | Job `rib_facts`                        | Yes (rib)           | Non-snapshot events (kill/plant/defuse/ability)                         |
+| `fact_rib_replay_snapshot`      | fact     | Job `rib_facts`                        | Yes (rib)           | Position ticks (`type=snapshot`)                                        |
 | `fact_rib_match_crosswalk`      | fact     | Job `rib_facts`                        | Yes (rib)           | Fuzzy rib → VLR series join                                             |
 | `vlr_watermarks`                | ops      | JSON landing; warehouse table later    | Yes                 | See `LATER.md`                                                          |
 
