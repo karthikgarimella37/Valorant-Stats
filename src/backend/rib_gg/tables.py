@@ -358,6 +358,14 @@ FACT_SPECS: tuple[FactSpec, ...] = (
         REPLAY_EVENT_UNIQUE,
     ),
     FactSpec(
+        "snapshots",
+        "fact_rib_replay_snapshot",
+        "vlr_fact_rib_replay_snapshot.sql",
+        SNAPSHOT_COLS,
+        SNAPSHOT_TYPES,
+        SNAPSHOT_UNIQUE,
+    ),
+    FactSpec(
         "crosswalk",
         "fact_rib_match_crosswalk",
         "vlr_fact_rib_match_crosswalk.sql",
