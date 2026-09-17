@@ -663,9 +663,9 @@ def extract_facts_since(since: datetime, run_id: str = "") -> ExtractResult:
         """
         SELECT vlr_match_id, vlr_event_id
         FROM vlr.dim_matches
-        WHERE update_date >= %s
+        WHERE update_date >= %s OR match_at >= %s
         """,
-        (since,),
+        (since, since),
     )
     logger.info("[inc] facts warehouse matches n=%s", len(rows))
     if not rows:
