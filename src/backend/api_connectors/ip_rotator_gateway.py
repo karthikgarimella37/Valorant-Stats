@@ -14,6 +14,7 @@ from __future__ import annotations
 import atexit
 import logging
 import os
+import sys
 import threading
 from typing import Any
 
