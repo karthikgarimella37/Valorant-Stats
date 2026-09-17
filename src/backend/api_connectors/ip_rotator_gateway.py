@@ -104,6 +104,11 @@ def catalog_rotator_regions() -> list[str]:
     return ["us-east-1"]
 
 
+def extract_rotator_regions() -> list[str]:
+    """Full region list for high-volume extracts (rib.gg match/replay)."""
+    return _regions() or ["us-east-1"]
+
+
 class VlrIpRotator:
     """
     Process-wide ApiGateway for a single site (default https://www.vlr.gg).
