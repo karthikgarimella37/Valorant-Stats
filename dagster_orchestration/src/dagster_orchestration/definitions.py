@@ -165,32 +165,13 @@ def log_select_one_plus_ten_result(context: AssetExecutionContext) -> None:
 
 
 @asset(group_name="dbt")
-def dbt_build_star_schema(context: AssetExecutionContext) -> None:
-    """
-    Ensure the `valorant` schema exists, then materialize rib-aligned stub dim_/fact_ tables via dbt.
-    Prefer `rib_gg_star_schema_job` for populated parquet → Supabase loads.
-    """
+def dbt_build_vlr_marts(context: AssetExecutionContext) -> None:
+    """Build live vlr views/matviews and run grain tests. Does not recreate Python dim/fact tables."""
     if not DBT_BIN.exists():
         raise RuntimeError(
             "dbt executable not found. Create the dbt virtualenv in "
             "`src/backend/sql` and install dbt there first."
         )
-
-    schema = _get_dbt_schema()
-    _ensure_schema(context, schema)
-
-    models = [
-        "dim_events",
-        "dim_teams",
-        "dim_players",
-        "dim_agents",
-        "dim_maps",
-        "dim_series",
-        "dim_matches",
-        "fact_match_overall_stats",
-        "fact_match_performance",
-        "fact_match_economy",
-    ]
     command = [
         str(DBT_BIN),
         "build",
@@ -198,25 +179,16 @@ def dbt_build_star_schema(context: AssetExecutionContext) -> None:
         str(DBT_PROJECT_DIR),
         "--profiles-dir",
         str(DBT_PROJECT_DIR),
+        "--select",
+        "fact_match_half_round_stats",
+        "fact_player_map_stats",
+        "source:vlr",
+        "test_type:generic",
+        "test_type:singular",
     ]
-    for model in models:
-        command.extend(["--select", model])
-
-    try:
-        context.log.info(
-            "Starting DBT Build into schema '%s' for models: %s",
-            schema,
-            ", ".join(models),
-        )
-        _run_command(context, command, cwd=DBT_PROJECT_DIR)
-        context.log.info(
-            "DBT run completed successfully. Tables created/updated as %s.dim_* / %s.fact_*",
-            schema,
-            schema,
-        )
-    except Exception as e:
-        context.log.error("DBT run failed! SQL execution failed with error: %s", e)
-        raise
+    context.log.info("=== STEP dbt_build_vlr_marts: views + tests on live vlr.* ===")
+    _run_command(context, command, cwd=DBT_PROJECT_DIR)
+    context.log.info("dbt live vlr marts built")
 
 
 # ---------------------------------------------------------------------------
