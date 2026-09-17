@@ -104,7 +104,8 @@ CREATE SEQUENCE valorant.seq_<table>_row_number
 | `fact_match_economy`            | fact     | Job `vlr_facts`                        | Yes                 | Pistol/eco/full played vs won                                           |
 | `fact_round_economy_detail`     | fact     | Job `vlr_facts`                        | Yes                 | Bank/loadout when `round_economy` is on the landing                     |
 | `fact_map_veto`                 | fact     | Job `vlr_facts`                        | Yes                 | Ban/pick/decider from `map_vetos`                                       |
-| `fact_match_half_round_stats`   | **view** | dbt later                              | n/a                 | Aggregate `fact_round_results`                                          |
+| `fact_match_half_round_stats`   | matview  | Job `vlr_dbt`                          | Yes                 | Aggregate `fact_round_results`                                          |
+| `fact_player_map_stats`         | view     | Job `vlr_dbt`                          | Yes                 | overall ⋈ performance                                                   |
 | `fact_rib_round`                | fact     | Job `rib_facts`                        | Yes (rib)           | Round winner + win type from rib RSC                                    |
 | `fact_rib_round_player`         | fact     | Job `rib_facts`                        | Yes (rib)           | Per-round weapon/armor/loadout/ACS/K/A/damage/HS%                       |
 | `fact_rib_round_economy`        | fact     | Job `rib_facts`                        | Yes (rib)           | Team bank/loadout/buy tier                                              |
