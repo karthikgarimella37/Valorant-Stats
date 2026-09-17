@@ -91,7 +91,7 @@ def _extract_payload(context: AssetExecutionContext, wm: dict[str, Any], extract
         wm.get("pipeline_name"),
         result.row_count,
         result.has_live,
-        max_source_at.isoformat(),
+        max_source_at.isoformat(timespec="seconds"),
         list(result.extra),
     )
     return payload
