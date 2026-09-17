@@ -195,6 +195,10 @@ class VlrIpRotator:
 
     @classmethod
     def shutdown_all(cls) -> None:
+        """Drop AWS REST APIs. Skip during interpreter teardown (thread pool is already dead)."""
+        if sys.is_finalizing():
+            logger.warning("Skip rotator shutdown; interpreter is exiting")
+            return
         with cls._lock:
             items = list(cls._gateways.items())
             cls._gateways.clear()
