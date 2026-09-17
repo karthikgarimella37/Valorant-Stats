@@ -305,9 +305,9 @@ def _warehouse_match_event_ids(since: datetime) -> list[str]:
         if isinstance(update_date, datetime) and (update_date if update_date.tzinfo else update_date.replace(tzinfo=timezone.utc)) >= since:
             keep.append(eid)
             continue
-        if _keep_date(str(end_date or start_date or "") or None, since) and parse_project_date(str(end_date or start_date or "") or None):
-            if parse_project_date(str(end_date or start_date or "")) >= since_date(since):
-                keep.append(eid)
+        end_at = _event_end_at(end_date, start_date)
+        if end_at is not None and _keep_since(end_at, since):
+            keep.append(eid)
     logger.info("[inc] warehouse events for matches keep=%s scanned=%s", len(keep), len(rows))
     return keep
 
