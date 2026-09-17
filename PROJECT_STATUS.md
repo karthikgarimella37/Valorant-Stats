@@ -42,6 +42,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 - [x] Fact load parallel across tables (`VLR_FACT_LOAD_WORKERS`, default 8)
 - [x] Adhoc `backend.vlr.fact.migrate_concat_keys` (wait for live load, then swap uniques)
 - [x] rib overlay backend: rotator connector, JSON land, parse, fuzzy join, DDL, job `rib_facts`
+- [x] `vlr.fact_rib_replay_snapshot` (position ticks go to Supabase, not JSON-only)
 
 ## Next up
 
