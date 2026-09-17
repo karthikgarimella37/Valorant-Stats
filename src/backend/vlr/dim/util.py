@@ -411,15 +411,15 @@ def parse_match_at(
 def serialize_match_row(row: dict[str, Any]) -> dict[str, Any]:
     """JSON-safe copy of a match landing line (datetimes as ISO)."""
     out = dict(row)
-    for key in ("insert_date", "update_date"):
+    for key in ("insert_date", "update_date", "match_at"):
         value = out.get(key)
         if isinstance(value, datetime):
-            out[key] = value.isoformat()
+            out[key] = value.isoformat(timespec="seconds")
         elif isinstance(value, date):
             out[key] = format_project_date(value)
-    value = out.get("match_at")
-    if isinstance(value, datetime):
-        out["match_at"] = value.isoformat(timespec="seconds")
+    value = out.get("match_date")
+    if isinstance(value, (date, datetime)):
+        out["match_date"] = format_project_date(value)
     return out
 
 
