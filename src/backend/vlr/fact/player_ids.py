@@ -201,6 +201,58 @@ class PlayerIdLookup:
         return None
 
 
+def load_player_id_lookup_from_warehouse() -> PlayerIdLookup:
+    """Use dim_players + dim_teams already in Supabase so incremental facts skip 3GB jsonl."""
+    from backend.database_connectors.supabase_connectors import SupabaseConnector
+
+    logger.info("[facts] Player-id lookup from warehouse dim_players + dim_teams")
+    connector = SupabaseConnector()
+    by_team_ign: dict[tuple[str, str], str] = {}
+    ign_ids: dict[str, set[str]] = {}
+    players = connector.fetch_all(
+        "SELECT vlr_player_id, ign, vlr_team_id, teams_json FROM vlr.dim_players"
+    )
+    for player_id_raw, ign_raw, team_id_raw, teams_json in players:
+        player_id = _s(player_id_raw)
+        ign = _ign_key(ign_raw)
+        if not player_id or not ign:
+            continue
+        _index_pair(by_team_ign, ign_ids, _s(team_id_raw), ign, player_id)
+        for stint in _as_list(teams_json):
+            if isinstance(stint, dict):
+                _index_pair(
+                    by_team_ign,
+                    ign_ids,
+                    _s(stint.get("vlr_team_id") or stint.get("id")),
+                    ign,
+                    player_id,
+                )
+    logger.info("[facts] Player-id lookup warehouse players rows=%s pairs=%s", len(players), len(by_team_ign))
+    teams = connector.fetch_all("SELECT vlr_team_id, current_roster_json FROM vlr.dim_teams")
+    for team_id_raw, roster_json in teams:
+        team_id = _s(team_id_raw)
+        for person in _as_list(roster_json):
+            if not isinstance(person, dict):
+                continue
+            role = str(person.get("role") or "").lower()
+            if person.get("is_staff") or "coach" in role:
+                continue
+            _index_pair(
+                by_team_ign,
+                ign_ids,
+                team_id,
+                _ign_key(person.get("ign") or person.get("alias") or person.get("name")),
+                _s(person.get("vlr_player_id") or person.get("id")),
+            )
+    lookup = PlayerIdLookup(by_team_ign, ign_ids)
+    logger.info(
+        "[facts] Player-id lookup warehouse done team_ign=%s unique_ign=%s",
+        len(lookup.by_team_ign),
+        len(lookup.by_ign),
+    )
+    return lookup
+
+
 def load_player_id_lookup(repo_root: Path) -> PlayerIdLookup:
     """Read teams/players/events jsonl in parallel; events overwrite (team, ign)."""
     logger.info("[facts] Player-id lookup start")
