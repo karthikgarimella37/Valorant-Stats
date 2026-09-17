@@ -62,6 +62,9 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 - `round_economy` is usually empty until economy-tab scrape is on the landing
 - Round `win_method_code` is null on current `/v2` rounds
 - Series 2K/1vX only attach to **map 1** (VLR does not split them per map)
+- VLR has **team** ATK/DEF halves already (`fact_map_game_results` + `fact_round_results`). Player ATK/DEF K/D is HTML-only (wrapper reads `.mod-both`)
+- rib `be-prod.rib.gg` is stale; live routes are `rib.gg` RSC + `/api/matches/{id}/replay-data`
+- Replay snapshots are ~6MB/map — land JSON files; do not insert every tick into Supabase
 
 ## Session log
 
