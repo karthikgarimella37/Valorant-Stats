@@ -328,6 +328,15 @@ def format_row(
     name_1 = team_1.get("name") or "TBD"
     name_2 = team_2.get("name") or "TBD"
     match_date = parse_match_date(date_raw, fallback_year=year)
+    match_at = parse_match_at(
+        date_raw,
+        unix=listing.get("timestamp")
+        or listing.get("unix_timestamp")
+        or listing.get("time")
+        or detail.get("timestamp")
+        or detail.get("unix_timestamp"),
+        fallback_year=year,
+    )
     return {
         "vlr_match_id": match_id,
         "vlr_event_id": event_id,
