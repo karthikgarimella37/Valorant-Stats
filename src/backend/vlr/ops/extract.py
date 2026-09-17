@@ -194,11 +194,10 @@ def _warehouse_event_ids(since: datetime) -> list[str]:
             keep.append(eid)
             recent += 1
             continue
-        if _keep_date(str(end_date or start_date or "") or None, since):
-            parsed = parse_project_date(str(end_date or start_date or "") or None)
-            if parsed is not None and parsed >= since_date(since):
-                keep.append(eid)
-                dated += 1
+        end_at = _event_end_at(end_date, start_date)
+        if end_at is not None and _keep_since(end_at, since):
+            keep.append(eid)
+            dated += 1
     logger.info(
         "[inc] warehouse dim_events keep=%s live=%s recent_update=%s dated=%s scanned=%s",
         len(keep),
