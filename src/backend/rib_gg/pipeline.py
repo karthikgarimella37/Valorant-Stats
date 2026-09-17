@@ -89,7 +89,7 @@ def parse_rib_facts(repo_root: Path | None = None) -> dict[str, int]:
     """Join to VLR, explode landed JSON into fact jsonl. No HTTP."""
     load_project_env(repo_root)
     root = _root(repo_root)
-    logger.info("[rib_facts] Parse start")
+    logger.info("=== rib_facts PARSE START matches=%s ===", len(ids))
     crosswalk = build_crosswalk(root)
     lookup = player_lookup(root)
     buckets: dict[str, dict[tuple[Any, ...], dict[str, Any]]] = {spec.stem: {} for spec in FACT_SPECS}
