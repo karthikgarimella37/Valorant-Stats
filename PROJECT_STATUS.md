@@ -14,7 +14,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 
 ## Current focus
 
-- Run **rib_facts** for match 270 so snapshots land in `vlr.fact_rib_replay_snapshot`. Incremental VLR (`vlr_daily`) stays next after that.
+- Incremental VLR pipelines (`vlr_daily`). `rib_facts` is a separate job. dbt live marts via `vlr_dbt`.
 
 ## Status
 
