@@ -25,7 +25,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 | Orchestration | In progress | Job `vlr_facts` (extract jsonl → parallel load on composite unique) |
 | Dim tables | **Done** (catalog). Teams/players jsonl exist; rematerialize later if needed |
 | Fact tables | Load in progress | Live run still on concat `fact_key`. Next runs + migrate script use composite unique |
-| rib overlay | Code ready | Job `rib_facts`: RSC + replay-data → json land → parse → batched upsert |
+| rib overlay | Running | Snapshots now a warehouse table; first job uses `RIB_MATCH_IDS=270` |
 | Frontend / viz | Not started | Graphs in `DATA_MODEL.md` |
 | Deferred | Documented | `LATER.md` (economy dim, watermarks, KG agent) |
 
