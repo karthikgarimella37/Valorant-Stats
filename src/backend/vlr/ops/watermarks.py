@@ -175,7 +175,6 @@ def read_watermark(pipeline_name: str, table_name: str | None = None) -> Waterma
         row_count=row_count,
         bootstrap=bootstrap,
         overlap_hours=spec.overlap_hours,
-        date_only=spec.date_only,
         lookback_note=spec.lookback_note,
         since=since,
     )
@@ -185,10 +184,10 @@ def read_watermark(pipeline_name: str, table_name: str | None = None) -> Waterma
         wm.pipeline_name,
         wm.table_name,
         wm.status,
-        wm.last_source_at.isoformat() if wm.last_source_at else None,
-        wm.last_success_at.isoformat() if wm.last_success_at else None,
+        iso_seconds(wm.last_source_at),
+        iso_seconds(wm.last_success_at),
         wm.bootstrap,
-        wm.since.isoformat(),
+        iso_seconds(wm.since),
         wm.row_count,
     )
     return wm
