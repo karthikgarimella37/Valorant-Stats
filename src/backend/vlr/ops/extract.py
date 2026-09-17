@@ -73,11 +73,12 @@ def _max_dt(*values: datetime | None) -> datetime | None:
     return max(present) if present else None
 
 
-def _keep_since(value: datetime | None, since: datetime) -> bool:
-    """Keep rows at or after since (last_source_at minus 1 hour). Missing clock → keep."""
-    if value is None:
-        return True
-    return value >= since
+def _event_end_at(end_raw: Any, start_raw: Any = None) -> datetime | None:
+    """Event listings have no clock; treat the end calendar day as 23:59:59 UTC for since compares."""
+    day = parse_project_date(str(end_raw or start_raw or "") or None)
+    if day is None:
+        return None
+    return datetime(day.year, day.month, day.day, 23, 59, 59, tzinfo=timezone.utc)
 
 
 def _health() -> VlrV2Connector:
