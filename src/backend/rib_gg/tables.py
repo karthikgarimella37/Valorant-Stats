@@ -270,6 +270,46 @@ CROSSWALK_TYPES = {
     "leftover_json": "JSONB",
 }
 
+SNAPSHOT_COLS = (
+    "rib_match_id",
+    "rib_map_id",
+    "rib_event_id",
+    "vlr_match_id",
+    "vlr_event_id",
+    "match_date",
+    "map_name",
+    "map_game_number",
+    "round_number",
+    "snapshot_index",
+    "t_ms",
+    "actor_rib_player_id",
+    "actor_rib_actor_id",
+    "actor_vlr_player_id",
+    "pos_x",
+    "pos_y",
+    "view_x",
+    "view_y",
+    "leftover_json",
+    *STAMP,
+)
+SNAPSHOT_UNIQUE = ("rib_match_id", "rib_map_id", "round_number", "snapshot_index")
+SNAPSHOT_TYPES = {
+    **ID_TYPES,
+    "map_name": "TEXT",
+    "map_game_number": "INTEGER",
+    "round_number": "INTEGER",
+    "snapshot_index": "INTEGER",
+    "t_ms": "DOUBLE PRECISION",
+    "actor_rib_player_id": "TEXT",
+    "actor_rib_actor_id": "TEXT",
+    "actor_vlr_player_id": "TEXT",
+    "pos_x": "DOUBLE PRECISION",
+    "pos_y": "DOUBLE PRECISION",
+    "view_x": "DOUBLE PRECISION",
+    "view_y": "DOUBLE PRECISION",
+    "leftover_json": "JSONB",
+}
+
 
 class FactSpec(NamedTuple):
     """One overlay fact: jsonl stem, warehouse name, DDL, columns, types, unique, jsonb."""
