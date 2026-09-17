@@ -78,6 +78,7 @@ DIM_TYPES = {
     "team_2_score": "INTEGER",
     "match_date": "TEXT",
     "match_date_text": "TEXT",
+    "match_at": "TIMESTAMPTZ",
     "match_note": "TEXT",
     "match_patch": "TEXT",
     "n_maps": "INTEGER",
