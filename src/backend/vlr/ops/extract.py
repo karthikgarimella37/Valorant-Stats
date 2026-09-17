@@ -346,8 +346,11 @@ def extract_matches_since(since: datetime, run_id: str = "") -> ExtractResult:
                 if not match_id or match_id in seen:
                     continue
                 status = str(listing.get("status") or "").strip().lower()
-                match_date = parse_match_date(listing.get("date"))
-                if status not in LIVE_STATUSES and match_date and not _keep_date(match_date, since):
+                match_at = parse_match_at(
+                    listing.get("date"),
+                    unix=listing.get("timestamp") or listing.get("unix_timestamp") or listing.get("time"),
+                )
+                if status not in LIVE_STATUSES and not _keep_since(match_at, since):
                     continue
                 seen.add(match_id)
                 jobs.append((event_id, listing))
