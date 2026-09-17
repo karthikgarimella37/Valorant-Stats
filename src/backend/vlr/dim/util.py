@@ -417,9 +417,9 @@ def serialize_match_row(row: dict[str, Any]) -> dict[str, Any]:
             out[key] = value.isoformat()
         elif isinstance(value, date):
             out[key] = format_project_date(value)
-    value = out.get("match_date")
-    if isinstance(value, (date, datetime)):
-        out["match_date"] = format_project_date(value)
+    value = out.get("match_at")
+    if isinstance(value, datetime):
+        out["match_at"] = value.isoformat(timespec="seconds")
     return out
 
 
