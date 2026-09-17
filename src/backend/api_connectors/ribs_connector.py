@@ -579,13 +579,28 @@ class RibSiteConnector:
         tab: str | None = None,
         session: requests.Session | None = None,
     ) -> str:
-        """Raw RSC for a match (Overview / Economy / Replay tab)."""
+        """Match HTML first (has `initial` JSON). RSC only if the document missed it."""
+        from backend.rib_gg.rsc import first_initial
+
         params: dict[str, Any] = {}
         if map_id:
             params["map"] = map_id
         if tab:
             params["mstab"] = tab
         referer = f"{RIB_GG_SITE}/matches/{match_id}"
+        html_headers = {
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Referer": referer,
+        }
+        text = self._get(
+            f"/matches/{match_id}",
+            params=params or None,
+            headers=html_headers,
+            session=session,
+        ).text
+        if first_initial(text):
+            return text
+        logger.info("[rib_site] HTML missed initial; retry RSC match=%s", match_id)
         return self.rsc_text(
             f"/matches/{match_id}",
             params=params,
