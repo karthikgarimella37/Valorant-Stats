@@ -15,7 +15,6 @@ from backend.config.env import load_project_env
 from backend.database_connectors.supabase_connectors import SupabaseConnector
 from backend.vlr.dim.historical import (
     DIM_EVENT_COLUMNS,
-    EVENT_STATUSES,
     format_dim_event_row,
     load_events,
 )
