@@ -140,7 +140,8 @@ src/backend/
   rib_gg/                  # rib.gg normalize + land parquet/ndjson
   vlr/                     # vlr extract / scrape transforms
   vlr/dim/                 # dim extract (historical.py, matches.py, dates.py, util.py)
-  vlr/fact/                # fact extract (later: parse matches.jsonl)
+  vlr/fact/                # fact extract (parse matches.jsonl)
+  rib_gg/                  # rib.gg normalize + overlay facts (extract_matches, parse, join, pipeline)
   sql/                     # dbt project (own .venv)
   config/env.py            # discover and load every repo .env
 dagster_orchestration/     # Dagster defs, assets, jobs only
