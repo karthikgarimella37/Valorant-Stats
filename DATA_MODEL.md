@@ -739,6 +739,7 @@ Run extract + dbt from the **Dockerfile / compose**, not a laptop venv. Order:
      fact_rib_round_economy
      fact_player_vs_player_kills
      fact_rib_replay_event
+     fact_rib_replay_snapshot
 8. dbt: view fact_match_half_round_stats + tests
 ```
 
