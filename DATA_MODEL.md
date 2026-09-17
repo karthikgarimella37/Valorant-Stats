@@ -745,7 +745,8 @@ Jobs (existing names, source flip):
 
 - `vlr_star_schema_job` — **main daily** (events → matches → facts)
 - `vlr_facts` — parse `matches.jsonl` → `vlr.fact_*` (do not run until discussed)
-- `rib_gg_star_schema_job` — **overlay** replay/kills only
+- `rib_facts` — overlay: RSC match + replay JSON → `vlr.fact_rib_*` + kills
+- `rib_gg_star_schema_job` — **legacy** be-prod parquet (stale API)
 
 Upsert rule: business key = VLR id. New row → next `row_number`. Never change `row_number`.
 
