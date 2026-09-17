@@ -277,20 +277,50 @@ def parse_match_overlay(
                 continue
             events = replay_round.get("events") if isinstance(replay_round.get("events"), list) else []
             event_index = 0
+            snapshot_index = 0
             for event in events:
                 if not isinstance(event, dict):
                     continue
                 event_type = _s(event.get("type")) or ""
                 if event_type in SKIP_REPLAY_TYPES:
                     continue
-                event_index += 1
                 actor_id = _s(event.get("actorId"))
                 target_id = _s(event.get("targetId"))
                 pos_x, pos_y = _pos_xy(event.get("pos"))
                 tx, ty = _pos_xy(event.get("targetPos"))
-                known = {"t", "pos", "type", "actorId", "targetId", "weapon", "ability", "targetPos"}
+                view = event.get("viewVector") if isinstance(event.get("viewVector"), dict) else {}
                 actor_player = actor_to_player.get(actor_id or "")
                 target_player = actor_to_player.get(target_id or "")
+                if event_type == "snapshot":
+                    snapshot_index += 1
+                    buckets["snapshots"].append(
+                        {
+                            "rib_match_id": match_id,
+                            "rib_map_id": map_id,
+                            "rib_event_id": event_id,
+                            "vlr_match_id": vlr_match_id,
+                            "vlr_event_id": vlr_event_id,
+                            "match_date": match_date,
+                            "map_name": map_name,
+                            "map_game_number": game_n,
+                            "round_number": round_number,
+                            "snapshot_index": snapshot_index,
+                            "t_ms": to_float(event.get("t")),
+                            "actor_rib_player_id": actor_player,
+                            "actor_rib_actor_id": actor_id,
+                            "actor_vlr_player_id": player_to_vlr.get(actor_player or ""),
+                            "pos_x": pos_x,
+                            "pos_y": pos_y,
+                            "view_x": to_float(view.get("x")),
+                            "view_y": to_float(view.get("y")),
+                            "leftover_json": _leftover(
+                                event, {"t", "pos", "type", "actorId", "viewVector"}
+                            ),
+                        }
+                    )
+                    continue
+                event_index += 1
+                known = {"t", "pos", "type", "actorId", "targetId", "weapon", "ability", "targetPos"}
                 buckets["replay_events"].append(
                     {
                         "rib_match_id": match_id,
