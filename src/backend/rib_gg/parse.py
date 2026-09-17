@@ -151,6 +151,7 @@ def parse_match_overlay(
         "round_economy": [],
         "kills": [],
         "replay_events": [],
+        "snapshots": [],
     }
     match_id = coalesce_id(payload.get("rib_match_id"))
     event_id = _s(payload.get("rib_event_id"))
