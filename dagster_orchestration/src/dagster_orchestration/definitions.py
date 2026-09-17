@@ -1048,6 +1048,7 @@ defs = Definitions(
     jobs=[
         dbt_job,
         dbt_star_schema_job,
+        vlr_dbt,
         rib_gg_star_schema_job,
         vlr_star_schema_job,
         vlr_date,
