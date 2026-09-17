@@ -451,7 +451,6 @@ class RibSiteConnector:
             if headers:
                 merged.update(headers)
             try:
-                self._warm_session(request_session)
                 logger.info("[rib_site] GET %s attempt=%s/%s", path, attempt, self.max_retries)
                 response = request_session.get(
                     url,

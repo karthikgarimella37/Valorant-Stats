@@ -140,12 +140,44 @@ class VlrIpRotator:
     @classmethod
     def _start_unlocked(cls, site: str, regions: list[str] | None = None) -> Any:
         try:
+            from random import choice
+
+            from requests.adapters import HTTPAdapter
             from requests_ip_rotator import ApiGateway
         except ImportError as exc:
             raise RuntimeError(
                 "requests-ip-rotator is not installed. "
                 "Run: uv add requests-ip-rotator (root + dagster_orchestration)"
             ) from exc
+
+        class AwsProxyGateway(ApiGateway):
+            """AWS proxy without fake X-Forwarded-For. Vercel 429s random XFF on rib.gg."""
+
+            def send(
+                self,
+                request,
+                stream=False,
+                timeout=None,
+                verify=True,
+                cert=None,
+                proxies=None,
+            ):
+                endpoint = choice(self.endpoints)
+                _protocol, site_rest = request.url.split("://", 1)
+                site_path = site_rest.split("/", 1)[1]
+                request.url = "https://" + endpoint + "/ProxyStage/" + site_path
+                request.headers["Host"] = endpoint
+                request.headers.pop("X-Forwarded-For", None)
+                request.headers.pop("X-My-X-Forwarded-For", None)
+                return HTTPAdapter.send(
+                    self,
+                    request,
+                    stream=stream,
+                    timeout=timeout,
+                    verify=verify,
+                    cert=cert,
+                    proxies=proxies,
+                )
 
         access_key_id = _access_key_id()
         access_key_secret = _access_key_secret()
