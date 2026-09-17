@@ -999,7 +999,7 @@ defs = Definitions(
     assets=[
         dbt_build_select_one_plus_ten,
         log_select_one_plus_ten_result,
-        dbt_build_star_schema,
+        dbt_build_vlr_marts,
         rib_probe_endpoints,
         rib_extract_teams,
         rib_extract_events,
