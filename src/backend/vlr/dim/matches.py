@@ -648,6 +648,7 @@ def apply_matches_schema(repo_root: Path | None = None) -> Path:
         "ON vlr.dim_matches (vlr_match_id)",
         "CREATE INDEX IF NOT EXISTS idx_vlr_dim_matches_event ON vlr.dim_matches (vlr_event_id)",
         "CREATE INDEX IF NOT EXISTS idx_vlr_dim_matches_date ON vlr.dim_matches (match_date)",
+        "CREATE INDEX IF NOT EXISTS idx_vlr_dim_matches_match_at ON vlr.dim_matches (match_at)",
     ):
         connector.execute(stmt)
     logger.info("[matches] Schema ready (create-if-missing + alter, no drop)")
