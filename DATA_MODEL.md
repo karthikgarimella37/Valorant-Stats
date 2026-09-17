@@ -724,7 +724,7 @@ Every live VLR DAG is four steps:
 
 Table grain: `(pipeline_name, table_name)`. Columns: `source_name`, `last_source_at`, `last_success_at`, `last_attempt_at`, `row_count`, `dagster_run_id`, `dagster_job_name`, `status`, `error_text`, plus `row_number` / `insert_date` / `update_date`.
 
-**Minus 1 hour:** `last_source_at` is timestamptz, so overlap of 1 hour covers late stats and clock skew. VLR event/match dates are date-only (`2026/9/16`), so extract also keeps the whole calendar day of `since`. Catalogs (date/agents/maps/weapons/economy) have no source event time — full small upsert, watermark is `last_success_at` only.
+**Minus 1 hour:** `last_source_at` is timestamptz with seconds. Next run starts at `last_source_at - interval '1 hour'`. Matches store `match_at` (unix epoch or parsed clock). Event listings have no clock, so that cursor is the run time. Catalogs (date/agents/maps/weapons/economy) have no source event time — full small upsert, watermark is `last_success_at` only.
 
 **First incremental run** bootstraps `since` from `MAX(update_date)` on that warehouse table so history is not rescanned. Empty table → `VLR_INC_BOOTSTRAP_DAYS` (default 7).
 
