@@ -255,7 +255,7 @@ def load_rib_facts(repo_root: Path | None = None) -> dict[str, int]:
     max_cpu_pct = max(10, int(os.environ.get("RIB_FACT_MAX_CPU_PCT", "40")))
     min_sleep_sec = float(os.environ.get("RIB_FACT_MIN_SLEEP_SEC", "4"))
     logger.info(
-        "[rib_facts] Load start tables=%s workers=%s batch=%s cpu=%s sleep=%s",
+        "=== rib_facts LOAD START tables=%s workers=%s batch=%s cpu=%s sleep=%ss ===",
         len(FACT_SPECS),
         workers,
         batch_size,
