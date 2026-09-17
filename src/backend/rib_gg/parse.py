@@ -34,7 +34,7 @@ ROUND_STAT_KEYS = {
     "firstKill",
 }
 ROUND_KEYS = {"winner", "winType", "mvpAgent", "attackerTeam"}
-SKIP_REPLAY_TYPES = {"snapshot", "damage"}
+SKIP_REPLAY_TYPES = {"damage"}
 
 
 def _s(value: Any) -> str | None:
