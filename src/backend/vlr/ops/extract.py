@@ -476,7 +476,6 @@ def _warehouse_team_ids(since: datetime) -> list[str]:
         SELECT vlr_team_1_id, vlr_team_2_id
         FROM vlr.dim_matches
         WHERE update_date >= %s
-           OR match_date IS NULL
         """,
         (since,),
     )
