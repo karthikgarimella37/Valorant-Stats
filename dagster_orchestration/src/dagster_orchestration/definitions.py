@@ -547,10 +547,20 @@ def dims_agents(context: AssetExecutionContext) -> dict[str, int]:
 def dims_maps(context: AssetExecutionContext) -> dict[str, int]:
     """Map catalog: valorant-api radar x/y + Liquipedia location/earth via AWS rotator."""
     context.log.info("=== STEP dims_maps: valorant-api + liquipedia via AWS rotator ===")
-    counts = run_maps(REPO_ROOT)
-    context.add_output_metadata({"row_counts": MetadataValue.json(counts)})
-    context.log.info("Maps catalog upserted=%s", counts)
-    return counts
+
+    def _load() -> dict[str, int]:
+        counts = run_maps(REPO_ROOT)
+        context.add_output_metadata({"row_counts": MetadataValue.json(counts)})
+        context.log.info("Maps catalog upserted=%s", counts)
+        return counts
+
+    return run_full_refresh(
+        pipeline_name="vlr_maps",
+        table_name="dim_maps",
+        fn=_load,
+        dagster_run_id=context.run_id,
+        dagster_job_name=context.job_name,
+    )
 
 
 @asset(group_name="vlr_facts")
