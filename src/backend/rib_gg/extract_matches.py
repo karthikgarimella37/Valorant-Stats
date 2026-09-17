@@ -252,12 +252,11 @@ def extract_rib_matches(repo_root: Path | None = None) -> dict[str, int]:
     max_matches = os.environ.get("RIB_MAX_MATCHES")
     match_ids = _parse_match_id_list(os.environ.get("RIB_MATCH_IDS"))
     connector = RibSiteConnector()
-    logger.info(
-        "[rib_extract] Start workers=%s skip_existing=%s replay=%s match_ids=%s",
+    logger.info("=== rib_extract START workers=%s skip_existing=%s replay=%s match_ids=%s ===",
         workers,
         skip_existing,
         fetch_replay,
-        match_ids or "from events",
+        ",".join(match_ids) if match_ids else "from /events",
     )
 
     work: list[tuple[str, dict[str, Any] | None, dict[str, Any] | None]] = []
