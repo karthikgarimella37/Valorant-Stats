@@ -238,7 +238,7 @@ data/rib_gg/facts/<stem>.jsonl          # overlay fact landings
 ### Job design
 - One job = one clear pipeline story (e.g. incremental `vlr_events`; historical `vlr_hist_events`; daily `vlr_daily`).
 - Incremental VLR jobs are **four steps**: check watermark → extract in memory → merge to Supabase → update watermark. Cursor table: `vlr.ops_pipeline_watermarks`.
-- `last_source_at` is timestamptz. Default overlap is **minus 1 hour**. Date-only VLR fields also keep that whole calendar day. Catalogs (date/agents/maps/weapons/economy) have no source event time: full small upsert, watermark is `last_success_at` only.
+- `last_source_at` is timestamptz **to the second**. Default overlap is **minus 1 hour**; extract from that time onward. Catalogs (date/agents/maps/weapons/economy) have no source event time: full small upsert, watermark is `last_success_at` only.
 - Keep smoke/sample jobs separate from full production jobs.
 - End state of production jobs: analytics-ready tables in Supabase for downstream apps.
 
