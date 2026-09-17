@@ -209,7 +209,7 @@ def _load_one_table(
         max_cpu_pct=max_cpu_pct,
         min_sleep_sec=min_sleep_sec,
     )
-    logger.info("[rib_facts] Load progress table=%s upserted=%s", spec.table, count)
+    logger.info("[rib_facts] Load DONE table=%s upserted=%s", spec.table, count)
     return spec.table, count
 
 
