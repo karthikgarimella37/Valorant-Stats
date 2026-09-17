@@ -81,6 +81,13 @@ def _event_end_at(end_raw: Any, start_raw: Any = None) -> datetime | None:
     return datetime(day.year, day.month, day.day, 23, 59, 59, tzinfo=timezone.utc)
 
 
+def _keep_since(value: datetime | None, since: datetime) -> bool:
+    """Keep rows at or after since (last_source_at minus 1 hour). Missing clock → keep."""
+    if value is None:
+        return True
+    return value >= since
+
+
 def _health() -> VlrV2Connector:
     """Fail loud if vlrggapi is down before we page catalogs."""
     load_project_env()
