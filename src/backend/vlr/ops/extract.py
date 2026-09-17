@@ -143,10 +143,11 @@ def _list_status(connector: VlrV2Connector, status: str, max_pages: int, since: 
                 _start, end = parse_event_dates(
                     listing.get("dates"), fallback_year=year_from_text(name, listing.get("dates"))
                 )
-                if end and not _keep_date(end, since):
+                end_at = _event_end_at(end, _start)
+                if end_at is not None and not _keep_since(end_at, since):
                     older += 1
                     continue
-                if not end:
+                if end_at is None:
                     unparsed += 1
             by_id[listing["event_id"]] = listing
             kept += 1
