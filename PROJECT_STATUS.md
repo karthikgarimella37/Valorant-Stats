@@ -14,7 +14,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 
 ## Current focus
 
-- Run **rib_facts** (match 270 first) with snapshots loading into `vlr.fact_rib_replay_snapshot`.
+- Incremental VLR pipelines (`vlr_daily` / 4-step table jobs). Website/charts later. `rib_facts` stays a separate job.
 
 ## Status
 
