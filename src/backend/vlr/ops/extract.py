@@ -7,7 +7,7 @@ import logging
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 from typing import Any
 
 from backend.api_connectors.ip_rotator_gateway import assert_container_rotator
