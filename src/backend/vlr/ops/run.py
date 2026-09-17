@@ -138,12 +138,25 @@ def run_full_refresh(
     )
     try:
         result = fn()
+        known = {spec.table_name for spec in __import__("backend.vlr.ops.specs", fromlist=["WATERMARK_SPECS"]).WATERMARK_SPECS if spec.pipeline_name == pipeline_name}
         if extra_tables is not None:
             counts = extra_tables
             row_count = sum(extra_tables.values())
         elif isinstance(result, dict):
-            counts = {str(key): int(value) for key, value in result.items() if isinstance(value, int)}
-            row_count = sum(counts.values()) if counts else None
+            table_counts = {
+                str(key): int(value)
+                for key, value in result.items()
+                if str(key) in known and isinstance(value, int)
+            }
+            counts = table_counts
+            if "loaded" in result and isinstance(result["loaded"], int):
+                row_count = int(result["loaded"])
+            elif table_name in table_counts:
+                row_count = table_counts[table_name]
+            else:
+                row_count = sum(table_counts.values()) if table_counts else sum(
+                    int(value) for value in result.values() if isinstance(value, int)
+                )
         elif isinstance(result, int):
             counts = {table_name: result}
             row_count = result
@@ -151,7 +164,15 @@ def run_full_refresh(
             counts = {table_name: 0}
             row_count = 0
         now = datetime.now(timezone.utc)
-        if extra_tables is not None or (isinstance(result, dict) and len(counts) > 1):
+        fan_out = extra_tables is not None or (len(known) > 1 and counts and set(counts).issubset(known))
+        logger.info(
+            "[inc] full refresh merge done pipeline=%s table=%s row_count=%s counts=%s fan_out=%s",
+            pipeline_name,
+            table_name,
+            row_count,
+            counts,
+            fan_out,
+        )
             step_update_watermark(
                 pipeline_name=pipeline_name,
                 table_name=table_name,
