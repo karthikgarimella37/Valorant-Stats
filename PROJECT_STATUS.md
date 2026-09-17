@@ -27,7 +27,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 | Fact tables | Live in `vlr` | Incremental `vlr_facts` parses in-memory match details |
 | rib overlay | Running | Snapshots now a warehouse table; first job uses `RIB_MATCH_IDS=270` |
 | Frontend / viz | Not started | Graphs in `DATA_MODEL.md` |
-| Deferred | Documented | `LATER.md` (economy dim, close VLR load, KG, dbt on live facts) |
+| Deferred | Documented | `LATER.md` (economy dim, close VLR load, KG) |
 
 ## Done
 
