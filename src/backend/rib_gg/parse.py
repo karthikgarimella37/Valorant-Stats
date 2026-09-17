@@ -429,4 +429,18 @@ def parse_landed_match(repo_root: Path, match_id: str, *, cross: dict[str, Any] 
     maps = payload.get("maps") if isinstance(payload.get("maps"), list) else []
     map_ids = [str(row.get("id")) for row in maps if isinstance(row, dict) and row.get("id")]
     replays = load_replay_maps(repo_root, match_id, map_ids)
-    return parse_match_overlay(payload, replays, cross=cross, player_ids=player_ids)
+    parsed = parse_match_overlay(payload, replays, cross=cross, player_ids=player_ids)
+    logger.info(
+        "[rib_parse] Match %s maps=%s replays=%s rounds=%s players=%s eco=%s kills=%s events=%s snapshots=%s join=%s",
+        match_id,
+        len(map_ids),
+        len(replays),
+        len(parsed["rounds"]),
+        len(parsed["round_players"]),
+        len(parsed["round_economy"]),
+        len(parsed["kills"]),
+        len(parsed["replay_events"]),
+        len(parsed["snapshots"]),
+        (cross or {}).get("vlr_match_id") or "unmatched",
+    )
+    return parsed
