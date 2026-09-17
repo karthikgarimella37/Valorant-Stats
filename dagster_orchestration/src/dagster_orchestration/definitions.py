@@ -534,14 +534,13 @@ def facts_load(context: AssetExecutionContext) -> dict[str, int]:
 @asset(group_name="rib_facts")
 def rib_match_extract(context: AssetExecutionContext) -> dict[str, int]:
     """Land rib.gg RSC match JSON + replay blobs via AWS rotator (parallel workers)."""
-    context.log.info(
-        "=== STEP rib_match_extract: workers=%s match_ids=%s ===",
+    context.log.info("=== STEP rib_match_extract START workers=%s match_ids=%s ===",
         os.getenv("RIB_MATCH_WORKERS", "8"),
         os.getenv("RIB_MATCH_IDS", "all events"),
     )
     counts = extract_rib_matches(REPO_ROOT)
     context.add_output_metadata({"row_counts": MetadataValue.json(counts)})
-    context.log.info("rib match extract %s", counts)
+    context.log.info("=== STEP rib_match_extract DONE %s ===", counts)
     return counts
 
 
