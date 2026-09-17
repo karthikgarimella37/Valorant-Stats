@@ -14,7 +14,7 @@ from backend.database_connectors.supabase_connectors import SupabaseConnector
 from backend.vlr.dim.load import apply_dim_schema, stamp_rows, upsert_dim_rows
 from backend.vlr.dim.util import matches_jsonl_path
 from backend.vlr.fact.parse import parse_match_facts
-from backend.vlr.fact.player_ids import load_player_id_lookup
+from backend.vlr.fact.player_ids import load_player_id_lookup, load_player_id_lookup_from_warehouse
 from backend.vlr.fact.tables import FACT_SPECS, FactSpec
 from backend.vlr.fact.util import REPO_ROOT, coalesce_id, fact_jsonl_path, facts_dir
 
