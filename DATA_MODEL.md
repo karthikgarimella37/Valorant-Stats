@@ -711,7 +711,24 @@ Round winner + per-player loadout/combat + team economy + non-snapshot replay ev
 
 Grain: one rib series. Fuzzy join to `vlr_match_id` on event name + team names + date.
 
-See `LATER.md` for watermarks / economy dim / KG agent.
+See `LATER.md` for economy dim / KG agent / close-the-VLR-load.
+
+## Incremental pipelines
+
+Every live VLR DAG is four steps:
+
+1. **check watermark** — read `vlr.ops_pipeline_watermarks` for that pipeline+table
+2. **extract** — pull since `last_source_at` into memory (daily volume is small)
+3. **merge** — upsert those rows into Supabase
+4. **update watermark** — always write the attempt; success may advance `last_source_at`; failure never does
+
+Table grain: `(pipeline_name, table_name)`. Columns: `source_name`, `last_source_at`, `last_success_at`, `last_attempt_at`, `row_count`, `dagster_run_id`, `dagster_job_name`, `status`, `error_text`, plus `row_number` / `insert_date` / `update_date`.
+
+**Minus 1 hour:** `last_source_at` is timestamptz, so overlap of 1 hour covers late stats and clock skew. VLR event/match dates are date-only (`2026/9/16`), so extract also keeps the whole calendar day of `since`. Catalogs (date/agents/maps/weapons/economy) have no source event time — full small upsert, watermark is `last_success_at` only.
+
+**First incremental run** bootstraps `since` from `MAX(update_date)` on that warehouse table so history is not rescanned. Empty table → `VLR_INC_BOOTSTRAP_DAYS` (default 7).
+
+Jobs: `vlr_events`, `vlr_matches`, `vlr_teams`, `vlr_players`, `vlr_facts` (4 steps each). Chain: `vlr_daily` (events → matches → teams → players → facts). One-shot jsonl backfills: `vlr_hist_*`.
 
 ## Dagster daily pipeline (Docker)
 
