@@ -11,7 +11,7 @@ from typing import Any
 from backend.rib_gg.paths import matches_jsonl_path as rib_matches_jsonl_path
 from backend.vlr.dim.util import matches_jsonl_path as vlr_matches_jsonl_path
 from backend.vlr.fact.player_ids import load_player_id_lookup
-from backend.vlr.fact.util import team_match_keys, to_float
+from backend.vlr.fact.util import team_match_keys
 
 logger = logging.getLogger(__name__)
 
