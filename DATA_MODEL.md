@@ -735,13 +735,13 @@ Jobs: `vlr_events`, `vlr_matches`, `vlr_teams`, `vlr_players`, `vlr_facts` (4 st
 Run extract + dbt from the **Dockerfile / compose**, not a laptop venv. Order:
 
 ```text
-1. dim_date, dim_vct_regions, dim_regions, dim_economy     (seed / extend)
-2. Parallel VLR catalog:  dim_country (from teams/players), dim_teams, dim_events
-3. dim_players           (needs teams + country)
-4. dim_matches           (needs events + teams + date)
-5. Distinct names:        thin dim_maps / dim_agents from match payloads; kit via `vlr_maps` / `vlr_agents`
-6. Job `vlr_facts` (jsonl parse, no HTTP):
-     fact_match_overall_stats (start here)
+1. dim_date, dim_vct_regions, dim_regions, dim_economy     (seed / extend; full small upsert + watermark)
+2. Job `vlr_daily` (or the five 4-step jobs in order):
+     events → matches → teams → players → facts
+     each: watermark → in-memory extract since last_source_at-1h → merge → watermark
+3. Optional catalogs: `vlr_agents` / `vlr_maps` / `vlr_weapons`
+4. dbt later: views/tests on live `vlr.fact_*` (not the dummy `valorant` stubs)
+```
      fact_player_match_performance
      fact_round_results
      fact_map_game_results
