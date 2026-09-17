@@ -26,6 +26,7 @@ from backend.vlr.dim.util import (
     match_ids_in_jsonl,
     matches_jsonl_path,
     parse_match_date,
+    parse_match_at,
     parse_match_patch,
     read_event_match_lists,
     serialize_match_row,
