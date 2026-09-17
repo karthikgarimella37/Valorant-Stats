@@ -47,8 +47,6 @@ def extract_json_after(text: str, key: str) -> list[Any]:
             elif ch == closer:
                 depth -= 1
                 if depth == 0:
-                    import json
-
                     try:
                         results.append(json.loads(text[j : k + 1]))
                     except json.JSONDecodeError:

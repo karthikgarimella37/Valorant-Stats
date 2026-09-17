@@ -380,3 +380,207 @@ class RibsConnector:
             total,
         )
         return results
+
+
+RIB_GG_SITE = "https://rib.gg"
+RIB_BROWSER_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6 Safari/605.1.15"
+    ),
+    "Accept": "application/json, text/plain, */*",
+    "Origin": "https://rib.gg",
+}
+
+
+class RibSiteSessionFactory:
+    """rib.gg site sessions through AWS API Gateway so the host IP is never used."""
+
+    def create(self) -> requests.Session:
+        """High-volume match/replay extract uses the full rotator region list."""
+        from backend.api_connectors.ip_rotator_gateway import extract_rotator_regions
+
+        return rotating_session(
+            RIB_GG_SITE,
+            headers=RIB_BROWSER_HEADERS,
+            regions=extract_rotator_regions(),
+        )
+
+
+class RibSiteConnector:
+    """Live rib.gg RSC pages + replay-data JSON. be-prod is stale; do not use it here."""
+
+    def __init__(self, timeout: int = 60, max_retries: int = 5):
+        logger.info("[rib_site] Init timeout=%s retries=%s", timeout, max_retries)
+        self.timeout = timeout
+        self.max_retries = max_retries
+        self.session_factory = RibSiteSessionFactory()
+
+    def _get(
+        self,
+        path: str,
+        *,
+        params: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
+        session: requests.Session | None = None,
+        expect_json: bool = False,
+    ) -> requests.Response:
+        """GET with 429/5xx backoff. Each call can use its own rotator session."""
+        import time
+
+        url = f"{RIB_GG_SITE}{path}"
+        request_session = session or self.session_factory.create()
+        last_error: Exception | None = None
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                response = request_session.get(
+                    url,
+                    params=params,
+                    headers=headers,
+                    timeout=self.timeout,
+                )
+                if response.status_code in {429, 500, 502, 503, 504}:
+                    wait = min(2 ** attempt, 30)
+                    logger.warning(
+                        "[rib_site] HTTP %s path=%s attempt=%s/%s sleep=%ss",
+                        response.status_code,
+                        path,
+                        attempt,
+                        self.max_retries,
+                        wait,
+                    )
+                    time.sleep(wait)
+                    continue
+                response.raise_for_status()
+                if expect_json:
+                    response.json()
+                return response
+            except Exception as exc:
+                last_error = exc
+                wait = min(2 ** attempt, 30)
+                logger.warning(
+                    "[rib_site] Error path=%s attempt=%s/%s sleep=%ss err=%s",
+                    path,
+                    attempt,
+                    self.max_retries,
+                    wait,
+                    exc,
+                )
+                if attempt == self.max_retries:
+                    break
+                time.sleep(wait)
+        raise RuntimeError(f"rib.gg GET failed path={path}") from last_error
+
+    def rsc_text(
+        self,
+        path: str,
+        *,
+        params: dict[str, Any] | None = None,
+        referer: str | None = None,
+        session: requests.Session | None = None,
+    ) -> str:
+        """RSC flight payload (header rsc=1). Needed for events/matches/roundStats."""
+        query = dict(params or {})
+        query.setdefault("_rsc", "1")
+        headers = {"rsc": "1", "Accept": "*/*"}
+        if referer:
+            headers["Referer"] = referer
+        response = self._get(path, params=query, headers=headers, session=session)
+        return response.text
+
+    def list_events(self, session: requests.Session | None = None) -> list[dict[str, Any]]:
+        """Event cards from /events. Deduped by id."""
+        from backend.rib_gg.rsc import extract_json_after
+
+        logger.info("[rib_site] Events start")
+        text = self.rsc_text("/events", referer=f"{RIB_GG_SITE}/events", session=session)
+        events: list[dict[str, Any]] = []
+        seen: set[str] = set()
+        for payload in extract_json_after(text, "events"):
+            if not isinstance(payload, list):
+                continue
+            for row in payload:
+                if not isinstance(row, dict):
+                    continue
+                event_id = row.get("id")
+                if event_id is None or not row.get("name"):
+                    continue
+                key = str(event_id)
+                if key in seen:
+                    continue
+                seen.add(key)
+                events.append(row)
+        logger.info("[rib_site] Events done n=%s", len(events))
+        return events
+
+    def list_event_matches(
+        self,
+        event_id: str,
+        slug: str,
+        session: requests.Session | None = None,
+    ) -> list[dict[str, Any]]:
+        """Matches listed on one event page."""
+        from backend.rib_gg.rsc import extract_json_after
+
+        path = f"/events/{event_id}/{slug}"
+        text = self.rsc_text(path, referer=f"{RIB_GG_SITE}{path}", session=session)
+        by_id: dict[str, dict[str, Any]] = {}
+        for payload in extract_json_after(text, "matches"):
+            if not isinstance(payload, list) or not payload:
+                continue
+            first = payload[0]
+            if not isinstance(first, dict) or "id" not in first:
+                continue
+            if "teamA" not in first and "team1" not in first:
+                continue
+            for row in payload:
+                if isinstance(row, dict) and row.get("id") is not None:
+                    by_id[str(row["id"])] = row
+        return list(by_id.values())
+
+    def get_match_page(
+        self,
+        match_id: str,
+        *,
+        map_id: str | None = None,
+        tab: str | None = None,
+        session: requests.Session | None = None,
+    ) -> str:
+        """Raw RSC for a match (Overview / Economy / Replay tab)."""
+        params: dict[str, Any] = {}
+        if map_id:
+            params["map"] = map_id
+        if tab:
+            params["mstab"] = tab
+        referer = f"{RIB_GG_SITE}/matches/{match_id}"
+        return self.rsc_text(
+            f"/matches/{match_id}",
+            params=params,
+            referer=referer,
+            session=session,
+        )
+
+    def get_replay_data(
+        self,
+        match_id: str,
+        map_id: str,
+        session: requests.Session | None = None,
+    ) -> dict[str, Any]:
+        """Full replay blob for one map. Caller lands the JSON; do not insert snapshots."""
+        params = {"mapId": map_id}
+        headers = {
+            "Accept": "application/json, text/plain, */*",
+            "Referer": f"{RIB_GG_SITE}/matches/{match_id}?map={map_id}&mstab=Replay",
+        }
+        response = self._get(
+            f"/api/matches/{match_id}/replay-data",
+            params=params,
+            headers=headers,
+            session=session,
+            expect_json=True,
+        )
+        payload = response.json()
+        if not isinstance(payload, dict):
+            raise RuntimeError(f"replay-data not an object match={match_id} map={map_id}")
+        return payload
+
