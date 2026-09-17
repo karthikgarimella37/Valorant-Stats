@@ -337,6 +337,58 @@ def load_one_fact_table(
     )
 
 
+def upsert_facts_from_match_rows(match_rows: list[dict[str, Any]]) -> dict[str, int]:
+    """Parse in-memory match landings and upsert each fact table. Incremental path; no jsonl."""
+    logger.info("[facts] In-memory upsert start matches=%s tables=%s", len(match_rows), len(FACT_SPECS))
+    player_ids = load_player_id_lookup_from_warehouse()
+    buckets: dict[str, dict[tuple[Any, ...], dict[str, Any]]] = {spec.stem: {} for spec in FACT_SPECS}
+    unique_by_stem = {spec.stem: spec.unique_cols for spec in FACT_SPECS}
+    skipped_grain = 0
+    used = 0
+    for index, obj in enumerate(match_rows, start=1):
+        if not isinstance(obj, dict):
+            continue
+        parsed = parse_match_facts(obj, player_ids=player_ids)
+        if not parsed["overall"] and not parsed["series"]:
+            continue
+        used += 1
+        for stem, rows in parsed.items():
+            dest = buckets.get(stem)
+            if dest is None:
+                continue
+            unique_cols = unique_by_stem[stem]
+            for row in rows:
+                grain = _grain_tuple(row, unique_cols)
+                if grain is None:
+                    skipped_grain += 1
+                    continue
+                dest[grain] = row
+        if index % 25 == 0 or index == len(match_rows):
+            logger.info("[facts] In-memory parse %s/%s used=%s skipped_grain=%s", index, len(match_rows), used, skipped_grain)
+    counts: dict[str, int] = {
+        "matches_scanned": len(match_rows),
+        "matches_with_detail": used,
+        "skipped_incomplete_grain": skipped_grain,
+        "unresolved_player_ids": player_ids.unresolved,
+    }
+    for spec in FACT_SPECS:
+        rows = stamp_rows([_fill_row_ids(row, spec.unique_cols) for row in buckets[spec.stem].values()])
+        logger.info("[facts] In-memory upsert table=%s rows=%s grain=%s", spec.table, len(rows), spec.unique_cols)
+        if not rows:
+            counts[spec.table] = 0
+            continue
+        counts[spec.table] = upsert_dim_rows(
+            rows,
+            table=spec.table,
+            columns=spec.columns,
+            conflict_column=spec.unique_cols,
+            batch_size=500,
+            on_conflict="update",
+        )
+    logger.info("[facts] In-memory upsert done %s", counts)
+    return counts
+
+
 def load_facts(repo_root: Path | None = None) -> dict[str, int]:
     """Schema first (serial), then upsert each fact table in parallel — they do not share rows."""
     load_project_env(repo_root)
