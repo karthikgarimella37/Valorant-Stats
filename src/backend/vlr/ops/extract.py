@@ -569,6 +569,21 @@ def _warehouse_player_ids(since: datetime) -> list[str]:
     return sorted(ids)
 
 
+def _team_name_lookup() -> dict[str, str]:
+    """Map unique team_name → vlr_team_id from the warehouse so player stints can join."""
+    logger.info("[inc] team name lookup from vlr.dim_teams")
+    connector = SupabaseConnector()
+    rows = connector.fetch_all("SELECT team_name, vlr_team_id FROM vlr.dim_teams")
+    counts: dict[str, set[str]] = {}
+    for name, team_id in rows:
+        if not name or not team_id:
+            continue
+        counts.setdefault(str(name).strip().lower(), set()).add(str(team_id))
+    lookup = {name: next(iter(ids)) for name, ids in counts.items() if len(ids) == 1}
+    logger.info("[inc] team name lookup unique_names=%s scanned=%s", len(lookup), len(rows))
+    return lookup
+
+
 def extract_players_since(since: datetime, run_id: str = "") -> ExtractResult:
     """GET /v2/player profile for ids on recent team rosters."""
     logger.info("[inc] === STEP extract players since=%s ===", since.isoformat())
