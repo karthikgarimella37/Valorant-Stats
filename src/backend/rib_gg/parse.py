@@ -218,7 +218,6 @@ def parse_match_overlay(
                     continue
                 player_id = coalesce_id(player.get("playerId") or player.get("id"))
                 ign = _s(player.get("name"))
-                side = _s(player.get("team") or player.get("side") if player.get("team") in {"A", "B"} else player.get("team"))
                 team_letter = _s(player.get("team"))
                 rib_team_id = resolve_rib_team_id(payload, team_letter)
                 vlr_team_id = resolve_vlr_team_id(cross, team_letter)
