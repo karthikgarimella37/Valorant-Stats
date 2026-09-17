@@ -15,26 +15,21 @@ class WatermarkSpec:
     table_name: str
     source_name: str
     overlap_hours: float
-    date_only: bool
     lookback_note: str
 
 
-# Minus one hour on timestamptz last_source_at. Date-only VLR fields also keep the
-# whole calendar day of `since` because the source has no clock time.
+# last_source_at is timestamptz with seconds. Next run starts at last_source_at minus 1 hour.
 _VLR_LOOKBACK = (
     1.0,
-    True,
-    "minus 1 hour on last_source_at; date-only event/match dates also include that whole day",
+    "minus 1 hour from last_source_at (timestamptz to the second); extract from that time onward",
 )
 # Catalogs have no source event time: full small upsert, watermark is last_success_at only.
 _CATALOG = (
     0.0,
-    False,
     "no source event time; full small upsert; watermark last_success_at only (no minus-1h)",
 )
 _RIB = (
     1.0,
-    False,
     "rib overlay: minus 1 hour when that job is wired; row is seeded so the list is complete",
 )
 
@@ -63,7 +58,6 @@ WATERMARK_SPECS: tuple[WatermarkSpec, ...] = (
     WatermarkSpec("rib_facts", "fact_rib_match_crosswalk", "rib.gg", *_RIB),
 )
 
-# Incremental DAGs that pull VLR since last_source_at. Catalogs use run_full_refresh.
 INC_PIPELINES: tuple[WatermarkSpec, ...] = tuple(
     spec
     for spec in WATERMARK_SPECS

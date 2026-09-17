@@ -41,13 +41,11 @@ class Watermark:
     since: datetime
 
 
-def _utc(value: datetime | None) -> datetime | None:
-    """Normalize DB timestamps to aware UTC so timedelta math does not explode."""
+def iso_seconds(value: datetime | None) -> str | None:
+    """Log/JSON clock with seconds (watermark lookback is last_source_at minus 1 hour)."""
     if value is None:
         return None
-    if value.tzinfo is None:
-        return value.replace(tzinfo=timezone.utc)
-    return value.astimezone(timezone.utc)
+    return _utc(value).isoformat(timespec="seconds") if _utc(value) else None
 
 
 def _safe_table(name: str) -> str:
