@@ -122,6 +122,17 @@ cd dagster_orchestration
 uv run dagster job execute -m dagster_orchestration.definitions -j vlr_facts
 ```
 
+## rib overlay (round + replay)
+
+Job: `rib_facts`
+
+Lands `rib.gg` match RSC + full replay JSON, parses round/player/economy/kills/events/**snapshots**, fuzzy-joins VLR ids, then batched upsert into `vlr.fact_rib_*`. First run uses `RIB_MATCH_IDS`.
+
+```bash
+cd dagster_orchestration
+RIB_MATCH_IDS=270 uv run dagster job execute -m dagster_orchestration.definitions -j rib_facts
+```
+
 ## Historical VLR jobs (Dagster)
 
 Jobs: `vlr_events` then `vlr_matches`. After matches ids exist, `vlr_teams` enriches `vlr.dim_teams` from `/v2/team`.
