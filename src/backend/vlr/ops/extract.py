@@ -472,9 +472,9 @@ def _warehouse_team_ids(since: datetime) -> list[str]:
         """
         SELECT vlr_team_1_id, vlr_team_2_id
         FROM vlr.dim_matches
-        WHERE update_date >= %s
+        WHERE update_date >= %s OR match_at >= %s
         """,
-        (since,),
+        (since, since),
     )
     ids: set[str] = set()
     for team_1, team_2 in rows:
