@@ -527,10 +527,20 @@ def dims_weapons(context: AssetExecutionContext) -> dict[str, int]:
 def dims_agents(context: AssetExecutionContext) -> dict[str, int]:
     """Kit catalog: valorant-api.com + Liquipedia AbilityCard via AWS rotator."""
     context.log.info("=== STEP dims_agents: valorant-api + liquipedia via AWS rotator ===")
-    counts = run_agents(REPO_ROOT)
-    context.add_output_metadata({"row_counts": MetadataValue.json(counts)})
-    context.log.info("Agents catalog upserted=%s", counts)
-    return counts
+
+    def _load() -> dict[str, int]:
+        counts = run_agents(REPO_ROOT)
+        context.add_output_metadata({"row_counts": MetadataValue.json(counts)})
+        context.log.info("Agents catalog upserted=%s", counts)
+        return counts
+
+    return run_full_refresh(
+        pipeline_name="vlr_agents",
+        table_name="dim_agents",
+        fn=_load,
+        dagster_run_id=context.run_id,
+        dagster_job_name=context.job_name,
+    )
 
 
 @asset(group_name="vlr_seed")
