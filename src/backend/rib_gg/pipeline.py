@@ -293,7 +293,7 @@ def load_rib_facts(repo_root: Path | None = None) -> dict[str, int]:
     except Exception:
         logger.exception("[rib_facts] dim_matches stamp failed (table may not exist yet)")
         counts["dim_matches_rib_ids"] = 0
-    logger.info("[rib_facts] Load done %s", counts)
+    logger.info("=== rib_facts LOAD DONE %s ===", counts)
     return counts
 
 
