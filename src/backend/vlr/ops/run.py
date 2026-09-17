@@ -13,6 +13,7 @@ from backend.vlr.ops.watermarks import (
     write_pipeline_watermarks,
     write_watermark,
 )
+from backend.vlr.ops.specs import WATERMARK_SPECS
 
 logger = logging.getLogger(__name__)
 
