@@ -311,17 +311,6 @@ def vlr_players_merge(context: AssetExecutionContext, vlr_players_extract: dict[
 @asset(group_name="vlr_inc")
 def vlr_players_wm_write(context: AssetExecutionContext, vlr_players_merge: dict[str, Any]) -> dict[str, Any]:
     """Step 4 players: persist last_source_at after merge."""
-    return _write_payload(context, vlr_players_wm_write_input(vlr_players_merge))
-
-
-def vlr_players_wm_write_input(merged: dict[str, Any]) -> dict[str, Any]:
-    """Pass-through so the write asset body stays one line with a why-docstring on the asset."""
-    return merged
-
-
-@asset(group_name="vlr_inc")
-def vlr_players_wm_write(context: AssetExecutionContext, vlr_players_merge: dict[str, Any]) -> dict[str, Any]:
-    """Step 4 players: persist last_source_at after merge."""
     return _write_payload(context, vlr_players_merge)
 
 
