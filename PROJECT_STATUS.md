@@ -22,12 +22,12 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 |------|--------|-------|
 | Overall | In progress | Dims catalog done. Match details still scraping. Facts loading |
 | Data sources | Validated | Self-hosted vlrggapi `/v2` via AWS IP rotator overlay |
-| Orchestration | In progress | Job `vlr_facts` (extract jsonl → parallel load on composite unique) |
-| Dim tables | **Done** (catalog). Teams/players jsonl exist; rematerialize later if needed |
-| Fact tables | Load in progress | Live run still on concat `fact_key`. Next runs + migrate script use composite unique |
+| Orchestration | In progress | 4-step inc jobs + `vlr_daily`; cursor `vlr.ops_pipeline_watermarks` |
+| Dim tables | Catalog done | Daily events/matches/teams/players are incremental upserts |
+| Fact tables | Live in `vlr` | Incremental `vlr_facts` parses in-memory match details |
 | rib overlay | Running | Snapshots now a warehouse table; first job uses `RIB_MATCH_IDS=270` |
 | Frontend / viz | Not started | Graphs in `DATA_MODEL.md` |
-| Deferred | Documented | `LATER.md` (economy dim, watermarks, KG agent) |
+| Deferred | Documented | `LATER.md` (economy dim, close VLR load, KG, dbt on live facts) |
 
 ## Done
 
