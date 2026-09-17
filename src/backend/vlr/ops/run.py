@@ -7,7 +7,6 @@ from datetime import datetime, timezone
 from typing import Any, Callable
 
 from backend.vlr.ops.watermarks import (
-    Watermark,
     ensure_watermarks_table,
     read_watermark,
     watermark_to_meta,
