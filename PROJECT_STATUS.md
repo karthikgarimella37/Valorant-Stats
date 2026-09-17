@@ -66,6 +66,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 - Series 2K/1vX only attach to **map 1** (VLR does not split them per map)
 - VLR has **team** ATK/DEF halves already (`fact_map_game_results` + `fact_round_results`). Player ATK/DEF K/D is HTML-only (wrapper reads `.mod-both`)
 - rib `be-prod.rib.gg` is stale; live routes are `rib.gg` RSC + `/api/matches/{id}/replay-data`
+- **rib.gg extract blocker:** Vercel Security Checkpoint **429s every AWS API Gateway IP**. Table `vlr.fact_rib_replay_snapshot` is ready; JSON cannot land until rotator IPs are allowed.
 - First rib extract: `VLR_USE_IP_ROTATOR=1` and `RIB_MATCH_IDS` for a smoke test before crawling all events
 
 ## Session log

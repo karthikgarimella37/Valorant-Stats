@@ -238,6 +238,11 @@ class VlrIpRotator:
             try:
                 logger.info("Shutting down IP rotator for %s", site)
                 gateway.shutdown()
+            except RuntimeError as exc:
+                if "interpreter shutdown" in str(exc):
+                    logger.warning("Skip rotator delete for %s; interpreter exiting", site)
+                    continue
+                logger.exception("Failed shutting down IP rotator for %s", site)
             except Exception:
                 logger.exception("Failed shutting down IP rotator for %s", site)
 
