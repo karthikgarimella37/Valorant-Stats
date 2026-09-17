@@ -1011,11 +1011,6 @@ vlr_weapons = define_asset_job(
     selection=[dims_weapons],
 )
 
-vlr_facts = define_asset_job(
-    "vlr_facts",
-    selection=[facts_extract, facts_load],
-)
-
 rib_facts = define_asset_job(
     "rib_facts",
     selection=[rib_match_extract, rib_facts_parse, rib_facts_load],
