@@ -531,6 +531,40 @@ def facts_load(context: AssetExecutionContext) -> dict[str, int]:
     return counts
 
 
+@asset(group_name="rib_facts")
+def rib_match_extract(context: AssetExecutionContext) -> dict[str, int]:
+    """Land rib.gg RSC match JSON + replay blobs via AWS rotator (parallel workers)."""
+    context.log.info(
+        "=== STEP rib_match_extract: workers=%s match_ids=%s ===",
+        os.getenv("RIB_MATCH_WORKERS", "8"),
+        os.getenv("RIB_MATCH_IDS", "all events"),
+    )
+    counts = extract_rib_matches(REPO_ROOT)
+    context.add_output_metadata({"row_counts": MetadataValue.json(counts)})
+    context.log.info("rib match extract %s", counts)
+    return counts
+
+
+@asset(group_name="rib_facts", deps=[rib_match_extract])
+def rib_facts_parse(context: AssetExecutionContext) -> dict[str, int]:
+    """Parse landed rib JSON into overlay fact jsonl and fuzzy-join VLR ids."""
+    context.log.info("=== STEP rib_facts_parse: json → fact jsonl + VLR join ===")
+    counts = parse_rib_facts(REPO_ROOT)
+    context.add_output_metadata({"row_counts": MetadataValue.json(counts)})
+    context.log.info("rib facts parsed %s", counts)
+    return counts
+
+
+@asset(group_name="rib_facts", deps=[rib_facts_parse])
+def rib_facts_load(context: AssetExecutionContext) -> dict[str, int]:
+    """Batch upsert overlay facts; sleep between batches so Supabase CPU stays bounded."""
+    context.log.info("=== STEP rib_facts_load: upsert vlr.fact_rib_* ===")
+    counts = load_rib_facts(REPO_ROOT)
+    context.add_output_metadata({"row_counts": MetadataValue.json(counts)})
+    context.log.info("rib facts upserted=%s", counts)
+    return counts
+
+
 @asset(group_name="vlr_hist")
 def evt_schema(context: AssetExecutionContext) -> str:
     """Create or alter vlr.dim_events so extract rows match warehouse columns."""
