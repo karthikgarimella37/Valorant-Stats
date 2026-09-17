@@ -137,11 +137,8 @@ All event / match **calendar** dates in logs, JSON landings, and warehouse text 
 src/backend/
   api_connectors/          # HTTP clients (rib.gg, vlr, gateways)
   database_connectors/     # Supabase / DB clients
-  rib_gg/                  # rib.gg normalize + land parquet/ndjson
+  rib_gg/                  # rib.gg overlay extract/parse/join/pipeline (+ old parquet star)
   vlr/                     # vlr extract / scrape transforms
-  vlr/dim/                 # dim extract (historical.py, matches.py, dates.py, util.py)
-  vlr/fact/                # fact extract (parse matches.jsonl)
-  rib_gg/                  # rib.gg normalize + overlay facts (extract_matches, parse, join, pipeline)
   sql/                     # dbt project (own .venv)
   config/env.py            # discover and load every repo .env
 dagster_orchestration/     # Dagster defs, assets, jobs only
