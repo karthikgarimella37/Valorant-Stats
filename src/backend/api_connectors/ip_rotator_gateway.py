@@ -166,7 +166,7 @@ class VlrIpRotator:
             kwargs["regions"] = use_regions
 
         logger.info("Starting AWS ApiGateway IP rotator for %s regions=%s", site, use_regions or "DEFAULT")
-        gateway = ApiGateway(site, **kwargs)
+        gateway = AwsProxyGateway(site, **kwargs)
         endpoints = gateway.start()
         count = len(endpoints) if endpoints is not None else 0
         logger.info(
