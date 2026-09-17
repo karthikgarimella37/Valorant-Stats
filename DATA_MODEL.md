@@ -14,7 +14,7 @@
 | Role         | Source                                                                                                           | What it owns                                                                                                                                             |
 | ------------ | ---------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Primary**  | [vlr.gg](https://www.vlr.gg) via **self-hosted** [axsddlr/vlrggapi](https://github.com/axsddlr/vlrggapi) (`/v2`) | Historical + current events, series, maps, teams, players, scoreboard, performance, economy, round **win** timeline, kill matrix. Covers previous years. |
-| **Overlay**  | rib.gg `/api/matches/{id}/replay-data`                                                                           | Replay kills, positions. Join to VLR by **event name + team names + date** (fuzzy).                                                                      |
+| Overlay  | rib.gg RSC `/matches/{id}` + `/api/matches/{id}/replay-data` | Round player table, economy, replay kills/events. Join to VLR by **event name + team names + date** (fuzzy). Snapshots land as JSON files only. |
 | **Not used** | valorant-api.com, public `vlrggapi.vercel.app` (down), orlandomm (503)                                           | Dropped as live hosts.                                                                                                                                   |
 
 
