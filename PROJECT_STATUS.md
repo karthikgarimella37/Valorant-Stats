@@ -80,3 +80,4 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 | 2026-09-16 | rib overlay coded: job `rib_facts`, JSON land + parse + batched load, snapshots stay on disk |
 | 2026-09-17 | Added `fact_rib_replay_snapshot`; snapshots upsert to Supabase. Running `rib_facts` on match 270 |
 | 2026-09-17 | Incremental VLR DAGs: watermark table, 4-step jobs, `vlr_daily` |
+| 2026-09-17 | `fact_rib_replay_snapshot` confirmed; rib 429 retries + in-process `rib_facts` logs; rerun match 270 |
