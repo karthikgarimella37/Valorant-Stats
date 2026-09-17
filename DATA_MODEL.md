@@ -745,7 +745,7 @@ Run extract + dbt from the **Dockerfile / compose**, not a laptop venv. Order:
      each: watermark → in-memory extract since last_source_at-1h → merge → watermark
 3. Optional catalogs: `vlr_agents` / `vlr_maps` / `vlr_weapons`
 4. rib overlay job `rib_facts` (unchanged)
-5. dbt later: views/tests on live `vlr.fact_*` (not the dummy `valorant` stubs)
+5. dbt job `vlr_dbt`: views/matviews + tests on live `vlr.fact_*`
 ```
 
 Jobs:
