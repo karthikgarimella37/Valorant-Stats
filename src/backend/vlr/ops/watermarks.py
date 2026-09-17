@@ -20,7 +20,6 @@ REPO_ROOT = Path(__file__).resolve().parents[4]
 DDL_NAME = "vlr_ops_pipeline_watermarks.sql"
 TABLE = "ops_pipeline_watermarks"
 _IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
-_NEVER = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
 
 @dataclass(frozen=True)
