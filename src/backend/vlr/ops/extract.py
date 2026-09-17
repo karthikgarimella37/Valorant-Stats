@@ -93,7 +93,7 @@ def _keep_date(raw: str | None, since: datetime) -> bool:
 
 def _health() -> VlrV2Connector:
     """Fail loud if vlrggapi is down before we page catalogs."""
-    load_project_env(REPO_ROOT)
+    load_project_env()
     assert_container_rotator()
     connector = VlrV2Connector()
     logger.info("[inc] Health check base=%s", connector.base_url)
