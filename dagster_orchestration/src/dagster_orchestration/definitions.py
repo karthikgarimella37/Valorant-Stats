@@ -960,6 +960,11 @@ vlr_facts = define_asset_job(
     selection=[facts_extract, facts_load],
 )
 
+rib_facts = define_asset_job(
+    "rib_facts",
+    selection=[rib_match_extract, rib_facts_parse, rib_facts_load],
+)
+
 defs = Definitions(
     assets=[
         dbt_build_select_one_plus_ten,
