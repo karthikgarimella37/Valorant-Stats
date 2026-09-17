@@ -5,7 +5,14 @@ from datetime import date
 from pathlib import Path
 
 import psycopg2
-from dagster import AssetExecutionContext, Definitions, MetadataValue, asset, define_asset_job
+from dagster import (
+    AssetExecutionContext,
+    Definitions,
+    MetadataValue,
+    asset,
+    define_asset_job,
+    in_process_executor,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SRC_ROOT = REPO_ROOT / "src"
