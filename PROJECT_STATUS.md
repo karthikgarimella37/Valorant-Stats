@@ -47,7 +47,7 @@ Build a web app for Valorant esports stats covering Regionals, Masters, Champion
 ## Next up
 
 - [ ] Let current `facts_load` finish; migrate script (`--wait`) drops `fact_key` unique
-- [ ] First `rib_facts` run: `RIB_MATCH_IDS=270` (or a current match), then full crawl
+- [ ] First `rib_facts` run: `RIB_MATCH_IDS=270` then full crawl
 - [ ] Let `vlr_matches` finish; upsert `vlr.dim_matches`; refetch empty-detail 429 rows
 - [ ] Optional VLR-only: player ATK/DEF splits (HTML `.mod-t`/`.mod-ct`) if we want them without rib
 - [ ] dbt view `fact_match_half_round_stats` (team ATK/DEF already in `fact_map_game_results` + rounds)
