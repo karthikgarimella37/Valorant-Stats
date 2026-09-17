@@ -971,24 +971,29 @@ vlr_dims = define_asset_job(
     selection=[dims_static, dims_from_landings, dims_weapons, dims_agents, dims_maps],
 )
 
-vlr_events = define_asset_job(
-    "vlr_events",
+vlr_hist_events = define_asset_job(
+    "vlr_hist_events",
     selection=[evt_schema, evt_extract, evt_load],
 )
 
-vlr_matches = define_asset_job(
-    "vlr_matches",
+vlr_hist_matches = define_asset_job(
+    "vlr_hist_matches",
     selection=[match_schema, match_extract, match_load],
 )
 
-vlr_teams = define_asset_job(
-    "vlr_teams",
+vlr_hist_teams = define_asset_job(
+    "vlr_hist_teams",
     selection=[team_schema, team_extract, team_load],
 )
 
-vlr_players = define_asset_job(
-    "vlr_players",
+vlr_hist_players = define_asset_job(
+    "vlr_hist_players",
     selection=[player_schema, player_extract, player_load],
+)
+
+vlr_hist_facts = define_asset_job(
+    "vlr_hist_facts",
+    selection=[facts_extract, facts_load],
 )
 
 vlr_agents = define_asset_job(
