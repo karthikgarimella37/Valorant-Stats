@@ -367,7 +367,7 @@ def format_row(
         "update_date": now,
         "listing": listing,
         "detail": detail,
-        "_label": f"{match_id} {name_1} vs {name_2} ({match_date or '?'})",
+        "_label": f"{match_id} {name_1} vs {name_2} ({match_at.isoformat(timespec='seconds') if match_at else match_date or '?'})",
     }
 
 
