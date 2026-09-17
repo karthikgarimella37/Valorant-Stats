@@ -477,10 +477,20 @@ def date_load(context: AssetExecutionContext) -> int:
 def dims_static(context: AssetExecutionContext) -> dict[str, int]:
     """Load VCT circuits, local ranking codes, and economy buy types (no API)."""
     context.log.info("=== STEP dims_static: vct_regions + regions + economy ===")
-    counts = load_static(REPO_ROOT)
-    context.add_output_metadata({"row_counts": MetadataValue.json(counts)})
-    context.log.info("Static dims upserted=%s", counts)
-    return counts
+
+    def _load() -> dict[str, int]:
+        counts = load_static(REPO_ROOT)
+        context.add_output_metadata({"row_counts": MetadataValue.json(counts)})
+        context.log.info("Static dims upserted=%s", counts)
+        return counts
+
+    return run_full_refresh(
+        pipeline_name="vlr_dims",
+        table_name="dim_vct_regions",
+        fn=_load,
+        dagster_run_id=context.run_id,
+        dagster_job_name=context.job_name,
+    )
 
 
 @asset(group_name="vlr_seed")
