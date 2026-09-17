@@ -197,6 +197,7 @@ def fetch_one_match(
         payload = json.loads(json_path.read_text(encoding="utf-8"))
         logger.info("[rib_extract] Skip existing match=%s", match_id)
     else:
+        logger.info("[rib_extract] Fetch START match=%s", match_id)
         payload = assemble_match_payload(
             connector, match_id, listing=listing, event=event, session=session
         )
