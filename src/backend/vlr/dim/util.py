@@ -20,6 +20,25 @@ _MATCH_ID_RE = re.compile(r"vlr\.gg/(\d+)")
 _PROJECT_DATE_RE = re.compile(r"^(\d{4})/(\d{1,2})/(\d{1,2})$")
 _TODAY_YESTERDAY_RE = re.compile(r"(Today|Yesterday)$", re.I)
 _PATCH_RE = re.compile(r"Patch\s+([\d.]+)", re.I)
+_TIME_RE = re.compile(
+    r"(?P<h>\d{1,2}):(?P<m>\d{2})(?::(?P<s>\d{2}))?\s*(?P<p>AM|PM)?",
+    re.I,
+)
+_TZ_RE = re.compile(r"\b(UTC|GMT|EST|EDT|CST|CDT|MST|MDT|PST|PDT|CET|CEST)\b", re.I)
+_TZ_HOURS = {
+    "UTC": 0,
+    "GMT": 0,
+    "EST": -5,
+    "EDT": -4,
+    "CST": -6,
+    "CDT": -5,
+    "MST": -7,
+    "MDT": -6,
+    "PST": -8,
+    "PDT": -7,
+    "CET": 1,
+    "CEST": 2,
+}
 _JSONL_LOCK = threading.Lock()
 _MONTHS = {
     "jan": 1,
